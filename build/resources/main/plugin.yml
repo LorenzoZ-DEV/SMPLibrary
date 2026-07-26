@@ -1,0 +1,7 @@
+name: smp-library
+version: '1.0-SNAPSHOT'
+main: dev.lorenzzz.smplibrary.Smp_library
+api-version: '1.21'
+softdepend:
+  - PlaceholderAPI
+  - zEssentials

@@ -1,0 +1,89 @@
+####################################################
+#   PISTACCHI SHOP - CRATES
+####################################################
+
+name: "pistacchi-crates"
+title: "<gradient:#5f5f5f:#ffcc55>Pistacchi Shop • Crates</gradient>"
+size: 27
+enable: true
+
+fillItem:
+  material: BLACK_STAINED_GLASS_PANE
+  name: " "
+
+items:
+  common_crate:
+    slot: 10
+    item:
+      material: CHEST
+      name: "&#ffcc55Common Crate"
+      lore:
+        - ""
+        - " &#d7d7d7Chiave base con premi utili."
+        - " &#9a9a9aOttima per acquisti frequenti."
+        - " &#fff27aCosto: &#ffffff50 Pistacchi"
+        - ""
+        - " &#5f5f5f» &#7dff7aScegli la quantità"
+    actions:
+      - type: inventory
+        inventory: "confirm-common-crate"
+      - type: close
+
+  devil_crate:
+    slot: 12
+    item:
+      material: NETHERITE_BLOCK
+      name: "&#ff5a5aDevil Crate"
+      lore:
+        - ""
+        - " &#d7d7d7Crate intensa con premi migliori."
+        - " &#9a9a9aPerfetta per chi cerca reward rare."
+        - " &#fff27aCosto: &#ffffff350 Pistacchi"
+        - ""
+        - " &#5f5f5f» &#7dff7aScegli la quantità"
+    actions:
+      - type: inventory
+        inventory: "confirm-devil-crate"
+      - type: close
+
+  venrix_crate:
+    slot: 16
+    item:
+      material: ENDER_CHEST
+      name: "&#ff8df5Venrix Crate"
+      lore:
+        - ""
+        - " &#d7d7d7Crate premium di fascia alta."
+        - " &#9a9a9aContiene ricompense più esclusive."
+        - " &#fff27aCosto: &#ffffff650 Pistacchi"
+        - ""
+        - " &#5f5f5f» &#7dff7aScegli la quantità"
+    actions:
+      - type: inventory
+        inventory: "confirm-venrix-crate"
+      - type: close
+
+  info_spawners:
+    slot: 14
+    item:
+      material: SPAWNER
+      name: "&#c77dffSpawner Shop"
+      lore:
+        - ""
+        - " &#d7d7d7Gli spawners sono in un menu dedicato."
+        - " &#9a9a9aApri la sezione Spawners dal menu principale."
+        - ""
+        - " &#5f5f5f» &#7dff7aSolo informativo"
+
+  back:
+    slot: 22
+    item:
+      material: ARROW
+      name: "&#ff7b7bIndietro"
+      lore:
+        - ""
+        - " &#5f5f5f» &#7dff7aTorna al menu principale"
+    actions:
+      - type: inventory
+        inventory: "pistacchi-main"
+      - type: close

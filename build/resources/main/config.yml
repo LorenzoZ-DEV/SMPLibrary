@@ -1,0 +1,176 @@
+MODULES:
+  keyall:
+    enabled: true
+    task-every: 1h
+    amount: 1
+    crate-name: "common_crate"
+    command: "crate key give %player% %crate-name% %amount%"
+    placeholder: "%smplibrary_keyall_formatted%"
+  chatgames:
+    enabled: true
+    task-every: 30m            # how often a new game starts
+    time-limit: 3             # minutes players have to guess before it times out
+    scramble: true            # scramble the word in the prompt (harder)
+    type: "Parole"            # label shown via %type% in messages
+    reward: "crate key give %player% common_crate 1"
+    game-types:                # available game types: WORD, MATH, TRIVIA
+      - WORD
+      - MATH
+      - TRIVIA
+    words:
+      - "ananas"
+      - "diamante"
+      - "creeper"
+      - "redstone"
+      - "villager"
+      - "netherite"
+      - "endereeit"
+      - "fornace"
+      - "beacon"
+      - "shulker"
+      - "phantom"
+      - "warden"
+    math:
+      max-number: 100
+      operations: "+-"
+    trivia:
+      questions:
+        - question: "Qual è la capitale dell'Italia?"
+          answers: ["roma"]
+        - question: "Quanti blocchi è alto un Creeper?"
+          answers: ["1.8", "1,8", "2"]
+        - question: "Quale minerale si trova più in profondità?"
+          answers: ["diamond", "diamante", "diamanti"]
+        - question: "Quanti bastoni servono per un pickaxe di legno?"
+          answers: ["2"]
+        - question: "Come si chiama il boss del Nether?"
+          answers: ["wither", "vithered"]
+        - question: "Quale strumento serve per rompere la pietra più velocemente?"
+          answers: ["pickaxe", "piccone", "picco"]
+  menu:
+    enabled: true
+    command: "pistacchi"
+    aliases: [shop, pshop]
+    default-menu: "pistacchi-main"
+  amethyst-tool:
+    enabled: true
+    durability-uses: 500
+    tools-list:
+      amethyst_sword:
+        material: DIAMOND_SWORD
+        name: '&d&lAmethyst Sword'
+        lore:
+          - '&#d1e0e0Amethyst sword'
+          - '&#d1e0e0Uses remaining: &#1a55a2%uses%'
+        enchantments:
+          SHARPNESS: 6
+        attributes:
+          GENERIC_ATTACK_DAMAGE: 12.0
+      amethyst_pickaxe:
+        material: DIAMOND_PICKAXE
+        name: '&d&lAmethyst Pickaxe'
+        lore:
+          - '&#d1e0e0Amethyst pickaxe'
+          - '&#d1e0e0Uses remaining: &#1a55a2%uses%'
+        enchantments:
+          EFFICIENCY: 7
+          FORTUNE: 4
+        attributes:
+          GENERIC_ATTACK_SPEED: 1.5
+  adaptive-tool:
+    enabled: true
+    max-uses: 1500
+    default-form: pickaxe
+    name: '&5&lAdaptive Tool'
+    lore:
+      - '&#d1e0e0Morphs into the perfect tool'
+      - '&#d1e0e0for the block you target.'
+      - ''
+      - '&#d1e0e0Uses left: &#a78bfa{uses}&7/&#a78bfa{max}'
+      - ''
+    forms:
+      sword:
+        material: NETHERITE_SWORD
+        enchantments:
+          SHARPNESS: 5
+          UNBREAKING: 3
+          SWEEPING: 3
+      pickaxe:
+        material: NETHERITE_PICKAXE
+        enchantments:
+          EFFICIENCY: 5
+          FORTUNE: 3
+          UNBREAKING: 3
+      axe:
+        material: NETHERITE_AXE
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 3
+      shovel:
+        material: NETHERITE_SHOVEL
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 3
+      hoe:
+        material: NETHERITE_HOE
+        enchantments:
+          EFFICIENCY: 5
+          UNBREAKING: 3
+    particles:
+      type: DRAGON_BREATH
+      count: 30
+      offset-x: 0.5
+      offset-y: 1.0
+      offset-z: 0.5
+      speed: 0.05
+    sound:
+      type: ENTITY_ENDER_DRAGON_FLAP
+      volume: 0.6
+      pitch: 1.5
+
+  trivella:
+    enabled: true
+    radius: 1                 # 1 = 3x3x3 cube around the broken block; capped at 3 in code
+    material: NETHERITE_PICKAXE
+    name: '&d&lTrivella'
+    lore:
+      - '&#d1e0e0Scava un cubo 3x3x3 attorno al blocco rotto.'
+      - '&#d1e0e0Illimitata — nessun consumo usi.'
+    enchantments:
+      EFFICIENCY: 7
+      UNBREAKING: 3
+      FORTUNE: 3
+
+  firstjoin:
+    enabled: true
+    # Commands run ONCE on a player's first join, as the player themselves.
+    # No leading slash. %player% is replaced with the joining player's name.
+    # Leave for a server with a kit plugin; the default claims a "start" starter kit.
+    commands:
+      - "kit claim start"
+    # When true, first join also broadcasts first-join.broadcast to the whole server.
+    # Default false: the welcome is sent only to the joining player ("a te stesso").
+    broadcast-first-join: false
+
+# Aikar Commands (ACF) registration block. The CommandManager reads this
+# and registers the matching command classes. Aliases & permission live here
+# so a server owner can retune without touching code.
+COMMANDS:
+  smplibrary:
+    enabled: true
+    name: smplibrary
+    aliases: [smpl, sl]
+    permission: smplibrary.admin
+    messages:
+      no-permission: "&cYou don't have permission."
+      reload-success: "&aSMP-Library reloaded."
+      unknown-sub: "&7Unknown subcommand. &f/smplibrary help"
+  keyall:
+    enabled: true
+    name: keyall
+    aliases: [keys]
+    permission: smplibrary.keyall.use
+    cooldown-seconds: 0
+    messages:
+      no-permission: "&cNo permission."
+      ran: "&dKeyAll triggered for &f%players% &dplayers."

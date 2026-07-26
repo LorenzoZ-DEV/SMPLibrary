@@ -1,0 +1,136 @@
+name: "confirm-skeleton-spawner"
+title: "<gradient:#5f5f5f:#7dff7a>Conferma Acquisto</gradient>"
+size: 27
+enable: true
+
+fillItem:
+  material: BLACK_STAINED_GLASS_PANE
+  name: " "
+
+items:
+  preview:
+    slot: 13
+    item:
+      material: SKELETON_SKULL
+      amount: 1
+      name: "&#f4f4f4Spawner Scheletro"
+      lore:
+        - ""
+        - " &#d7d7d7Spawner perfetto per frecce e ossa."
+        - " &#fff27aPrezzo unità: &#ffffff250 Pistacchi"
+        - " &#9a9a9aScegli la quantità da acquistare."
+
+  buy_1:
+    slot: 10
+    item:
+      material: LIME_DYE
+      amount: 1
+      name: "&#7dff7aCompra x1"
+      lore:
+        - ""
+        - " &#9a9a9aQuantità: &#7dff7a1"
+        - " &#fff27aTotale: &#ffffff250 Pistacchi"
+        - ""
+        - " &#5f5f5f» &#7dff7aClicca per acquistare"
+    click-requirement:
+      purchase:
+        clicks: [ALL]
+        requirements:
+          - type: placeholder
+            placeholder: "%zessentials_user_balance_coins%"
+            value: "250"
+            action: "SUPERIOR_OR_EQUAL"
+        success:
+          - type: console_command
+            commands:
+              - "eco take coins %player_name% 250"
+              - "neospawner givems %player_name% skeleton 1"
+          - type: message
+            messages:
+              - "<green><bold>SUCCESSO</bold> <white>» <green>Hai acquistato <gold>1x</gold> <white>Spawner Scheletro</white>!</green>"
+          - type: close
+        deny:
+          - type: message
+            messages:
+              - "<red><bold>ERRORE</bold> <white>» <red>Non hai abbastanza <gold>Pistacchi</gold>! Ti servono almeno <gold>250</gold>.</red>"
+
+  buy_4:
+    slot: 11
+    item:
+      material: LIME_DYE
+      amount: 4
+      name: "&#7dff7aCompra x4"
+      lore:
+        - ""
+        - " &#9a9a9aQuantità: &#7dff7a4"
+        - " &#fff27aTotale: &#ffffff1000 Pistacchi"
+        - ""
+        - " &#5f5f5f» &#7dff7aClicca per acquistare"
+    click-requirement:
+      purchase:
+        clicks: [ALL]
+        requirements:
+          - type: placeholder
+            placeholder: "%zessentials_user_balance_coins%"
+            value: "1000"
+            action: "SUPERIOR_OR_EQUAL"
+        success:
+          - type: console_command
+            commands:
+              - "eco take coins %player_name% 1000"
+              - "neospawner givems %player_name% skeleton 4"
+          - type: message
+            messages:
+              - "<green><bold>SUCCESSO</bold> <white>» <green>Hai acquistato <gold>4x</gold> <white>Spawner Scheletro</white>!</green>"
+          - type: close
+        deny:
+          - type: message
+            messages:
+              - "<red><bold>ERRORE</bold> <white>» <red>Non hai abbastanza <gold>Pistacchi</gold>! Ti servono almeno <gold>1000</gold>.</red>"
+
+  buy_8:
+    slot: 12
+    item:
+      material: LIME_DYE
+      amount: 8
+      name: "&#7dff7aCompra x8"
+      lore:
+        - ""
+        - " &#9a9a9aQuantità: &#7dff7a8"
+        - " &#fff27aTotale: &#ffffff2000 Pistacchi"
+        - ""
+        - " &#5f5f5f» &#7dff7aClicca per acquistare"
+    click-requirement:
+      purchase:
+        clicks: [ALL]
+        requirements:
+          - type: placeholder
+            placeholder: "%zessentials_user_balance_coins%"
+            value: "2000"
+            action: "SUPERIOR_OR_EQUAL"
+        success:
+          - type: console_command
+            commands:
+              - "eco take coins %player_name% 2000"
+              - "neospawner givems %player_name% skeleton 8"
+          - type: message
+            messages:
+              - "<green><bold>SUCCESSO</bold> <white>» <green>Hai acquistato <gold>8x</gold> <white>Spawner Scheletro</white>!</green>"
+          - type: close
+        deny:
+          - type: message
+            messages:
+              - "<red><bold>ERRORE</bold> <white>» <red>Non hai abbastanza <gold>Pistacchi</gold>! Ti servono almeno <gold>2000</gold>.</red>"
+
+  cancel:
+    slot: 22
+    item:
+      material: BARRIER
+      name: "&#ff7b7bAnnulla"
+      lore:
+        - ""
+        - " &#5f5f5f» &#ff7b7bTorna indietro senza acquistare"
+    actions:
+      - type: inventory
+        inventory: "pistacchi-spawners"
+      - type: close

@@ -1,0 +1,135 @@
+name: "confirm-enderman-spawner"
+translated-name: "&#555555Conferma Acquisto"
+size: 27
+enable: true
+
+fillItem:
+  material: BLACK_STAINED_GLASS_PANE
+  name: " "
+
+items:
+  preview:
+    slot: 13
+    item:
+      material: ENDER_PEARL
+      amount: 1
+      name: "&#aa00ffSpawner Enderman"
+      lore:
+        - ""
+        - " &#aaaaaaPrezzo unità: &#ffff5550 &#ffffffPistacchi"
+        - " &#aaaaaaScegli la quantità da acquistare."
+
+  buy_1:
+    slot: 10
+    item:
+      material: LIME_DYE
+      amount: 1
+      name: "&#55ff55Compra x1"
+      lore:
+        - ""
+        - " &#aaaaaaQuantità: &#55ff551"
+        - " &#aaaaaaTotale: &#ffff5550 &#ffffffPistacchi"
+        - ""
+        - " &#555555» &#55ff55Clicca per acquistare"
+    click-requirement:
+      purchase:
+        clicks: [ALL]
+        requirements:
+          - type: placeholder
+            placeholder: "%zessentials_user_balance_coins%"
+            value: "50"
+            action: "SUPERIOR_OR_EQUAL"
+        success:
+          - type: console_command
+            commands:
+              - "eco take coins %player_name% 50"
+              - "neospawner givems %player_name% enderman 1"
+          - type: message
+            messages:
+              - "&#55ff55&lSUCCESSO &#ffffff» &#55ff55Hai acquistato &#e67e221x &#ffffffSpawner Enderman&#55ff55!"
+          - type: close
+        deny:
+          - type: message
+            messages:
+              - "&#ff5555&lERRORE &#ffffff» &#ff5555Non hai abbastanza &#e67e22Pistacchi&#ff5555! Ti servono almeno &#e67e2250&#ff5555."
+
+  buy_4:
+    slot: 11
+    item:
+      material: LIME_DYE
+      amount: 4
+      name: "&#55ff55Compra x4"
+      lore:
+        - ""
+        - " &#aaaaaaQuantità: &#55ff554"
+        - " &#aaaaaaTotale: &#ffff55200 &#ffffffPistacchi"
+        - ""
+        - " &#555555» &#55ff55Clicca per acquistare"
+    click-requirement:
+      purchase:
+        clicks: [ALL]
+        requirements:
+          - type: placeholder
+            placeholder: "%zessentials_user_balance_coins%"
+            value: "200"
+            action: "SUPERIOR_OR_EQUAL"
+        success:
+          - type: console_command
+            commands:
+              - "eco take coins %player_name% 200"
+              - "neospawner givems %player_name% enderman 4"
+          - type: message
+            messages:
+              - "&#55ff55&lSUCCESSO &#ffffff» &#55ff55Hai acquistato &#e67e224x &#ffffffSpawner Enderman&#55ff55!"
+          - type: close
+        deny:
+          - type: message
+            messages:
+              - "&#ff5555&lERRORE &#ffffff» &#ff5555Non hai abbastanza &#e67e22Pistacchi&#ff5555! Ti servono almeno &#e67e22200&#ff5555."
+
+  buy_8:
+    slot: 12
+    item:
+      material: LIME_DYE
+      amount: 8
+      name: "&#55ff55Compra x8"
+      lore:
+        - ""
+        - " &#aaaaaaQuantità: &#55ff558"
+        - " &#aaaaaaTotale: &#ffff55400 &#ffffffPistacchi"
+        - ""
+        - " &#555555» &#55ff55Clicca per acquistare"
+    click-requirement:
+      purchase:
+        clicks: [ALL]
+        requirements:
+          - type: placeholder
+            placeholder: "%zessentials_user_balance_coins%"
+            value: "400"
+            action: "SUPERIOR_OR_EQUAL"
+        success:
+          - type: console_command
+            commands:
+              - "eco take coins %player_name% 400"
+              - "neospawner givems %player_name% enderman 8"
+          - type: message
+            messages:
+              - "&#55ff55&lSUCCESSO &#ffffff» &#55ff55Hai acquistato &#e67e228x &#ffffffSpawner Enderman&#55ff55!"
+          - type: close
+        deny:
+          - type: message
+            messages:
+              - "&#ff5555&lERRORE &#ffffff» &#ff5555Non hai abbastanza &#e67e22Pistacchi&#ff5555! Ti servono almeno &#e67e22400&#ff5555."
+
+  cancel:
+    slot: 22
+    item:
+      material: BARRIER
+      name: "&#ff5555Annulla"
+      lore:
+        - ""
+        - " &#555555» &#ff5555Torna indietro senza acquistare"
+    actions:
+      - type: inventory
+        inventory: "pistacchi-spawners"
+      - type: close

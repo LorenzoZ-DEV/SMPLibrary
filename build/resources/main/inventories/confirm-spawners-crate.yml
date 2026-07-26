@@ -1,0 +1,135 @@
+name: "confirm-spawners-crate"
+translated-name: "&#555555Conferma Acquisto"
+size: 27
+enable: true
+
+fillItem:
+  material: BLACK_STAINED_GLASS_PANE
+  name: " "
+
+items:
+  preview:
+    slot: 13
+    item:
+      material: SPAWNER
+      amount: 1
+      name: "&#55ff55Crate Spawners"
+      lore:
+        - ""
+        - " &#aaaaaaPrezzo unità: &#ffff5580 &#ffffffPistacchi"
+        - " &#aaaaaaScegli la quantità da acquistare."
+
+  buy_1:
+    slot: 10
+    item:
+      material: LIME_DYE
+      amount: 1
+      name: "&#55ff55Compra x1"
+      lore:
+        - ""
+        - " &#aaaaaaQuantità: &#55ff551"
+        - " &#aaaaaaTotale: &#ffff5580 &#ffffffPistacchi"
+        - ""
+        - " &#555555» &#55ff55Clicca per acquistare"
+    click-requirement:
+      purchase:
+        clicks: [ALL]
+        requirements:
+          - type: placeholder
+            placeholder: "%zessentials_user_balance_coins%"
+            value: "80"
+            action: "SUPERIOR_OR_EQUAL"
+        success:
+          - type: console_command
+            commands:
+              - "eco take coins %player_name% 80"
+              - "crate key give %player_name% spawners 1"
+          - type: message
+            messages:
+              - "&#55ff55&lSUCCESSO &#ffffff» &#55ff55Hai acquistato &#e67e221x &#ffffffSpawners Crate&#55ff55!"
+          - type: close
+        deny:
+          - type: message
+            messages:
+              - "&#ff5555&lERRORE &#ffffff» &#ff5555Non hai abbastanza &#e67e22Pistacchi&#ff5555! Ti servono almeno &#e67e2280&#ff5555."
+
+  buy_8:
+    slot: 11
+    item:
+      material: LIME_DYE
+      amount: 8
+      name: "&#55ff55Compra x8"
+      lore:
+        - ""
+        - " &#aaaaaaQuantità: &#55ff558"
+        - " &#aaaaaaTotale: &#ffff55640 &#ffffffPistacchi"
+        - ""
+        - " &#555555» &#55ff55Clicca per acquistare"
+    click-requirement:
+      purchase:
+        clicks: [ALL]
+        requirements:
+          - type: placeholder
+            placeholder: "%zessentials_user_balance_coins%"
+            value: "640"
+            action: "SUPERIOR_OR_EQUAL"
+        success:
+          - type: console_command
+            commands:
+              - "eco take coins %player_name% 640"
+              - "crate key give %player_name% spawners 8"
+          - type: message
+            messages:
+              - "&#55ff55&lSUCCESSO &#ffffff» &#55ff55Hai acquistato &#e67e228x &#ffffffSpawners Crate&#55ff55!"
+          - type: close
+        deny:
+          - type: message
+            messages:
+              - "&#ff5555&lERRORE &#ffffff» &#ff5555Non hai abbastanza &#e67e22Pistacchi&#ff5555! Ti servono almeno &#e67e22640&#ff5555."
+
+  buy_16:
+    slot: 12
+    item:
+      material: LIME_DYE
+      amount: 16
+      name: "&#55ff55Compra x16"
+      lore:
+        - ""
+        - " &#aaaaaaQuantità: &#55ff5516"
+        - " &#aaaaaaTotale: &#ffff551280 &#ffffffPistacchi"
+        - ""
+        - " &#555555» &#55ff55Clicca per acquistare"
+    click-requirement:
+      purchase:
+        clicks: [ALL]
+        requirements:
+          - type: placeholder
+            placeholder: "%zessentials_user_balance_coins%"
+            value: "1280"
+            action: "SUPERIOR_OR_EQUAL"
+        success:
+          - type: console_command
+            commands:
+              - "eco take coins %player_name% 1280"
+              - "crate key give %player_name% spawners 16"
+          - type: message
+            messages:
+              - "&#55ff55&lSUCCESSO &#ffffff» &#55ff55Hai acquistato &#e67e2216x &#ffffffSpawners Crate&#55ff55!"
+          - type: close
+        deny:
+          - type: message
+            messages:
+              - "&#ff5555&lERRORE &#ffffff» &#ff5555Non hai abbastanza &#e67e22Pistacchi&#ff5555! Ti servono almeno &#e67e221280&#ff5555."
+
+  cancel:
+    slot: 22
+    item:
+      material: BARRIER
+      name: "&#ff5555Annulla"
+      lore:
+        - ""
+        - " &#555555» &#ff5555Torna indietro senza acquistare"
+    actions:
+      - type: inventory
+        inventory: "pistacchi-crates"
+      - type: close

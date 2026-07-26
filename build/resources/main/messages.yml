@@ -1,0 +1,48 @@
+adaptive-tool:
+  morphed: '&5⚡ &#d1e0e0Tool morphed into &#a78bfa{form}&#d1e0e0.'
+  destroyed: '&5⚡ &#d1e0e0Your adaptive tool has &cshattered&#d1e0e0!'
+amethyst-tool:
+  broken: '&d⚡ &#d1e0e0Your amethyst tool has run out of uses.'
+  unknown: '&cUnknown amethyst tool: &f%tool%'
+  given: '&dGave the &#d1e0e0%tool% &dto &f%player%&d.'
+chat-games:
+  message-box: |-
+    &r
+    &r
+    &d&lCHATGAMES - &f%type%
+    &r
+    &fHai %time_left% minuti per rispondere!
+    &fScrivi la risposta in chat per vincere un premio!
+  message-win-player: |-
+    &r
+    &r
+    &d&lCHATGAMES 
+    &r
+    &fCongratulazioni &a%player_name%&f! 
+    La risposta corretta era: &d%word%&f!
+  message-win-player-chat:
+    chatgames-win: '&5&lCHATGAMES &8&l» &fEcco a te il tuo premio, &a%player_name%&f!'
+  message-timeout: |-
+    &r
+    &d&lCHATGAMES
+    &fNessuno ha risposto in tempo. Riprova al prossimo giro!
+first-join:
+  # Sent privately to the player on their FIRST join (and only then).
+  # %player% / %player_name% injected; PlaceholderAPI works too if installed.
+  welcome: |-
+    &r
+    &r
+    &d&lBENVENUTO
+    &r
+    &fBenvenuto sul server, &d%player%&f!
+    &fHai ricevuto il kitstarter: usa il comando &d/kit claim start&f.
+    &fBuona avventura!
+  # Optional broadcast to everyone online on first join. Only sent when
+  # MODULES.firstjoin.broadcast-first-join is true. Leave empty to disable.
+  broadcast: |-
+    &d&l» &f%player% &7è entrato per la prima volta sul server!
+  # Sent privately to returning players on every non-first join. No kit, just this.
+  returning: |-
+    &r
+    &d&lBENTORNATO
+    &fBentornato sul server, &d%player%&f!

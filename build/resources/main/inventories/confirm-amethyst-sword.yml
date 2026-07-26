@@ -1,0 +1,67 @@
+name: "confirm-amethyst-sword"
+translated-name: "&#555555Conferma Acquisto"
+size: 27
+enable: true
+
+fillItem:
+  material: BLACK_STAINED_GLASS_PANE
+  name: " "
+
+items:
+  preview:
+    slot: 13
+    item:
+      material: AMETHYST_SHARD
+      amount: 1
+      name: "&#ff77ffAmethyst Sword"
+      lore:
+        - ""
+        - " &#aaaaaaQuantità: &#55ff551"
+        - " &#aaaaaaTotale: &#ffff55120 &#ffffffPistacchi"
+
+  confirm:
+    slot: 11
+    item:
+      material: LIME_DYE
+      amount: 1
+      name: "&#55ff55Conferma acquisto"
+      lore:
+        - ""
+        - " &#aaaaaaQuantità: &#55ff551"
+        - " &#aaaaaaTotale: &#ffff55120 &#ffffffPistacchi"
+        - ""
+        - " &#555555» &#55ff55Clicca per acquistare"
+    click-requirement:
+      purchase:
+        clicks: [ALL]
+        requirements:
+          - type: placeholder
+            placeholder: "%zessentials_user_balance_coins%"
+            value: "120"
+            action: "SUPERIOR_OR_EQUAL"
+        success:
+          - type: console_command
+            commands:
+              - "eco take coins %player_name% 120"
+              - "sl amethyst give amethyst_sword %player_name%"
+          - type: message
+            messages:
+              - "&#55ff55&lSUCCESSO &#ffffff» &#55ff55Hai acquistato la &#ff77ffAmethyst Sword&#55ff55!"
+          - type: close
+        deny:
+          - type: message
+            messages:
+              - "&#ff5555&lERRORE &#ffffff» &#ff5555Non hai abbastanza &#e67e22Pistacchi&#ff5555! Ti servono almeno &#e67e22120&#ff5555."
+
+  cancel:
+    slot: 15
+    item:
+      material: BARRIER
+      name: "&#ff5555Annulla"
+      lore:
+        - ""
+        - " &#555555» &#ff5555Torna indietro senza acquistare"
+    actions:
+      - type: inventory
+        inventory: "pistacchi-tools"
+      - type: close

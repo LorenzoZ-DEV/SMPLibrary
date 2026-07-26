@@ -1,0 +1,77 @@
+####################################################
+#   PISTACCHI SHOP - MENU PRINCIPALE
+####################################################
+
+name: "pistacchi-main"
+title: "<gradient:#5f5f5f:#b8ff7a>Pistacchi Shop</gradient>"
+size: 27
+enable: true
+
+fillItem:
+  material: BLACK_STAINED_GLASS_PANE
+  name: " "
+
+items:
+  crates_button:
+    slot: 11
+    item:
+      material: CHEST
+      name: "&#ffcc55Crates"
+      lore:
+        - ""
+        - " &#cfcfcfApri la sezione delle crate."
+        - " &#8f8f8fChiavi rare, bundle e premi speciali."
+        - ""
+        - " &#5f5f5f» &#7dff7aClicca per entrare"
+    actions:
+      - type: inventory
+        inventory: "pistacchi-crates"
+      - type: close
+
+  tools_button:
+    slot: 13
+    item:
+      material: NETHERITE_PICKAXE
+      name: "&#6fe8ffTools"
+      lore:
+        - ""
+        - " &#cfcfcfStrumenti esclusivi del server."
+        - " &#8f8f8fPicconi speciali e utility premium."
+        - ""
+        - " &#5f5f5f» &#7dff7aClicca per entrare"
+    actions:
+      - type: inventory
+        inventory: "pistacchi-tools"
+      - type: close
+
+  upgrades_button:
+    slot: 15
+    item:
+      material: RED_BED
+      name: "&#ff7b7bUpgrade"
+      lore:
+        - ""
+        - " &#cfcfcfSblocchi permanenti utili."
+        - " &#8f8f8fHome extra e vantaggi del profilo."
+        - ""
+        - " &#5f5f5f» &#7dff7aClicca per entrare"
+    actions:
+      - type: inventory
+        inventory: "pistacchi-upgrades"
+      - type: close
+
+  spawners_button:
+    slot: 22
+    item:
+      material: SPAWNER
+      name: "&#c77dffSpawners"
+      lore:
+        - ""
+        - " &#cfcfcfSpawner acquistabili a Pistacchi."
+        - " &#8f8f8fScegli mob, quantità e conferma."
+        - ""
+        - " &#5f5f5f» &#7dff7aClicca per entrare"
+    actions:
+      - type: inventory
+        inventory: "pistacchi-spawners"
+      - type: close

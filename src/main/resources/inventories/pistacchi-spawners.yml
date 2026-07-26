@@ -1,0 +1,128 @@
+####################################################
+#   PISTACCHI SHOP - SPAWNERS
+####################################################
+
+name: "pistacchi-spawners"
+title: "<gradient:#5f5f5f:#c77dff>Pistacchi Shop • Spawners</gradient>"
+size: 27
+enable: true
+
+fillItem:
+  material: BLACK_STAINED_GLASS_PANE
+  name: " "
+
+items:
+  zombie_spawner:
+    slot: 10
+    item:
+      material: ZOMBIE_HEAD
+      name: "&#7dff7aSpawner Zombie"
+      lore:
+        - ""
+        - " &#d7d7d7Spawner base per farm solide."
+        - " &#9a9a9aOttimo per iniziare a produrre risorse."
+        - " &#fff27aCosto: &#ffffff100 Pistacchi"
+        - ""
+        - " &#5f5f5f» &#7dff7aScegli la quantità"
+    actions:
+      - type: inventory
+        inventory: "confirm-zombie-spawner"
+      - type: close
+
+  spider_spawner:
+    slot: 11
+    item:
+      material: COBWEB
+      name: "&#b8b8b8Spawner Ragno"
+      lore:
+        - ""
+        - " &#d7d7d7Spawner utile per drop e farm miste."
+        - " &#9a9a9aUna scelta versatile e comoda."
+        - " &#fff27aCosto: &#ffffff150 Pistacchi"
+        - ""
+        - " &#5f5f5f» &#7dff7aScegli la quantità"
+    actions:
+      - type: inventory
+        inventory: "confirm-spider-spawner"
+      - type: close
+
+  skeleton_spawner:
+    slot: 12
+    item:
+      material: SKELETON_SKULL
+      name: "&#f4f4f4Spawner Scheletro"
+      lore:
+        - ""
+        - " &#d7d7d7Spawner perfetto per frecce e ossa."
+        - " &#9a9a9aIdeale per farm più avanzate."
+        - " &#fff27aCosto: &#ffffff250 Pistacchi"
+        - ""
+        - " &#5f5f5f» &#7dff7aScegli la quantità"
+    actions:
+      - type: inventory
+        inventory: "confirm-skeleton-spawner"
+      - type: close
+
+  creeper_spawner:
+    slot: 13
+    item:
+      material: CREEPER_HEAD
+      name: "&#7dff7aSpawner Creeper"
+      lore:
+        - ""
+        - " &#d7d7d7Spawner ottimo per polvere da sparo."
+        - " &#9a9a9aPerfetto per TNT e farm esplosive."
+        - " &#fff27aCosto: &#ffffff200 Pistacchi"
+        - ""
+        - " &#5f5f5f» &#7dff7aScegli la quantità"
+    actions:
+      - type: inventory
+        inventory: "confirm-creeper-spawner"
+      - type: close
+
+  blaze_spawner:
+    slot: 14
+    item:
+      material: BLAZE_POWDER
+      name: "&#ffcc55Spawner Blaze"
+      lore:
+        - ""
+        - " &#d7d7d7Spawner caldo per blaze rod ed exp."
+        - " &#9a9a9aMolto utile per brewing e progressione."
+        - " &#fff27aCosto: &#ffffff220 Pistacchi"
+        - ""
+        - " &#5f5f5f» &#7dff7aScegli la quantità"
+    actions:
+      - type: inventory
+        inventory: "confirm-blaze-spawner"
+      - type: close
+
+  iron_golem_spawner:
+    slot: 15
+    item:
+      material: IRON_BLOCK
+      name: "&#f4f4f4Spawner Iron Golem"
+      lore:
+        - ""
+        - " &#d7d7d7Spawner premium per ferro costante."
+        - " &#9a9a9aScelta top per farm ad alto valore."
+        - " &#fff27aCosto: &#ffffff350 Pistacchi"
+        - ""
+        - " &#5f5f5f» &#7dff7aScegli la quantità"
+    actions:
+      - type: inventory
+        inventory: "confirm-iron-golem-spawner"
+      - type: close
+
+  back:
+    slot: 22
+    item:
+      material: ARROW
+      name: "&#ff7b7bIndietro"
+      lore:
+        - ""
+        - " &#5f5f5f» &#7dff7aTorna al menu principale"
+    actions:
+      - type: inventory
+        inventory: "pistacchi-main"
+      - type: close

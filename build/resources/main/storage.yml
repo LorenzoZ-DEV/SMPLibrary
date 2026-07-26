@@ -1,0 +1,27 @@
+# Database & connection-pool config read by StorageManager (HikariCP).
+#sqlite is zero-config; mysql/mariaba need the matching JDBC driver on the server.
+
+database:
+  type: sqlite                # sqlite | mysql | mariadb
+  host: localhost
+  port: 3306
+  name: smp_library
+  username: root
+  password: ""
+  prefix: smp_                # table prefix
+  params: "useSSL=false&useUnicode=true&characterEncoding=utf8&serverTimezone=UTC"
+
+pool:
+  maximum-pool-size: 10
+  minimum-idle: 5
+  connection-timeout: 30000  # ms — wait for a connection before giving up
+  idle-timeout: 600000       # ms
+  max-lifetime: 1800000      # ms
+  leak-detection-threshold: 0  # 0 = off; >0 ms to log suspected leaks
+
+# Tables auto-created for modules marked true here (and enabled in config.yml).
+schemas:
+  keyall: true
+  amethyst-tool: true
+  adaptive-tool: true
+  chatgames: true
