@@ -4,6 +4,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import me.clip.placeholderapi.PlaceholderAPI;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
@@ -117,6 +118,34 @@ public interface C
     static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.legacySection();
     static final Pattern STRIP_PATTERN = Pattern.compile("(?i)§[0-9A-FK-ORX]");
 
+    static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
+
+    static String hexToMiniMessage(String text) {
+        if (text == null) return "";
+        return HEX_COLOR_PATTERN.matcher(text).replaceAll("<#$1>");
+    }
+
+    static String legacyToMiniMessage(String text) {
+        if (text == null || text.isEmpty()) return text;
+        return text
+                .replace("&0", "<black>").replace("&1", "<dark_blue>")
+                .replace("&2", "<dark_green>").replace("&3", "<dark_aqua>")
+                .replace("&4", "<dark_red>").replace("&5", "<dark_purple>")
+                .replace("&6", "<gold>").replace("&7", "<gray>")
+                .replace("&8", "<dark_gray>").replace("&9", "<blue>")
+                .replace("&a", "<green>").replace("&b", "<aqua>")
+                .replace("&c", "<red>").replace("&d", "<light_purple>")
+                .replace("&e", "<yellow>").replace("&f", "<white>")
+                .replace("&k", "<obfuscated>").replace("&l", "<bold>")
+                .replace("&m", "<strikethrough>").replace("&n", "<underline>")
+                .replace("&o", "<italic>").replace("&r", "<reset>");
+    }
+
+    static Component mm(String text) {
+        if (text == null) return Component.empty();
+        return MINI_MESSAGE.deserialize(legacyToMiniMessage(hexToMiniMessage(text)));
+    }
+
     // ponytail: interface fields are final, so keep the mutable papi flag in a 1-slot array.
     static final boolean[] PAPI = { false };
 
@@ -143,6 +172,18 @@ public interface C
     static void send(CommandSender target, String message){
         if (message == null || message.isEmpty()) return;
         target.sendMessage(component(message));
+    }
+
+    static void sendChatAndAction(Player player, Component component) {
+        player.sendMessage(component);
+        player.sendActionBar(component);
+    }
+
+    static void sendChatAndAction(Player player, String message) {
+        if (message == null || message.isEmpty()) return;
+        Component c = mm(message);
+        player.sendMessage(c);
+        player.sendActionBar(c);
     }
 
     static String strip(String message){

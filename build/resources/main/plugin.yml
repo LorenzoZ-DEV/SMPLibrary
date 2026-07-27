@@ -1,7 +1,17 @@
 name: smp-library
-version: '1.0-SNAPSHOT'
+version: '1.0.1-02e916c'
 main: dev.lorenzzz.smplibrary.Smp_library
 api-version: '1.21'
 softdepend:
   - PlaceholderAPI
   - zEssentials
+commands:
+  pistacchi:
+    aliases: [pshop]
+    permission: smplibrary.menu.use
+  settings:
+    aliases: [impostazioni]
+    permission: smplibrary.menu.use
+  live:
+    aliases: [tiktok]
+    permission: smplibrary.menu.use

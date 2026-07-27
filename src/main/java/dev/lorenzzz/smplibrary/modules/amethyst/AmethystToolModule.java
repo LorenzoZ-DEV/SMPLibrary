@@ -127,7 +127,7 @@ public final class AmethystToolModule implements Module, Listener {
         if (rem <= 0) {
             player.getInventory().setItemInMainHand(null);
             player.playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, 0.8f, 1f);
-            if (messages != null) messages.send(player, "amethyst-tool.broken", Map.of());
+            if (messages != null) messages.sendBoth(player, "amethyst-tool.broken", Map.of());
             return;
         }
         meta.getPersistentDataContainer().set(K_USES, PersistentDataType.INTEGER, rem);

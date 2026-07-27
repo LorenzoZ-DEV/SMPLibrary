@@ -198,7 +198,7 @@ public final class AdaptiveToolModule implements Module, Listener {
         item.setItemMeta(meta);
 
         playMorph(player);
-        if (messages != null) messages.send(player, "adaptive-tool.morphed", Map.of("{form}", desired));
+        if (messages != null) messages.sendBoth(player, "adaptive-tool.morphed", Map.of("{form}", desired));
     }
 
     private void decrementUses(Player player, ItemStack item) {
@@ -216,7 +216,7 @@ public final class AdaptiveToolModule implements Module, Listener {
             Location loc = player.getLocation().add(0, 1, 0);
             player.getWorld().spawnParticle(Particle.DRAGON_BREATH, loc, 60, 0.6, 1.0, 0.6, 0.08);
             player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_DEATH, 0.4f, 1.8f);
-            if (messages != null) messages.send(player, "adaptive-tool.destroyed", Map.of());
+            if (messages != null) messages.sendBoth(player, "adaptive-tool.destroyed", Map.of());
             return;
         }
         pdc.set(K_USES, PersistentDataType.INTEGER, uses);

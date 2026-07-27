@@ -5,3 +5,13 @@ api-version: '1.21'
 softdepend:
   - PlaceholderAPI
   - zEssentials
+commands:
+  pistacchi:
+    aliases: [pshop]
+    permission: smplibrary.menu.use
+  settings:
+    aliases: [impostazioni]
+    permission: smplibrary.menu.use
+  live:
+    aliases: [tiktok]
+    permission: smplibrary.menu.use

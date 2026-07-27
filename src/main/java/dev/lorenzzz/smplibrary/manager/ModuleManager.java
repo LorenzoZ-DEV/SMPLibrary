@@ -44,7 +44,8 @@ public final class ModuleManager implements Manager {
         register(new dev.lorenzzz.smplibrary.modules.adaptive.AdaptiveToolModule(plugin));
         register(new dev.lorenzzz.smplibrary.modules.trivella.TrivellaModule(plugin));
         register(new dev.lorenzzz.smplibrary.modules.firstjoin.FirstJoinModule(plugin));
-        register(new dev.lorenzzz.smplibrary.modules.menu.MenuModule(plugin));
+        register(new dev.lorenzzz.smplibrary.modules.shop.ShopModule(plugin));
+        register(new dev.lorenzzz.smplibrary.modules.playtime.PlaytimeModule(plugin));
 
         ConfigurationSection modules = config.modules();
         if (modules == null) return;

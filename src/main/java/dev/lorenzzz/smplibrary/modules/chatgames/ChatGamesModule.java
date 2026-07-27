@@ -143,10 +143,14 @@ public final class ChatGamesModule implements Module, Listener {
         ph.putAll(extra);
 
         Component box = messages.component("chat-games.message-box", null, ph);
-        for (Player p : Bukkit.getOnlinePlayers()) p.sendMessage(box);
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            p.sendMessage(box);
+            C.sendChatAndAction(p, "&d&lCHATGAMES &8&l» &f" + messages.raw("chat-games.message-box").split("\n")[0]);
+        }
 
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.sendMessage(C.parse(instruction, p, Map.of()));
+            C.sendChatAndAction(p, instruction);
         }
     }
 
@@ -156,6 +160,7 @@ public final class ChatGamesModule implements Module, Listener {
         this.currentType = null;
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.sendMessage(messages.component("chat-games.message-timeout", null, Map.of()));
+            C.sendChatAndAction(p, "&d&lCHATGAMES &8&l» &cNessuno ha risposto in tempo!");
         }
     }
 
@@ -213,7 +218,10 @@ public final class ChatGamesModule implements Module, Listener {
 
             Component win = messages.component("chat-games.message-win-player", winner, ph);
             Component chatWin = messages.component("chat-games.message-win-player-chat.chatgames-win", winner, ph);
-            for (Player p : Bukkit.getOnlinePlayers()) p.sendMessage(win);
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                p.sendMessage(win);
+                C.sendChatAndAction(p, "&d&lCHATGAMES &8&l» &a" + winner.getName() + " &fvince!");
+            }
             if (chatWin != Component.empty()) {
                 for (Player p : Bukkit.getOnlinePlayers()) p.sendMessage(chatWin);
             }

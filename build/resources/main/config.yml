@@ -47,11 +47,12 @@ MODULES:
           answers: ["wither", "vithered"]
         - question: "Quale strumento serve per rompere la pietra più velocemente?"
           answers: ["pickaxe", "piccone", "picco"]
-  menu:
+  shop:
     enabled: true
-    command: "pistacchi"
-    aliases: [shop, pshop]
-    default-menu: "pistacchi-main"
+  playtime:
+    enabled: true
+    every: 5m
+    amount: 100.0
   amethyst-tool:
     enabled: true
     durability-uses: 500

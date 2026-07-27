@@ -1,5 +1,6 @@
 package dev.lorenzzz.smplibrary.modules.firstjoin;
 
+import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.manager.CommandManager;
 import dev.lorenzzz.smplibrary.manager.MessagesManager;
 import dev.lorenzzz.smplibrary.manager.StorageManager;
@@ -59,16 +60,21 @@ public final class FirstJoinModule implements Module, Listener {
         if (player.hasPlayedBefore()) {
             // Returning join: welcome-back only, no kit/commands.
             player.sendMessage(messages.component("first-join.returning", player, ph));
+            C.sendChatAndAction(player, messages.raw("first-join.returning").split("\n")[0]);
             return;
         }
 
         // First join: private welcome, optional server-wide broadcast, then the starter-kit commands.
         player.sendMessage(messages.component("first-join.welcome", player, ph));
+        C.sendChatAndAction(player, "&#F3F622&lBENVENUTO &r&8➟ &fBenvenuto sul server, &d" + player.getName() + "&f!");
 
         if (cfg.getBoolean("broadcast-first-join", false)) {
             Component bcast = messages.component("first-join.broadcast", null, ph);
             if (bcast != Component.empty()) {
-                for (Player p : Bukkit.getOnlinePlayers()) p.sendMessage(bcast);
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    p.sendMessage(bcast);
+                    C.sendChatAndAction(p, messages.raw("first-join.broadcast"));
+                }
             }
         }
 

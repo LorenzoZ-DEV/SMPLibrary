@@ -55,4 +55,10 @@ public final class MessagesManager implements Manager {
         Player p = target instanceof Player pl ? pl : null;
         target.sendMessage(C.parse(msg, p, placeholders));
     }
+
+    public void sendBoth(Player target, String path, Map<String, ?> placeholders) {
+        String msg = raw(path);
+        if (msg.isEmpty()) return;
+        C.sendChatAndAction(target, C.mm(msg));
+    }
 }

@@ -54,6 +54,10 @@ public final class CommandManager implements Manager {
         if (acf != null) for (var c : commands) acf.registerCommand(c);
     }
 
+    public void unregister(co.aikar.commands.BaseCommand... commands) {
+        if (acf != null) for (var c : commands) acf.unregisterCommand(c);
+    }
+
     @Override
     public void disable() {
         if (acf != null) {
