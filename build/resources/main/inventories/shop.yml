@@ -1,0 +1,332 @@
+  main-inventory:
+    title: '<gradient:#5f5f5f:#b8ff7a>Pistacchi Shop</gradient>'
+    layout:
+      - XXXXXXXXX
+      - XXOOOOOXX
+      - '<XXXXXXX>'
+
+  add-stack-item:
+    display-name: '<green>+<amount>'
+    type: LIME_STAINED_GLASS_PANE
+
+  remove-stack-item:
+    display-name: '<red>-<amount>'
+    type: RED_STAINED_GLASS_PANE
+
+  set-to-min-item:
+    display-name: '<gold>Min <amount>'
+    type: ORANGE_STAINED_GLASS_PANE
+
+  set-to-max-item:
+    display-name: '<gold>Max <amount>'
+    type: ORANGE_STAINED_GLASS_PANE
+
+  categories:
+    crates:
+      enabled: true
+      slot: 11
+      rows: 4
+      icon:
+        display-name: '&#ffcc55&lCRATES'
+        type: CHEST
+        lore:
+          - '<dark_gray>Categoria principale'
+          - '&f'
+          - '<#ffcc55>| &fChiavi rare, bundle e premi speciali.'
+          - '&f'
+          - '&e&l➥ &r&eClicca per aprire!'
+      inventory-name: '<gradient:#5f5f5f:#ffcc55>Pistacchi Shop • Crates</gradient>'
+      layout:
+        - XXXXXXXXX
+        - XOOOOOOOX
+        - XOOOOOOOX
+        - '<XXXXXXX>'
+      products:
+        common_crate:
+          material: CHEST
+          price: 50
+          display-name: '<#ffcc55>Crate Comune'
+          commands:
+            - "crate key give %player_name% common_crate %amount%"
+          lore:
+            - '<#d7d7d7>Chiave base con premi utili.'
+            - '<#9a9a9a>Ottima per acquisti frequenti.'
+        devil_crate:
+          material: NETHERITE_BLOCK
+          price: 350
+          display-name: '<#ffcc55>Devil Crate'
+          commands:
+            - "crate key give %player_name% devil_crate %amount%"
+          lore:
+            - '<#d7d7d7>Crate intensa con premi migliori.'
+            - '<#9a9a9a>Perfetta per chi cerca reward rare.'
+        venrix_crate:
+          material: ENDER_CHEST
+          price: 650
+          display-name: '<#ffcc55>Venrix Crate'
+          commands:
+            - "crate key give %player_name% venrix_crate %amount%"
+          lore:
+            - '<#d7d7d7>Crate premium di fascia alta.'
+            - '<#9a9a9a>Contiene ricompense più esclusive.'
+
+    tools:
+      enabled: true
+      slot: 13
+      rows: 4
+      icon:
+        display-name: '&#6fe8ff&lTOOLS'
+        type: NETHERITE_PICKAXE
+        lore:
+          - '<dark_gray>Strumenti esclusivi'
+          - '&f'
+          - '<#6fe8ff>| &fPicconi speciali e utility premium.'
+          - '&f'
+          - '&e&l➥ &r&eClicca per aprire!'
+      inventory-name: '<gradient:#5f5f5f:#6fe8ff>Pistacchi Shop • Tools</gradient>'
+      layout:
+        - XXXXXXXXX
+        - XOOOOOOOX
+        - XOOOOOOOX
+        - '<XXXXXXX>'
+      products:
+        adaptive_tool:
+          material: NETHERITE_PICKAXE
+          price: 250
+          display-name: '<#6fe8ff>Adaptive Tool'
+          commands:
+            - "sl adaptive give %player_name%"
+          lore:
+            - '<#d7d7d7>Tool premium versatile e veloce.'
+            - '<#9a9a9a>Perfetto per farm, miniera e utility.'
+        trivella_3x3x3:
+          material: NETHERITE_PICKAXE
+          price: 900
+          display-name: '<#6fe8ff>Trivella 3x3x3'
+          commands:
+            - "sl trivella give %player_name%"
+          lore:
+            - '<#d7d7d7>Piccone netherite enchantato.'
+            - '<#9a9a9a>Scava aree 3x3x3 in modo rapido.'
+        amethyst_pickaxe:
+          material: AMETHYST_SHARD
+          price: 500
+          display-name: '<#6fe8ff>Amethyst Pickaxe'
+          commands:
+            - "sl amethyst give amethyst_pickaxe %player_name%"
+          lore:
+            - '<#d7d7d7>Piccone raffinato in stile ametista.'
+            - '<#9a9a9a>Elegante, raro e perfetto da collezione.'
+
+    upgrades:
+      enabled: true
+      slot: 15
+      rows: 4
+      icon:
+        display-name: '&#ff7b7b&lUPGRADE'
+        type: RED_BED
+        lore:
+          - '<dark_gray>Sblocchi permanenti'
+          - '&f'
+          - '<#ff7b7b>| &fHome extra e vantaggi del profilo.'
+          - '&f'
+          - '&e&l➥ &r&eClicca per aprire!'
+      inventory-name: '<gradient:#5f5f5f:#ff7b7b>Pistacchi Shop • Upgrade</gradient>'
+      layout:
+        - XXXXXXXXX
+        - XOOOOOOOX
+        - XOOOOOOOX
+        - '<XXXXXXX>'
+      products:
+        home_upgrade:
+          material: RED_BED
+          price: 1000
+          display-name: '<#ff7b7b>Home Upgrade'
+          commands:
+            - "sl homeupgrade give %player_name%"
+          lore:
+            - '<#d7d7d7>Aggiunge nuovi slot home permanenti.'
+            - '<#9a9a9a>Ricevi 5 home extra sul profilo.'
+
+    spawners:
+      enabled: true
+      slot: 22
+      rows: 4
+      icon:
+        display-name: '&#c77dff&lSPAWNERS'
+        type: SPAWNER
+        lore:
+          - '<dark_gray>Spawner acquistabili'
+          - '&f'
+          - '<#c77dff>| &fScegli mob, quantità e conferma.'
+          - '&f'
+          - '&e&l➥ &r&eClicca per aprire!'
+      inventory-name: '<gradient:#5f5f5f:#c77dff>Pistacchi Shop • Spawners</gradient>'
+      layout:
+        - XXXXXXXXX
+        - XOOOOOOOX
+        - XOOOOOOOX
+        - '<XXXXXXX>'
+      products:
+        zombie_spawner:
+          material: ZOMBIE_HEAD
+          price: 100
+          display-name: '<#c77dff>Zombie Spawner'
+          commands:
+            - "neospawner givems %player_name% zombie %amount%"
+          lore:
+            - '<#d7d7d7>Spawner base per farm solide.'
+            - '<#9a9a9a>Ottimo per iniziare a produrre risorse.'
+        spider_spawner:
+          material: COBWEB
+          price: 150
+          display-name: '<#c77dff>Spider Spawner'
+          commands:
+            - "neospawner givems %player_name% spider %amount%"
+          lore:
+            - '<#d7d7d7>Spawner utile per drop e farm miste.'
+            - '<#9a9a9a>Una scelta versatile e comoda.'
+        skeleton_spawner:
+          material: SKELETON_SKULL
+          price: 250
+          display-name: '<#c77dff>Skeleton Spawner'
+          commands:
+            - "neospawner givems %player_name% skeleton %amount%"
+          lore:
+            - '<#d7d7d7>Spawner perfetto per frecce e ossa.'
+            - '<#9a9a9a>Ideale per farm più avanzate.'
+        creeper_spawner:
+          material: CREEPER_HEAD
+          price: 200
+          display-name: '<#c77dff>Creeper Spawner'
+          commands:
+            - "neospawner givems %player_name% creeper %amount%"
+          lore:
+            - '<#d7d7d7>Spawner ottimo per polvere da sparo.'
+            - '<#9a9a9a>Perfetto per TNT e farm esplosive.'
+        blaze_spawner:
+          material: BLAZE_POWDER
+          price: 220
+          display-name: '<#c77dff>Blaze Spawner'
+          commands:
+            - "neospawner givems %player_name% blaze %amount%"
+          lore:
+            - '<#d7d7d7>Spawner caldo per blaze rod ed exp.'
+            - '<#9a9a9a>Molto utile per brewing e progressione.'
+        iron_golem_spawner:
+          material: IRON_BLOCK
+          price: 350
+          display-name: '<#c77dff>Iron Golem Spawner'
+          commands:
+            - "neospawner givems %player_name% iron_golem %amount%"
+          lore:
+            - '<#d7d7d7>Spawner premium per ferro costante.'
+            - '<#9a9a9a>Scelta top per farm ad alto valore.'
+
+  keep-open-after-purchase: true
+
+  print-console:
+    enabled: false
+
+  anti-dupe: true
+  debug: false
+
+  items:
+    filler:
+      type: GRAY_STAINED_GLASS_PANE
+      display-name: ''
+      lore: []
+
+    back-page:
+      material: RED_STAINED_GLASS_PANE
+      name: '<color:#e00202>⬅ Indietro'
+      lore:
+        - '<dark_gray>Navigazione'
+        - '&f'
+        - '<gray>Ritorna alla pagina principale.'
+
+    next-page:
+      material: ARROW
+      name: '<color:#02de4f>Avanti ➜'
+      lore:
+        - '<dark_gray>Navigazione'
+        - '&f'
+        - '<gray>Vai alla pagina successiva.'
+
+    roll-back-page:
+      material: ARROW
+      name: '<color:#02de4f>⬅ Indietro'
+      lore:
+        - '<dark_gray>Navigazione'
+        - '&f'
+        - '<gray>Torna alla pagina precedente.'
+
+    decline:
+      material: RED_STAINED_GLASS_PANE
+      name: '<red>✖ Annulla'
+      lore:
+        - '<gray>Annulla operazione.'
+
+    accept:
+      material: LIME_STAINED_GLASS_PANE
+      name: '<green>✔ Conferma'
+      lore:
+        - '<gray>Conferma acquisto.'
+
+  insufficient-funds: '&#F3F622&lSHOP &r&8➟ &cNon hai abbastanza soldi.'
+  inventory-full: '&#F3F622&lSHOP &r&8➟ &fNon hai abbastanza spazio.'
+  purchase-success: '&#F3F622&lSHOP &r&8➟ &aHai acquistato x<amount> <item>'
+  transaction-error: '<red>Errore, apri un ticket.'
+  shop-reloaded: '<green>Shop ricaricato!'
+  confirm-title: '<gradient:#5f5f5f:#7dff7a>Conferma Acquisto</gradient>'
+  item-price: '<white>Prezzo: <green><price> Pistacchi'
+  item-amount: ''
+  item-click: '<yellow>➥ Clicca per acquistare'
+
+  open-shop:
+    sound: ui.button.click
+    volume: 0.5
+    pitch: 1.0
+    enabled: true
+
+  open-category:
+    sound: ui.button.click
+    volume: 0.5
+    pitch: 1.2
+    enabled: true
+
+  navigate-page:
+    sound: ui.button.click
+    volume: 0.3
+    pitch: 1.5
+    enabled: true
+
+  select-item:
+    sound: block.note_block.pling
+    volume: 0.5
+    pitch: 1.2
+    enabled: true
+
+  confirm-purchase:
+    sound: entity.experience_orb.pickup
+    volume: 1.0
+    pitch: 1.0
+    enabled: true
+
+  cancel-purchase:
+    sound: ui.button.click
+    volume: 0.5
+    pitch: 0.8
+    enabled: true
+
+  purchase-error:
+    sound: entity.villager.no
+    volume: 1.0
+    pitch: 1.0
+    enabled: true
+
+  back-button:
+    sound: ui.button.click
+    volume: 0.5
+    pitch: 0.8
+    enabled: true
