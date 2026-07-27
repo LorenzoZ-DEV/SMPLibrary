@@ -1,13 +1,13 @@
 package dev.lorenzzz.smplibrary.modules.shop;
 
 import dev.lorenzzz.smplibrary.C;
-import net.j4c0b3y.api.menu.Menu;
 import net.j4c0b3y.api.menu.MenuHandler;
 import net.j4c0b3y.api.menu.MenuSize;
 import net.j4c0b3y.api.menu.button.Button;
 import net.j4c0b3y.api.menu.button.impl.SimpleButton;
 import net.j4c0b3y.api.menu.layer.impl.BackgroundLayer;
 import net.j4c0b3y.api.menu.layer.impl.ForegroundLayer;
+import net.j4c0b3y.api.menu.Menu;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -24,6 +24,11 @@ public class ShopCategoryMenu extends Menu {
     private final ShopModule module;
     private int page = 0;
 
+    // ponytail: recomputed each populate(); kept on the instance so nav buttons
+    // don't rescan the layout. Cleared+refilled in populate(), never null.
+    private final List<int[]> productSlots = new ArrayList<>();
+    private int totalPages = 1;
+
     public ShopCategoryMenu(ShopConfig config, CategoryConfig category, Player player, MenuHandler handler, ShopModule module) {
         super(category.inventoryName(), MenuSize.of(category.layout().size()), player, handler);
         this.config = config;
@@ -33,44 +38,56 @@ public class ShopCategoryMenu extends Menu {
 
     @Override
     public void setup(BackgroundLayer background, ForegroundLayer foreground) {
-        List<String> layout = category.layout();
-        List<String> productSlots = new ArrayList<>();
+        populate();
+    }
 
+    /**
+     * Re-places every foreground button for the current page. Menu.setup()
+     * only runs once per open, so page changes must call this via rebuild().
+     */
+    private void populate() {
+        ForegroundLayer fg = getForeground();
+        productSlots.clear();
+        List<int[]> navSlots = new ArrayList<>();
+
+        List<String> layout = category.layout();
         for (int row = 0; row < layout.size(); row++) {
             String line = layout.get(row);
             for (int col = 0; col < line.length() && col < 9; col++) {
                 char c = line.charAt(col);
-                Button btn = switch (c) {
-                    case 'X' -> fillerButton();
-                    case 'O' -> null;
-                    case '<' -> backButton();
-                    case '>' -> nextButton();
-                    default -> null;
-                };
-                if (btn != null) {
-                    foreground.set(col, row, btn);
-                } else if (c == 'O') {
-                    productSlots.add(row + ":" + col);
+                switch (c) {
+                    case 'X' -> fg.set(col, row, fillerButton());
+                    case '<' -> navSlots.add(new int[]{row, col, -1});
+                    case '>' -> navSlots.add(new int[]{row, col, 1});
+                    case 'O' -> productSlots.add(new int[]{row, col});
+                    default -> {}
                 }
             }
         }
 
-        List<ProductConfig> products = new ArrayList<>(category.products().values());
-        int productsPerPage = productSlots.size();
-        int totalPages = Math.max(1, (int) Math.ceil((double) products.size() / productsPerPage));
+        int perPage = productSlots.size();
+        int total = category.products().size();
+        totalPages = Math.max(1, (int) Math.ceil((double) total / Math.max(1, perPage)));
         if (page >= totalPages) page = totalPages - 1;
+        if (page < 0) page = 0;
 
-        int start = page * productsPerPage;
-        int end = Math.min(start + productsPerPage, products.size());
-
-        for (int i = start; i < end; i++) {
-            String[] parts = productSlots.get(i - start).split(":");
-            int row = Integer.parseInt(parts[0]);
-            int col = Integer.parseInt(parts[1]);
-            ProductConfig product = products.get(i);
-
-            foreground.set(col, row, buildProductButton(product));
+        for (int[] nav : navSlots) {
+            fg.set(nav[1], nav[0], nav[2] < 0 ? backButton() : nextButton());
         }
+
+        List<ProductConfig> products = List.copyOf(category.products().values());
+        int start = page * perPage;
+        int end = Math.min(start + perPage, total);
+        for (int i = start; i < end; i++) {
+            int[] pos = productSlots.get(i - start);
+            fg.set(pos[1], pos[0], buildProductButton(products.get(i)));
+        }
+    }
+
+    private void rebuild() {
+        getForeground().clear();
+        populate();
+        update();
     }
 
     private Button buildProductButton(ProductConfig product) {
@@ -129,35 +146,38 @@ public class ShopCategoryMenu extends Menu {
     }
 
     private Button backButton() {
-        List<ProductConfig> products = new ArrayList<>(category.products().values());
-        int productsPerPage = 0;
-        for (String line : category.layout()) {
-            for (char c : line.toCharArray()) {
-                if (c == 'O') productsPerPage++;
-            }
-        }
-        int totalPages = Math.max(1, (int) Math.ceil((double) products.size() / productsPerPage));
-
         if (page > 0) {
             TemplateItem item = config.items().get("roll-back-page");
             if (item == null) return fillerButton();
-            Material mat = Material.getMaterial(item.material().toUpperCase());
-            if (mat == null) mat = Material.GRAY_STAINED_GLASS_PANE;
-            ItemStack icon = new ItemStack(mat);
-            ItemMeta meta = icon.getItemMeta();
-            if (meta != null && !item.name().isEmpty()) meta.displayName(C.mm(item.name()));
-            if (meta != null && item.lore() != null && !item.lore().isEmpty())
-                meta.lore(item.lore().stream().map(C::mm).collect(Collectors.toList()));
-            if (meta != null) icon.setItemMeta(meta);
-            return new SimpleButton(icon, click -> {
+            return new SimpleButton(buildTemplateItem(item), click -> {
                 module.playSound(getPlayer(), config.navigatePageSound());
                 page--;
-                refresh();
+                rebuild();
             });
         }
 
         TemplateItem item = config.items().get("back-page");
         if (item == null) return fillerButton();
+        return new SimpleButton(buildTemplateItem(item), click -> {
+            module.playSound(getPlayer(), config.backButtonSound());
+            module.openMainMenu(getPlayer());
+        });
+    }
+
+    private Button nextButton() {
+        if (page < totalPages - 1) {
+            TemplateItem item = config.items().get("next-page");
+            if (item == null) return fillerButton();
+            return new SimpleButton(buildTemplateItem(item), click -> {
+                module.playSound(getPlayer(), config.navigatePageSound());
+                page++;
+                rebuild();
+            });
+        }
+        return fillerButton();
+    }
+
+    private ItemStack buildTemplateItem(TemplateItem item) {
         Material mat = Material.getMaterial(item.material().toUpperCase());
         if (mat == null) mat = Material.GRAY_STAINED_GLASS_PANE;
         ItemStack icon = new ItemStack(mat);
@@ -166,39 +186,6 @@ public class ShopCategoryMenu extends Menu {
         if (meta != null && item.lore() != null && !item.lore().isEmpty())
             meta.lore(item.lore().stream().map(C::mm).collect(Collectors.toList()));
         if (meta != null) icon.setItemMeta(meta);
-        return new SimpleButton(icon, click -> {
-            module.playSound(getPlayer(), config.backButtonSound());
-            module.openMainMenu(getPlayer());
-        });
-    }
-
-    private Button nextButton() {
-        List<ProductConfig> products = new ArrayList<>(category.products().values());
-        int productsPerPage = 0;
-        for (String line : category.layout()) {
-            for (char c : line.toCharArray()) {
-                if (c == 'O') productsPerPage++;
-            }
-        }
-        int totalPages = Math.max(1, (int) Math.ceil((double) products.size() / productsPerPage));
-
-        if (page < totalPages - 1) {
-            TemplateItem item = config.items().get("next-page");
-            if (item == null) return fillerButton();
-            Material mat = Material.getMaterial(item.material().toUpperCase());
-            if (mat == null) mat = Material.GRAY_STAINED_GLASS_PANE;
-            ItemStack icon = new ItemStack(mat);
-            ItemMeta meta = icon.getItemMeta();
-            if (meta != null && !item.name().isEmpty()) meta.displayName(C.mm(item.name()));
-            if (meta != null && item.lore() != null && !item.lore().isEmpty())
-                meta.lore(item.lore().stream().map(C::mm).collect(Collectors.toList()));
-            if (meta != null) icon.setItemMeta(meta);
-            return new SimpleButton(icon, click -> {
-                module.playSound(getPlayer(), config.navigatePageSound());
-                page++;
-                refresh();
-            });
-        }
-        return fillerButton();
+        return icon;
     }
 }

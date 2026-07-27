@@ -75,6 +75,7 @@ record MessagesConfig(
         String confirmTitle,
         String itemPrice,
         String itemAmount,
+        String confirmQuantity,
         String itemClick
 ) {}
 

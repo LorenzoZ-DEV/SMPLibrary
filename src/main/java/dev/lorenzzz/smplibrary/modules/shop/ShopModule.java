@@ -10,8 +10,8 @@ import net.j4c0b3y.api.menu.MenuHandler;
 import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.Inventory;
 
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 
 public class ShopModule implements Module {
@@ -20,6 +20,13 @@ public class ShopModule implements Module {
     private MenuHandler menuHandler;
     private ShopConfigLoader configLoader;
     private Object economyManager;
+    // ponytail: economy reflection resolved once at enable; the zEssentials API
+    // classes/methods don't move at runtime, so caching beats Class.forName per call.
+    private Class<?> economyClass;
+    private Method getDefaultEconomyMethod;
+    private Method getBalanceMethod;
+    private Method withdrawMethod;
+    private Object defaultEconomy;
 
     public ShopModule(Smp_library plugin) {
         this.plugin = plugin;
@@ -30,9 +37,7 @@ public class ShopModule implements Module {
 
     @Override
     public void onEnable() {
-        this.menuHandler = new MenuHandler(plugin);
-        menuHandler.setInventoryCreator((player, slots, title) ->
-                Bukkit.createInventory(player, slots, C.mm(title)));
+        this.menuHandler = plugin.getManagers().menuHandler();
 
         this.configLoader = new ShopConfigLoader(plugin);
         configLoader.load();
@@ -49,18 +54,30 @@ public class ShopModule implements Module {
             if (zEssentials != null) {
                 economyManager = zEssentials.getClass().getMethod("getEconomyManager").invoke(zEssentials);
             }
+            if (economyManager != null) {
+                economyClass = Class.forName("fr.maxlego08.essentials.api.economy.Economy");
+                getDefaultEconomyMethod = economyManager.getClass().getMethod("getDefaultEconomy");
+                getBalanceMethod = economyManager.getClass().getMethod("getBalance", org.bukkit.OfflinePlayer.class, economyClass);
+                withdrawMethod = economyManager.getClass().getMethod("withdraw", java.util.UUID.class, economyClass, BigDecimal.class);
+            }
         } catch (Exception e) {
             economyManager = null;
         }
     }
 
+    // ponytail: default economy cached once; restart the plugin if the server's
+    // default economy ever changes at runtime (it won't in normal setups).
+    private Object defaultEconomy() {
+        if (defaultEconomy == null && getDefaultEconomyMethod != null) {
+            try { defaultEconomy = getDefaultEconomyMethod.invoke(economyManager); } catch (Exception ignored) {}
+        }
+        return defaultEconomy;
+    }
+
     public double getBalance(Player player) {
-        if (economyManager != null) {
+        if (economyManager != null && getBalanceMethod != null) {
             try {
-                Class<?> economyCls = Class.forName("fr.maxlego08.essentials.api.economy.Economy");
-                Object defaultEconomy = economyManager.getClass().getMethod("getDefaultEconomy").invoke(economyManager);
-                Object balance = economyManager.getClass().getMethod("getBalance", org.bukkit.OfflinePlayer.class, economyCls)
-                        .invoke(economyManager, player, defaultEconomy);
+                Object balance = getBalanceMethod.invoke(economyManager, player, defaultEconomy());
                 if (balance instanceof BigDecimal bd) return bd.doubleValue();
             } catch (Exception ignored) {}
         }
@@ -73,12 +90,9 @@ public class ShopModule implements Module {
     }
 
     public boolean takeMoney(Player player, double amount) {
-        if (economyManager != null) {
+        if (economyManager != null && withdrawMethod != null) {
             try {
-                Class<?> economyCls = Class.forName("fr.maxlego08.essentials.api.economy.Economy");
-                Object defaultEconomy = economyManager.getClass().getMethod("getDefaultEconomy").invoke(economyManager);
-                Object result = economyManager.getClass().getMethod("withdraw", java.util.UUID.class, economyCls, BigDecimal.class)
-                        .invoke(economyManager, player.getUniqueId(), defaultEconomy, BigDecimal.valueOf(amount));
+                Object result = withdrawMethod.invoke(economyManager, player.getUniqueId(), defaultEconomy(), BigDecimal.valueOf(amount));
                 if (result instanceof Boolean ok && ok) return true;
                 C.warning("Failed to take money from " + player.getName());
                 return false;
@@ -95,17 +109,6 @@ public class ShopModule implements Module {
 
     private void registerCommands() {
         setExecutor("pistacchi");
-        PluginCommand settings = plugin.getCommand("settings");
-        if (settings != null) {
-            settings.setExecutor((sender, command, label, args) -> {
-                if (!(sender instanceof Player player)) {
-                    sender.sendMessage("§cOnly players.");
-                    return true;
-                }
-                openMainMenu(player);
-                return true;
-            });
-        }
         PluginCommand live = plugin.getCommand("live");
         if (live != null) {
             live.setExecutor((sender, command, label, args) -> {
@@ -170,6 +173,11 @@ public class ShopModule implements Module {
         menuHandler = null;
         configLoader = null;
         economyManager = null;
+        economyClass = null;
+        getDefaultEconomyMethod = null;
+        getBalanceMethod = null;
+        withdrawMethod = null;
+        defaultEconomy = null;
     }
 
     @Override

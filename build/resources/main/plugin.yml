@@ -1,5 +1,5 @@
 name: smp-library
-version: '1.0.1-02e916c'
+version: '1.0.3-3647691'
 main: dev.lorenzzz.smplibrary.Smp_library
 api-version: '1.21'
 softdepend:
@@ -15,3 +15,4 @@ commands:
   live:
     aliases: [tiktok]
     permission: smplibrary.menu.use
+

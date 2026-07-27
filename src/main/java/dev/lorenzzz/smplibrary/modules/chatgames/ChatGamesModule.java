@@ -32,6 +32,11 @@ public final class ChatGamesModule implements Module, Listener {
     private int timeoutTaskId = -1;
 
     private final List<ChatGameType> availableTypes = new ArrayList<>();
+    private final List<Map<String, String>> recentGames = new ArrayList<>();
+
+    public String currentAnswer() { return answer; }
+    public ChatGameType currentType() { return currentType; }
+    public List<Map<String, String>> recentGames() { return List.copyOf(recentGames); }
 
     public ChatGamesModule(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -62,6 +67,7 @@ public final class ChatGamesModule implements Module, Listener {
         currentType = type;
 
         int timeLimit = cfg.getInt("time-limit", 3);
+        addGameEvent("started", type.name(), timeLimit + "m");
 
         switch (type) {
             case WORD -> startWordGame(timeLimit);
@@ -156,6 +162,7 @@ public final class ChatGamesModule implements Module, Listener {
 
     private void timeout() {
         if (this.answer == null) return;
+        addGameEvent("timeout", currentType != null ? currentType.name() : "?", answer);
         this.answer = null;
         this.currentType = null;
         for (Player p : Bukkit.getOnlinePlayers()) {
@@ -193,6 +200,7 @@ public final class ChatGamesModule implements Module, Listener {
         if (this.answer == null) return false;
         String word = this.answer;
         ChatGameType type = this.currentType;
+        addGameEvent("won", type != null ? type.name() : "?", winner.getName() + " -> " + word);
         this.answer = null;
         this.currentType = null;
         if (timeoutTaskId != -1) Bukkit.getScheduler().cancelTask(timeoutTaskId);
@@ -268,6 +276,16 @@ public final class ChatGamesModule implements Module, Listener {
         timeoutTaskId = -1;
         answer = null;
         currentType = null;
+    }
+
+    private void addGameEvent(String event, String type, String detail) {
+        Map<String, String> entry = new LinkedHashMap<>();
+        entry.put("time", java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")));
+        entry.put("event", event);
+        entry.put("type", type);
+        entry.put("detail", detail);
+        recentGames.add(0, entry);
+        while (recentGames.size() > 20) recentGames.remove(recentGames.size() - 1);
     }
 
     @Override public Module storage(StorageManager storage) { this.storage = storage; return this; }

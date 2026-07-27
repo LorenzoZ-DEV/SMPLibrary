@@ -41,8 +41,15 @@ public class ShopConfirmMenu extends Menu {
         if (filler != null) {
             Material mat = Material.getMaterial(filler.material().toUpperCase());
             if (mat == null) mat = Material.GRAY_STAINED_GLASS_PANE;
-            ItemStack fillerItem = new ItemStack(mat);
-            background.fill(new SimpleButton(fillerItem, click -> {}));
+            ItemStack item = new ItemStack(mat);
+            ItemMeta meta = item.getItemMeta();
+            if (meta != null) {
+                if (!filler.name().isEmpty()) meta.displayName(C.mm(filler.name()));
+                if (filler.lore() != null && !filler.lore().isEmpty())
+                    meta.lore(filler.lore().stream().map(C::mm).collect(Collectors.toList()));
+                item.setItemMeta(meta);
+            }
+            background.fill(new SimpleButton(item, click -> {}));
         }
 
         foreground.set(0, 0, buildSetButton(1));
@@ -58,9 +65,7 @@ public class ShopConfirmMenu extends Menu {
     }
 
     private void updateProductDisplay() {
-        ItemStack stack = buildProductStack();
-        getForeground().set(4, 1, new SimpleButton(stack, click -> {}));
-        getButtons().put(13, new SimpleButton(stack, click -> {}));
+        getForeground().set(4, 1, new SimpleButton(buildProductStack(), click -> {}));
         update();
     }
 
@@ -87,6 +92,17 @@ public class ShopConfirmMenu extends Menu {
         return new SimpleButton(buildProductStack(), click -> {});
     }
 
+    private String resolveItemName() {
+        Material mat = Material.getMaterial(product.material().toUpperCase());
+        if (mat == null) mat = Material.STONE;
+        String name = product.displayName();
+        if (name == null || name.isEmpty()) {
+            name = mat.name().toLowerCase().replace("_", " ");
+            name = Character.toUpperCase(name.charAt(0)) + name.substring(1);
+        }
+        return name;
+    }
+
     private ItemStack buildProductStack() {
         Material mat = Material.getMaterial(product.material().toUpperCase());
         if (mat == null) mat = Material.STONE;
@@ -95,18 +111,21 @@ public class ShopConfirmMenu extends Menu {
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return item;
 
-        String name = product.displayName();
-        if (name == null || name.isEmpty()) {
-            name = mat.name().toLowerCase().replace("_", " ");
-            name = Character.toUpperCase(name.charAt(0)) + name.substring(1);
-        }
-        meta.displayName(C.mm(name));
+        meta.displayName(C.mm(resolveItemName()));
 
         List<String> lore = new ArrayList<>();
         if (product.lore() != null) lore.addAll(product.lore());
         lore.add("");
-        lore.add(config.messages().itemPrice().replace("<price>", String.valueOf(product.price() * quantity)));
-        lore.add("<gray>Quantità: <white>" + quantity);
+
+        String priceLine = config.messages().itemPrice();
+        if (priceLine != null && !priceLine.isEmpty()) {
+            lore.add(priceLine.replace("<price>", String.valueOf(product.price() * quantity)));
+        }
+
+        String qtyLine = config.messages().confirmQuantity();
+        if (qtyLine == null || qtyLine.isEmpty()) qtyLine = "<gray>Quantità: <white>x<amount>";
+        lore.add(qtyLine.replace("<amount>", String.valueOf(quantity)));
+
         meta.lore(lore.stream().map(C::mm).collect(Collectors.toList()));
         item.setItemMeta(meta);
         return item;
@@ -195,7 +214,7 @@ public class ShopConfirmMenu extends Menu {
 
         C.sendChatAndAction(player, config.messages().purchaseSuccess()
                 .replace("<amount>", String.valueOf(quantity))
-                .replace("<item>", product.material()));
+                .replace("<item>", resolveItemName()));
         module.playSound(player, config.confirmPurchaseSound());
 
         if (config.keepOpenAfterPurchase()) {

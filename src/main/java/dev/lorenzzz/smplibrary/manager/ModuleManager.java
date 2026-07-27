@@ -46,6 +46,10 @@ public final class ModuleManager implements Manager {
         register(new dev.lorenzzz.smplibrary.modules.firstjoin.FirstJoinModule(plugin));
         register(new dev.lorenzzz.smplibrary.modules.shop.ShopModule(plugin));
         register(new dev.lorenzzz.smplibrary.modules.playtime.PlaytimeModule(plugin));
+        register(new dev.lorenzzz.smplibrary.modules.settings.SettingsModule(plugin));
+        register(new dev.lorenzzz.smplibrary.modules.web.WebModule(plugin));
+
+        ensureConfig();
 
         ConfigurationSection modules = config.modules();
         if (modules == null) return;
@@ -57,8 +61,43 @@ public final class ModuleManager implements Manager {
                 m.storage(storage).commands(commands).messages(messages).onEnable();
                 C.info("Module '" + id + "' enabled.");
             } catch (Exception e) {
-                C.warning("Error loading module '" + id + "'!");
+                C.warning("Error loading module '" + id + "': " + e.getMessage());
+                e.printStackTrace();
             }
+        }
+    }
+
+    private void ensureConfig() {
+        org.bukkit.configuration.file.YamlConfiguration defaults = null;
+        try (java.io.InputStream in = plugin.getResource("config.yml")) {
+            if (in != null) {
+                defaults = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(new java.io.InputStreamReader(in));
+            }
+        } catch (Exception ignored) {}
+
+        boolean changed = false;
+        for (Module m : modules.values()) {
+            String id = m.id();
+            if (config.raw() != null && config.raw().contains("MODULES." + id)) continue;
+
+            if (defaults != null && defaults.contains("MODULES." + id)) {
+                org.bukkit.configuration.ConfigurationSection sec = defaults.getConfigurationSection("MODULES." + id);
+                if (sec != null) {
+                    plugin.getConfig().set("MODULES." + id, sec.getValues(true));
+                    changed = true;
+                    C.info("Auto-added config section for module '" + id + "'");
+                    continue;
+                }
+            }
+
+            plugin.getConfig().set("MODULES." + id + ".enabled", true);
+            changed = true;
+            C.info("Auto-added enabled flag for module '" + id + "'");
+        }
+
+        if (changed) {
+            plugin.saveConfig();
+            config.reload();
         }
     }
 
@@ -70,6 +109,27 @@ public final class ModuleManager implements Manager {
 
     public boolean isEnabled(String id) { return config.isEnabled(id); }
     public Collection<Module> active() { return modules.values(); }
+
+    public void reload() {
+        for (Module m : modules.values()) {
+            try { m.onDisable(); } catch (Exception e) {
+                C.warning("Error disabling module '" + m.id() + "': " + e.getMessage());
+            }
+        }
+        ConfigurationSection sec = config.modules();
+        if (sec == null) return;
+        for (String id : sec.getKeys(false)) {
+            Module m = this.modules.get(id);
+            if (m == null) continue;
+            if (!config.isEnabled(id)) continue;
+            try {
+                m.storage(storage).commands(commands).messages(messages).onEnable();
+            } catch (Exception e) {
+                C.warning("Error reloading module '" + id + "': " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+    }
 
     /** Typed lookup by module id — for command classes that need a specific module instance. */
     public Module module(String id) { return modules.get(id); }

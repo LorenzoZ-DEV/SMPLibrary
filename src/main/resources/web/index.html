@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMP Library Dashboard</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <span class="nav-brand">SMP Library</span>
+      <div class="nav-tabs" id="navTabs">
+        <button class="tab active" data-tab="overview">Overview</button>
+        <button class="tab" data-tab="modules">Modules</button>
+        <button class="tab" data-tab="chatgames">Chat Games</button>
+        <button class="tab" data-tab="config">Config Editor</button>
+        <button class="tab" data-tab="log">Live Log</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main">
+    <!-- OVERVIEW -->
+    <section id="tab-overview" class="tab-content active">
+      <div class="grid">
+        <div class="card card-tps">
+          <div class="card-label">TPS</div>
+          <div class="card-value" id="tps1">--</div>
+          <div class="card-sub" id="tps5">5m: --</div>
+          <div class="card-sub" id="tps15">15m: --</div>
+        </div>
+        <div class="card card-players">
+          <div class="card-label">Players</div>
+          <div class="card-value" id="players">--</div>
+          <div class="card-sub" id="playersMax">Max: --</div>
+        </div>
+        <div class="card card-uptime">
+          <div class="card-label">Uptime</div>
+          <div class="card-value" id="uptime">--</div>
+          <div class="card-sub">Since last reload</div>
+        </div>
+        <div class="card card-heap">
+          <div class="card-label">Heap Memory</div>
+          <div class="card-value" id="heapUsed">--</div>
+          <div class="card-sub" id="heapMax">Max: --</div>
+        </div>
+        <div class="card card-threads">
+          <div class="card-label">Threads</div>
+          <div class="card-value" id="threads">--</div>
+          <div class="card-sub" id="threadDaemon">Daemon: --</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODULES -->
+    <section id="tab-modules" class="tab-content">
+      <h2>Feature Modules</h2>
+      <p class="text-muted">Click Toggle to enable/disable a module in real time.</p>
+      <div class="module-grid" id="moduleGrid"></div>
+    </section>
+
+    <!-- CHAT GAMES -->
+    <section id="tab-chatgames" class="tab-content">
+      <h2>Chat Games</h2>
+      <div class="cg-status" id="cgStatus">Loading...</div>
+      <h3>Recent Games</h3>
+      <div class="table-wrap">
+        <table id="cgTable">
+          <thead><tr><th>Time</th><th>Event</th><th>Type</th><th>Detail</th></tr></thead>
+          <tbody id="cgBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- CONFIG EDITOR -->
+    <section id="tab-config" class="tab-content">
+      <h2>Configuration Editor</h2>
+      <div class="config-bar">
+        <label for="scopeSelect">Scope:</label>
+        <select id="scopeSelect"></select>
+        <span id="scopeReadonly" class="badge badge-ro">read-only</span>
+        <button id="btnLoadConfig">Load</button>
+        <button id="btnApplyConfig" class="btn-primary">Apply</button>
+      </div>
+      <textarea id="configEditor" class="config-textarea" spellcheck="false"></textarea>
+      <div id="configResult" class="config-result"></div>
+    </section>
+
+    <!-- LOG -->
+    <section id="tab-log" class="tab-content">
+      <h2>Live Action Log</h2>
+      <div class="log-container" id="logContainer">
+        <div class="log-empty">Waiting for events...</div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

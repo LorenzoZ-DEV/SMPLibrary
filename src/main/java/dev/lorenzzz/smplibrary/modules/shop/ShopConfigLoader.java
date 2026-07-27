@@ -187,6 +187,7 @@ public class ShopConfigLoader {
                 yaml.getString("confirm-title", "Conferma Acquisto"),
                 yaml.getString("item-price", "<white>Prezzo: <green><price>$"),
                 yaml.getString("item-amount", ""),
+                yaml.getString("confirm-quantity", "<gray>Quantità: <white>x<amount>"),
                 yaml.getString("item-click", "<yellow>➥ Clicca per acquistare")
         );
     }

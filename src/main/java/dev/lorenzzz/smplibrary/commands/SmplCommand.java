@@ -14,18 +14,16 @@ import dev.lorenzzz.smplibrary.modules.Module;
 import dev.lorenzzz.smplibrary.modules.adaptive.AdaptiveToolModule;
 import dev.lorenzzz.smplibrary.modules.amethyst.AmethystToolModule;
 import dev.lorenzzz.smplibrary.modules.trivella.TrivellaModule;
+import dev.lorenzzz.smplibrary.modules.web.WebModule;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
+import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Admin root command. Alias/permission tunable in config.yml COMMANDS.smplibrary.
- * ACF picks the @CommandAlias up when the CommandManager registers this class.
- */
 @CommandAlias("smplibrary|smpl|sl")
 @CommandPermission("smplibrary.admin")
 public final class SmplCommand extends BaseCommand {
@@ -33,7 +31,7 @@ public final class SmplCommand extends BaseCommand {
     @Default
     @HelpCommand
     public void onHelp(CommandSender sender, CommandHelp help) {
-        C.send(sender, "&d&lSMP-Library &7» &f/smplibrary <reload|help|modules>");
+        C.send(sender, "&d&lSMP-Library &7» &f/smplibrary <reload|help|modules|webedit>");
         C.send(sender, "&7  amethyst give <tool> [player]   |   adaptive give [player]   |   trivella give [player]");
         help.showHelp();
     }
@@ -53,6 +51,43 @@ public final class SmplCommand extends BaseCommand {
         C.send(sender, "&d&lModules:");
         plugin.modules().active().forEach(m ->
                 C.send(sender, "&7- &f" + m.id() + " &a" + (plugin.modules().isEnabled(m.id()) ? "enabled" : "disabled")));
+    }
+
+    @Subcommand("webedit")
+    @CommandPermission("smplibrary.admin")
+    public void onWebedit(CommandSender sender) {
+        Smp_library plugin = Smp_library.getInstance();
+        Module m = plugin.modules().module("web");
+        if (!(m instanceof WebModule web) || web.boundPort() == -1) {
+            C.send(sender, "&cWeb dashboard is not running. Check MODULES.web.enabled in config.yml.");
+            return;
+        }
+
+        String host = web.boundHost();
+        if (host == null || host.isEmpty() || "0.0.0.0".equals(host)) {
+            try { host = InetAddress.getLocalHost().getHostAddress(); }
+            catch (Exception e) { host = "localhost"; }
+        }
+
+        String token = web.generateTempToken();
+        if (token == null) {
+            C.send(sender, "&cFailed to generate access token.");
+            return;
+        }
+
+        String url = "http://" + host + ":" + web.boundPort() + "/?token=" + token;
+
+        C.send(sender, "&d&lWeb Editor &8&l» &7Click the link below to access the dashboard:");
+        C.send(sender, "&9&n" + url);
+        C.send(sender, "&7Token expires in 5 minutes.");
+        if (sender instanceof Player p) {
+            p.sendMessage(net.kyori.adventure.text.Component.text()
+                    .append(net.kyori.adventure.text.Component.text("§d⬇  §fClick here to open the Web Dashboard  §d⬇"))
+                    .clickEvent(net.kyori.adventure.text.event.ClickEvent.openUrl(url))
+                    .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(
+                            net.kyori.adventure.text.Component.text("§a" + url)))
+                    .build());
+        }
     }
 
     @Subcommand("amethyst give")
@@ -97,7 +132,6 @@ public final class SmplCommand extends BaseCommand {
         C.send(sender, "&dGave the &dTrivella &dto &f" + target.getName() + "&d.");
     }
 
-    /** Resolve a give target — self if omitted (sender must be a player), else by exact name. */
     private Player resolveTarget(CommandSender sender, String targetName) {
         if (targetName == null || targetName.isBlank()) {
             if (!(sender instanceof Player p)) { C.send(sender, "&cSpecify a player: ... give <tool> <player>"); return null; }
@@ -108,7 +142,6 @@ public final class SmplCommand extends BaseCommand {
         return target;
     }
 
-    /** Add to inventory, drop any overflow at the player's feet so nothing is lost. */
     private static void give(Player target, ItemStack item) {
         HashMap<Integer, ItemStack> overflow = target.getInventory().addItem(item);
         if (!overflow.isEmpty()) overflow.values().forEach(left -> target.getWorld().dropItemNaturally(target.getLocation(), left));
