@@ -11,6 +11,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
+import org.bukkit.Registry;
 import org.bukkit.Sound;
 import org.bukkit.Tag;
 import org.bukkit.World;
@@ -180,7 +181,8 @@ public final class AdaptiveToolModule implements Module, Listener {
         int uses = pdc.getOrDefault(K_USES, PersistentDataType.INTEGER, 0);
         int max  = pdc.getOrDefault(K_MAX,  PersistentDataType.INTEGER, uses);
 
-        item.setType(newMat);
+        item = item.withType(newMat);
+        player.getInventory().setItemInMainHand(item);
         meta = item.getItemMeta();   // re-read for the new material
         for (Enchantment e : new ArrayList<>(meta.getEnchants().keySet())) meta.removeEnchant(e);
         ToolMeta.applyEnchantments(meta, formSec.getConfigurationSection("enchantments"));
@@ -243,10 +245,11 @@ public final class AdaptiveToolModule implements Module, Listener {
         }
         ConfigurationSection s = root.getConfigurationSection("sound");
         if (s != null) {
-            try {
-                Sound type = Sound.valueOf(s.getString("type", "ENTITY_ENDER_DRAGON_FLAP").toUpperCase(Locale.ROOT));
+            String soundName = s.getString("type", "ENTITY_ENDER_DRAGON_FLAP").toLowerCase(Locale.ROOT).replace("_", ".");
+            Sound type = Registry.SOUND_EVENT.get(NamespacedKey.minecraft(soundName));
+            if (type != null) {
                 world.playSound(loc, type, (float) s.getDouble("volume", 0.6), (float) s.getDouble("pitch", 1.5));
-            } catch (IllegalArgumentException ignored) { /* misconfigured sound — silent */ }
+            }
         }
     }
 

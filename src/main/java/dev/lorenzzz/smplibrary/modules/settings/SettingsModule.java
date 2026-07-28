@@ -6,19 +6,20 @@ import dev.lorenzzz.smplibrary.manager.CommandManager;
 import dev.lorenzzz.smplibrary.manager.MessagesManager;
 import dev.lorenzzz.smplibrary.manager.StorageManager;
 import dev.lorenzzz.smplibrary.modules.Module;
-import net.j4c0b3y.api.menu.MenuHandler;
+import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerQuitEvent;
 
 /**
- * /settings: builds a MenuAPI menu from inventories/settings.yml.
- * Uses the shared MenuHandler from ManagerService so module reloads
- * don't leak listeners / scheduler tasks.
+ * /settings: mostra un Dialog (Paper Dialog API) costruito da inventories/settings.yml.
+ * Sostituisce la vecchia implementazione MenuAPI con la nuova Dialog API di Paper 1.21.7+.
  */
 public class SettingsModule implements Module {
 
     private final Smp_library plugin;
-    private MenuHandler menuHandler;
     private SettingsConfigLoader configLoader;
 
     public SettingsModule(Smp_library plugin) {
@@ -30,14 +31,13 @@ public class SettingsModule implements Module {
 
     @Override
     public void onEnable() {
-        this.menuHandler = plugin.getManagers().menuHandler();
-
         this.configLoader = new SettingsConfigLoader(plugin);
         configLoader.load();
 
         registerCommands();
+        registerListeners();
 
-        C.info("Settings module enabled.");
+        C.info("Settings module enabled (Dialog API).");
     }
 
     private void registerCommands() {
@@ -51,23 +51,29 @@ public class SettingsModule implements Module {
                 sender.sendMessage("§cOnly players.");
                 return true;
             }
-            openMenu(player);
+            openDialog(player);
             return true;
         });
     }
 
-    public void openMenu(Player player) {
+    private void registerListeners() {
+        Bukkit.getPluginManager().registerEvents(new Listener() {
+            @EventHandler
+            public void onQuit(PlayerQuitEvent e) {
+                // Pulisce la memoria degli stati ON/OFF quando il player esce
+                SettingsDialog.clearStates(e.getPlayer().getUniqueId());
+            }
+        }, plugin);
+    }
+
+    public void openDialog(Player player) {
         SettingsConfig cfg = configLoader.get();
         if (cfg == null) return;
-        new SettingsMenu(cfg, player, menuHandler).open();
+        new SettingsDialog(plugin, cfg).show(player);
     }
 
     @Override
     public void onDisable() {
-        if (menuHandler != null) {
-            menuHandler.getOpenMenus().values().forEach(menu -> menu.close(false));
-        }
-        menuHandler = null;
         configLoader = null;
     }
 

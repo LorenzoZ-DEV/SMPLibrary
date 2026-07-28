@@ -13,6 +13,7 @@ import org.bukkit.entity.Player;
 
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
+import java.util.Locale;
 
 public class ShopModule implements Module {
 
@@ -153,12 +154,9 @@ public class ShopModule implements Module {
 
     public void playSound(Player player, SoundConfig sound) {
         if (sound != null && sound.enabled() && sound.sound() != null && !sound.sound().isEmpty()) {
-            try {
-                org.bukkit.Sound s = org.bukkit.Sound.valueOf(sound.sound().toUpperCase().replace(".", "_"));
-                player.playSound(player.getLocation(), s, sound.volume(), sound.pitch());
-            } catch (IllegalArgumentException e) {
-                player.playSound(player.getLocation(), sound.sound(), sound.volume(), sound.pitch());
-            }
+            String name = sound.sound();
+            if (!name.contains(":")) name = name.toLowerCase(Locale.ROOT).replace("_", ".");
+            player.playSound(player.getLocation(), name, sound.volume(), sound.pitch());
         }
     }
 

@@ -1,6 +1,8 @@
 package dev.lorenzzz.smplibrary.modules;
 
 import dev.lorenzzz.smplibrary.C;
+import io.papermc.paper.registry.RegistryAccess;
+import io.papermc.paper.registry.RegistryKey;
 import net.kyori.adventure.text.Component;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
@@ -32,7 +34,7 @@ public final class ToolMeta {
         for (String key : section.getKeys(false)) {
             int level = section.getInt(key, 0);
             if (level <= 0) continue;
-            Enchantment ench = Registry.ENCHANTMENT.get(NamespacedKey.minecraft(key.toLowerCase(Locale.ROOT)));
+            Enchantment ench = RegistryAccess.registryAccess().getRegistry(RegistryKey.ENCHANTMENT).get(NamespacedKey.minecraft(key.toLowerCase(Locale.ROOT)));
             if (ench == null) { C.warning("Unknown enchantment, skipping: " + key); continue; }
             meta.addEnchant(ench, level, true);
         }
@@ -47,9 +49,8 @@ public final class ToolMeta {
         if (section == null) return;
         for (String key : section.getKeys(false)) {
             double value = section.getDouble(key, 0);
-            Attribute attr;
-            try { attr = Attribute.valueOf(key.toUpperCase(Locale.ROOT)); }
-            catch (IllegalArgumentException e) { C.warning("Unknown attribute, skipping: " + key); continue; }
+            Attribute attr = Registry.ATTRIBUTE.get(NamespacedKey.minecraft(key.toLowerCase(Locale.ROOT)));
+            if (attr == null) { C.warning("Unknown attribute, skipping: " + key); continue; }
             AttributeModifier mod = new AttributeModifier(
                     new NamespacedKey(plugin, tag + "_" + key.toLowerCase(Locale.ROOT)),
                     value, AttributeModifier.Operation.ADD_NUMBER, EquipmentSlotGroup.MAINHAND);

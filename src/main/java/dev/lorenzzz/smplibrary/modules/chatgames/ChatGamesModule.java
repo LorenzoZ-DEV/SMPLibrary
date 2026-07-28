@@ -5,14 +5,15 @@ import dev.lorenzzz.smplibrary.manager.CommandManager;
 import dev.lorenzzz.smplibrary.manager.MessagesManager;
 import dev.lorenzzz.smplibrary.manager.StorageManager;
 import dev.lorenzzz.smplibrary.modules.Module;
+import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.*;
@@ -118,6 +119,7 @@ public final class ChatGamesModule implements Module, Listener {
                 Map.of("%question%", a + " " + symbol + " " + b));
     }
 
+    @SuppressWarnings("unchecked")
     private void startTriviaGame(int timeLimit) {
         List<Map<?, ?>> questions = cfg.getMapList("trivia.questions");
         if (questions.isEmpty()) {
@@ -172,10 +174,10 @@ public final class ChatGamesModule implements Module, Listener {
     }
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
-    public void onChat(AsyncPlayerChatEvent event) {
+    public void onChat(AsyncChatEvent event) {
         String ans = this.answer;
         if (ans == null) return;
-        String guess = event.getMessage().trim().toLowerCase();
+        String guess = PlainTextComponentSerializer.plainText().serialize(event.message()).trim().toLowerCase();
         if (guess.isEmpty()) return;
 
         boolean correct = false;

@@ -29,7 +29,7 @@ public interface C
             matcher.appendReplacement(buffer, convertHexToMinecraftFormat(hexColor));
         }
         matcher.appendTail(buffer);
-        return org.bukkit.ChatColor.translateAlternateColorCodes('&', buffer.toString());
+        return buffer.toString().replace('&', '§');
     }
     static String convertHexToMinecraftFormat(String hex){
         StringBuilder output = new StringBuilder("§x");
@@ -40,7 +40,7 @@ public interface C
     }
 
     static void info(String message){
-        message = org.bukkit.ChatColor.translateAlternateColorCodes('&', message);
+        message = message.replace('&', '§');
         message = "&9[SMPLibrary] &7 " + message;
         org.bukkit.Bukkit.getConsoleSender().sendMessage(translate(message));
     }

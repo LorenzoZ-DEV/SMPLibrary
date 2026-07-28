@@ -26,7 +26,7 @@ repositories {
 
 dependencies {
     // Provided by the server at runtime:
-    compileOnly 'io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT'
+    compileOnly 'io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT'
     compileOnly 'me.clip:placeholderapi:2.11.6'
     compileOnly 'fr.maxlego08.essentials:zessentials-api:1.0.2.6'     // zEssentials API
 
