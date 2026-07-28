@@ -61,7 +61,7 @@ public final class SettingsDialog {
         for (Map.Entry<String, SettingsItemConfig> entry : config.items().entrySet()) {
             String key = entry.getKey();
             SettingsItemConfig item = entry.getValue();
-            boolean enabled = playerStates.getOrDefault(key, false);
+            boolean enabled = playerStates.getOrDefault(key, true);
             buttons.add(buildButton(player, key, item, enabled));
         }
 
@@ -83,19 +83,23 @@ public final class SettingsDialog {
     private ActionButton buildButton(Player player, String key, SettingsItemConfig item, boolean enabled) {
         ItemConfig ic = item.item();
 
-        // Label base (titolo dell'opzione)
         Component baseLabel = C.mm(ic.name());
         if (!baseLabel.hasStyling()
                 && baseLabel.style().decoration(TextDecoration.BOLD) == TextDecoration.State.NOT_SET) {
             baseLabel = baseLabel.decorate(TextDecoration.BOLD);
         }
 
-        // Suffix ON / OFF affiancato al titolo
-        Component stateLabel = enabled
-                ? Component.text(" ON").color(NamedTextColor.GREEN).decorate(TextDecoration.BOLD)
-                : Component.text(" OFF").color(NamedTextColor.RED).decorate(TextDecoration.BOLD);
-
-        Component label = baseLabel.append(stateLabel);
+        Component label;
+        // ah_options non e' un toggle: nessun suffisso ON/OFF
+        if (key.equals("ah_options")) {
+            label = baseLabel;
+        } else {
+            // Suffix ON / OFF affiancato al titolo
+            Component stateLabel = enabled
+                    ? Component.text(" ON").color(NamedTextColor.GREEN).decorate(TextDecoration.BOLD)
+                    : Component.text(" OFF").color(NamedTextColor.RED).decorate(TextDecoration.BOLD);
+            label = baseLabel.append(stateLabel);
+        }
         Component tooltip = buildTooltip(ic.lore());
 
         return ActionButton.builder(label)
@@ -130,10 +134,23 @@ public final class SettingsDialog {
             return;
         }
 
+        // ah_options non e' un toggle: esegue i comandi e chiude, senza toccare lo stato
+        if (key.equals("ah_options")) {
+            String name = player.getName();
+            for (String cmd : item.commands()) {
+                try {
+                    Bukkit.dispatchCommand(player, cmd.replace("%player%", name));
+                } catch (Exception e) {
+                    Bukkit.getLogger().warning("[Settings] Errore comando '" + cmd + "': " + e.getMessage());
+                }
+            }
+            return;
+        }
+
         // Toggle dello stato
         Map<String, Boolean> playerStates = states.computeIfAbsent(
                 player.getUniqueId(), k -> new ConcurrentHashMap<>());
-        boolean newState = !playerStates.getOrDefault(key, false);
+        boolean newState = !playerStates.getOrDefault(key, true);
         playerStates.put(key, newState);
 
         // Esegue i comandi configurati

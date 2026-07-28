@@ -5,6 +5,10 @@ api-version: '1.21'
 softdepend:
   - PlaceholderAPI
   - zEssentials
+author:
+  Lorenzzzzzz
+website:
+  "https://lorenzzzz.xyz"
 commands:
   pistacchi:
     aliases: [pshop]
@@ -12,7 +16,3 @@ commands:
   settings:
     aliases: [impostazioni]
     permission: smplibrary.menu.use
-  live:
-    aliases: [tiktok]
-    permission: smplibrary.menu.use
-

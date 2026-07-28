@@ -31,9 +31,42 @@ public final class SmplCommand extends BaseCommand {
     @Default
     @HelpCommand
     public void onHelp(CommandSender sender, CommandHelp help) {
-        C.send(sender, "&d&lSMP-Library &7» &f/smplibrary <reload|help|modules|webedit>");
-        C.send(sender, "&7  amethyst give <tool> [player]   |   adaptive give [player]   |   trivella give [player]");
-        help.showHelp();
+        C.send(sender, "");
+        C.send(sender, "&d&lSMP-Library &8» &7v" + plugin.getDescription().getVersion());
+        C.send(sender, "&7Plugin multifunzione per server SMP: gestisce key-all, chat games,");
+        C.send(sender, "&7strumenti custom (Amethyst, Adaptive, Trivella), shop, playtime,");
+        C.send(sender, "&7first-join, impostazioni player e una web dashboard.");
+        C.send(sender, "");
+
+        C.send(sender, "&d&lComandi principali:");
+        C.send(sender, "&8» &f/smplibrary help &7- mostra questo aiuto");
+        C.send(sender, "&8» &f/smplibrary reload &7- ricarica config & messaggi");
+        C.send(sender, "&8» &f/smplibrary modules &7- lista moduli e stato (enabled/disabled)");
+        C.send(sender, "&8» &f/smplibrary webedit &7- genera link temporaneo (5 min) per la web dashboard");
+        C.send(sender, "");
+
+        C.send(sender, "&d&lStrumenti custom:");
+        C.send(sender, "&8» &f/smplibrary amethyst give <tool> [player]");
+        C.send(sender, "&7    &7tool: &famethyst_sword &7| &famethyst_pickaxe &7(tab-complete)");
+        C.send(sender, "&7    &7player: &fomesso = te stesso &7(tab-complete online players)");
+        C.send(sender, "&8» &f/smplibrary adaptive give [player]");
+        C.send(sender, "&7    &7player: &fomesso = te stesso &7(tab-complete online players)");
+        C.send(sender, "&8» &f/smplibrary trivella give [player]");
+        C.send(sender, "&7    &7player: &fomesso = te stesso &7(tab-complete online players)");
+        C.send(sender, "");
+
+        C.send(sender, "&d&lAltri comandi (separati):");
+        C.send(sender, "&8» &f/keyall &7&o(alias: /keys)&7- distribuisce chiavi a tutti i player online");
+        C.send(sender, "");
+
+        C.send(sender, "&7Permessi:");
+        C.send(sender, "&8» &fsmplibrary.admin &7- accesso ai comandi admin");
+        C.send(sender, "&8» &fsmplibrary.keyall.use &7- uso di /keyall");
+        C.send(sender, "");
+
+        C.send(sender, "&7Config: &fplugins/SmpLibrary/config.yml &7(moduli in &fMODULES.<id>&7)");
+        C.send(sender, "&7GUI: &fplugins/SmpLibrary/inventories/*.yml");
+        C.send(sender, "");
     }
 
     @Subcommand("reload")

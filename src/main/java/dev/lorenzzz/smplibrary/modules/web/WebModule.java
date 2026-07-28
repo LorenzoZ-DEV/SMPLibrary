@@ -29,6 +29,24 @@ public final class WebModule implements Module {
     @Override
     public void onEnable() {
         ConfigurationSection cfg = plugin.getConfig().getConfigurationSection("MODULES.web");
+        // Fallback: sezione "web" alla radice del config (per compat con config legacy)
+        if (cfg == null || (!cfg.contains("host") && !cfg.contains("port") && !cfg.contains("token"))) {
+            ConfigurationSection rootCfg = plugin.getConfig().getConfigurationSection("web");
+            if (rootCfg != null && (rootCfg.contains("host") || rootCfg.contains("port") || rootCfg.contains("token"))) {
+                C.warning("Web dashboard: 'host'/'port' troori fuori da MODULES.web. "
+                        + "Sposta la sezione 'web' dentro MODULES per evitare ambiguita'. "
+                        + "Uso temporaneamente i valori dalla radice.");
+                if (cfg == null) {
+                    cfg = rootCfg;
+                } else {
+                    // merga solo i campi mancanti
+                    org.bukkit.configuration.ConfigurationSection merged = cfg;
+                    if (!merged.contains("host") && rootCfg.contains("host")) merged.set("host", rootCfg.get("host"));
+                    if (!merged.contains("port") && rootCfg.contains("port")) merged.set("port", rootCfg.get("port"));
+                    if (!merged.contains("token") && rootCfg.contains("token")) merged.set("token", rootCfg.get("token"));
+                }
+            }
+        }
         if (cfg == null) {
             C.info("Web dashboard: no config section found, skipping.");
             return;
