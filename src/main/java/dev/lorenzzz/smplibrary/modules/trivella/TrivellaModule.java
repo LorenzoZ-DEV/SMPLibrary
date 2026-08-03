@@ -14,6 +14,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.inventory.ItemFlag;
@@ -117,5 +118,5 @@ public final class TrivellaModule implements Module, Listener {
     @Override public Module commands(CommandManager commands) { return this; }
     @Override public Module messages(MessagesManager messages) { this.messages = messages; return this; }
 
-    @Override public void onDisable() {}
+    @Override public void onDisable() { HandlerList.unregisterAll(this); }
 }

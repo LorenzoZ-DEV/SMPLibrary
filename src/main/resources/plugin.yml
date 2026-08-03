@@ -9,6 +9,17 @@ author:
   Lorenzzzzzz
 website:
   "https://lorenzzzz.xyz"
+permissions:
+  smplibrary.*:
+    children:
+      smplibrary.admin: true
+      smplibrary.menu.use: true
+  smplibrary.admin:
+    description: Access to admin log chat broadcast and dashboard actions
+    default: op
+  smplibrary.menu.use:
+    description: Open in-game menus
+    default: true
 commands:
   pistacchi:
     aliases: [pshop]

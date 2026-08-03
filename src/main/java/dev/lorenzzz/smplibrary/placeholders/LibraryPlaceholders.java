@@ -30,15 +30,17 @@ public final class LibraryPlaceholders extends PlaceholderExpansion {
     public @Nullable String onRequest(OfflinePlayer player, @NotNull String params) {
         Smp_library plugin = Smp_library.getInstance();
         if (plugin == null) return "";
+        if (plugin.getManagers() == null || plugin.getManagers().modules() == null) return "";
         String p = params.toLowerCase();
 
         if (p.startsWith("keyall_")) {
+            if (!plugin.getManagers().modules().isEnabled("keyall")) return "";
             ConfigurationSection cfg = plugin.getConfig().getConfigurationSection("MODULES.keyall");
             if (cfg == null) return "";
             int amount = cfg.getInt("amount", 1);
             String crate = cfg.getString("crate-name", "common_crate");
 
-            Module m = plugin.getManagers().modules() == null ? null : plugin.getManagers().modules().module("keyall");
+            Module m = plugin.getManagers().modules().module("keyall");
             long next = (m instanceof KeyAllModule k) ? k.nextRunEpoch() : 0L;
 
             return switch (p) {

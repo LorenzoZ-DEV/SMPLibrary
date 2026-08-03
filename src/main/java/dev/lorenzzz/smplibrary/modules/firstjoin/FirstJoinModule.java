@@ -11,6 +11,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -28,13 +29,14 @@ import java.util.Map;
  * ponytail: first-join detection via Player.hasPlayedBefore() — the server already tracks
  * the player dat file, so no DB table is needed. StorageManager stays unused here.
  */
-public final class FirstJoinModule implements Module, Listener {
+public final class FirstJoinModule implements Module {
 
     private final JavaPlugin plugin;
     private ConfigurationSection cfg;
     private StorageManager storage;
     private CommandManager commands;
     private MessagesManager messages;
+    private JoinListener listener;
 
     public FirstJoinModule(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -46,52 +48,55 @@ public final class FirstJoinModule implements Module, Listener {
     public void onEnable() {
         cfg = plugin.getConfig().getConfigurationSection("MODULES.firstjoin");
         if (cfg == null) return;
-        Bukkit.getPluginManager().registerEvents(this, plugin);
+        Bukkit.getPluginManager().registerEvents(listener = new JoinListener(), plugin);
     }
 
-    @EventHandler(priority = EventPriority.MONITOR)
-    public void onJoin(PlayerJoinEvent event) {
-        Player player = event.getPlayer();
-        // %player_displayname% left to PlaceholderAPI; only the two raw names are injected here.
-        Map<String, String> ph = Map.of(
-                "%player%", player.getName(),
-                "%player_name%", player.getName());
-
-        if (player.hasPlayedBefore()) {
-            // Returning join: welcome-back only, no kit/commands.
-            player.sendMessage(messages.component("first-join.returning", player, ph));
-            C.sendChatAndAction(player, messages.raw("first-join.returning").split("\n")[0]);
-            return;
+    @Override
+    public void onDisable() {
+        if (listener != null) {
+            HandlerList.unregisterAll(listener);
+            listener = null;
         }
+    }
 
-        // First join: private welcome, optional server-wide broadcast, then the starter-kit commands.
-        player.sendMessage(messages.component("first-join.welcome", player, ph));
-        C.sendChatAndAction(player, "&#F3F622&lBENVENUTO &r&8➟ &fBenvenuto sul server, &d" + player.getName() + "&f!");
+    private final class JoinListener implements Listener {
+        @EventHandler(priority = EventPriority.MONITOR)
+        public void onJoin(PlayerJoinEvent event) {
+            Player player = event.getPlayer();
+            Map<String, String> ph = Map.of(
+                    "%player%", player.getName(),
+                    "%player_name%", player.getName());
 
-        if (cfg.getBoolean("broadcast-first-join", false)) {
-            Component bcast = messages.component("first-join.broadcast", null, ph);
-            if (bcast != Component.empty()) {
-                for (Player p : Bukkit.getOnlinePlayers()) {
-                    p.sendMessage(bcast);
-                    C.sendChatAndAction(p, messages.raw("first-join.broadcast"));
+            if (player.hasPlayedBefore()) {
+                player.sendMessage(messages.component("first-join.returning", player, ph));
+                C.sendChatAndAction(player, messages.raw("first-join.returning").split("\n")[0]);
+                return;
+            }
+
+            player.sendMessage(messages.component("first-join.welcome", player, ph));
+            C.sendChatAndAction(player, "&#F3F622&lBENVENUTO &r&8➟ &fBenvenuto sul server, &d" + player.getName() + "&f!");
+
+            if (cfg.getBoolean("broadcast-first-join", false)) {
+                Component bcast = messages.component("first-join.broadcast", null, ph);
+                if (bcast != Component.empty()) {
+                    String raw = C.replace(messages.raw("first-join.broadcast"), ph);
+                    for (Player p : Bukkit.getOnlinePlayers()) {
+                        p.sendMessage(bcast);
+                        p.sendActionBar(C.mm(raw));
+                    }
                 }
             }
+
+            List<String> commandList = cfg.getStringList("commands");
+            if (commandList.isEmpty()) return;
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                for (String cmd : commandList) {
+                    if (cmd == null || cmd.isBlank()) continue;
+                    player.performCommand(cmd.replace("%player%", player.getName()));
+                }
+            });
         }
-
-        List<String> commandList = cfg.getStringList("commands");
-        if (commandList.isEmpty()) return;
-        // ponytail: defer 1 tick so the player's world/inventory are settled before kit plugins act.
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            for (String cmd : commandList) {
-                if (cmd == null || cmd.isBlank()) continue;
-                // Run as the joining player — e.g. "/kit claim start" claims the player's own kit.
-                // No leading slash; %player% etc. are left to PAPI if the kit command needs them.
-                player.performCommand(cmd.replace("%player%", player.getName()));
-            }
-        });
     }
-
-    @Override public void onDisable() { }
 
     @Override public Module storage(StorageManager storage) { this.storage = storage; return this; }
     @Override public Module commands(CommandManager commands) { this.commands = commands; return this; }

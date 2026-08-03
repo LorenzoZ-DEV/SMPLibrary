@@ -10,6 +10,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 
@@ -21,6 +22,7 @@ public class SettingsModule implements Module {
 
     private final Smp_library plugin;
     private SettingsConfigLoader configLoader;
+    private Listener quitListener;
 
     public SettingsModule(Smp_library plugin) {
         this.plugin = plugin;
@@ -57,13 +59,14 @@ public class SettingsModule implements Module {
     }
 
     private void registerListeners() {
-        Bukkit.getPluginManager().registerEvents(new Listener() {
+        quitListener = new Listener() {
             @EventHandler
             public void onQuit(PlayerQuitEvent e) {
                 // Pulisce la memoria degli stati ON/OFF quando il player esce
                 SettingsDialog.clearStates(e.getPlayer().getUniqueId());
             }
-        }, plugin);
+        };
+        Bukkit.getPluginManager().registerEvents(quitListener, plugin);
     }
 
     public void openDialog(Player player) {
@@ -74,6 +77,10 @@ public class SettingsModule implements Module {
 
     @Override
     public void onDisable() {
+        if (quitListener != null) {
+            HandlerList.unregisterAll(quitListener);
+            quitListener = null;
+        }
         configLoader = null;
     }
 

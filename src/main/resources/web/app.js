@@ -42,31 +42,54 @@
 
   /* ---------- overview ---------- */
   function renderOverview(d) {
-    $('#tps1').textContent = d.tps['1m'].toFixed(2);
-    $('#tps5').textContent = '5m: ' + d.tps['5m'].toFixed(2);
-    $('#tps15').textContent = '15m: ' + d.tps['15m'].toFixed(2);
-    $('#players').textContent = d.players.online + '/' + d.players.max;
-    $('#playersMax').textContent = 'Max: ' + d.players.max;
-    $('#uptime').textContent = fmtUptime(d.uptime);
-    $('#heapUsed').textContent = fmtBytes(d.heap.used) + ' / ' + fmtBytes(d.heap.total);
-    $('#heapMax').textContent = 'Max: ' + fmtBytes(d.heap.max);
-    $('#threads').textContent = d.threads.count;
-    $('#threadDaemon').textContent = 'Daemon: ' + d.threads.daemon;
-
-    const tps1 = d.tps['1m'];
-    const tpsCard = $('.card-tps .card-value');
-    tpsCard.style.color = tps1 < 18 ? 'var(--red)' : tps1 < 19.5 ? 'var(--yellow)' : 'var(--green)';
+    if (!d) return;
+    const setText = (sel, val) => { const el = $('#'+sel); if (el && val != null) el.textContent = val; };
+    if (d.tps) {
+      setText('tps1', (d.tps['1m'] != null ? d.tps['1m'] : 0).toFixed ? d.tps['1m'].toFixed(2) : '0.00');
+      setText('tps5', '5m: ' + (d.tps['5m'] != null ? d.tps['5m'].toFixed(2) : '0.00'));
+      setText('tps15', '15m: ' + (d.tps['15m'] != null ? d.tps['15m'].toFixed(2) : '0.00'));
+      const tps1 = d.tps['1m'];
+      const tpsCard = $('.card-tps .card-value');
+      if (tpsCard && typeof tps1 === 'number') {
+        tpsCard.style.color = tps1 < 18 ? 'var(--red)' : tps1 < 19.5 ? 'var(--yellow)' : 'var(--green)';
+      }
+    }
+    if (d.players) {
+      setText('players', d.players.online + '/' + d.players.max);
+      setText('playersMax', 'Max: ' + d.players.max);
+    }
+    if (typeof d.uptime === 'number') setText('uptime', fmtUptime(d.uptime));
+    if (d.heap) {
+      setText('heapUsed', fmtBytes(d.heap.used) + ' / ' + fmtBytes(d.heap.total));
+      setText('heapMax', 'Max: ' + fmtBytes(d.heap.max));
+    }
+    if (d.threads) {
+      setText('threads', d.threads.count);
+      setText('threadDaemon', 'Daemon: ' + d.threads.daemon);
+    }
   }
 
   /* ---------- modules ---------- */
+  const pendingToggles = new Set();
+  let lastModulesSig = '';
+
   function renderModules(d) {
     const grid = $('#moduleGrid');
     if (!grid) return;
     const mods = d.modules || [];
+
+    const sig = mods.map(m => m.id + ':' + (m.enabled ? 1 : 0)).join('|');
+    const noPending = pendingToggles.size === 0;
+    if (sig === lastModulesSig && noPending) {
+      return;
+    }
+    lastModulesSig = sig;
+
     grid.innerHTML = mods.map(m => {
       const id = escapeHtml(m.id);
       const en = m.enabled;
       const canToggle = id !== 'web';
+      const pending = pendingToggles.has(m.id);
       return `
       <div class="module-card" data-module="${id}">
         <div class="info">
@@ -75,37 +98,44 @@
         </div>
         <div class="actions">
           <span class="status ${en ? 'status-on' : 'status-off'}">${en ? 'ON' : 'OFF'}</span>
-          ${canToggle ? `<button class="btn-toggle ${en ? 'on' : 'off'}" data-module="${id}">Toggle</button>` : ''}
+          ${canToggle ? `<button class="btn-toggle ${en ? 'on' : 'off'}" data-module="${id}"${pending ? ' disabled' : ''}>${pending ? '...' : 'Toggle'}</button>` : ''}
         </div>
       </div>`;
     }).join('');
+  }
 
-    grid.querySelectorAll('.btn-toggle').forEach(btn => {
-      btn.addEventListener('click', function () {
-        const mid = this.dataset.module;
-        this.disabled = true;
-        this.textContent = '...';
-        fetch('/api/module/' + mid + '/toggle', { method: 'POST' })
-          .then(r => r.json())
-          .then(data => {
-            if (data.error) { alert('Error: ' + data.error); return; }
-            if (data.stats) {
-              renderOverview(data.stats);
-              renderModules(data.stats);
-              renderChatGames(data.stats);
-            }
-            if (data.log) renderLog(data.log);
-          })
-          .catch(e => { alert('Request failed: ' + e.message); })
-          .finally(() => { this.disabled = false; });
+  function handleToggleClick(btn) {
+    if (!btn || btn.disabled) return;
+    const mid = btn.dataset.module;
+    if (!mid || pendingToggles.has(mid)) return;
+    pendingToggles.add(mid);
+    btn.disabled = true;
+    btn.textContent = '...';
+    fetch('/api/module/' + mid + '/toggle', { method: 'POST' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) { alert('Error: ' + data.error); return; }
+        lastModulesSig = '';
+        if (data.log) renderLog(data.log);
+      })
+      .catch(e => { console.error('toggle failed', e); alert('Request failed: ' + e.message); })
+      .finally(() => {
+        pendingToggles.delete(mid);
+        lastModulesSig = '';
+        const stillThere = document.querySelector('.btn-toggle[data-module="' + mid + '"]');
+        if (stillThere) {
+          stillThere.disabled = false;
+          stillThere.textContent = 'Toggle';
+        }
       });
-    });
   }
 
   /* ---------- chat games ---------- */
   function renderChatGames(d) {
+    if (!d) return;
     const cg = d.chatgames || {};
     const status = $('#cgStatus');
+    if (!status) return;
     if (!cg.enabled) {
       status.innerHTML = '<span class="lbl">Status:</span> <span class="val red">Disabled</span>';
       return;
@@ -120,7 +150,7 @@
 
     const tbody = $('#cgBody');
     if (!tbody) return;
-    const history = cg.history || [];
+    const history = Array.isArray(cg.history) ? cg.history : [];
     tbody.innerHTML = history.map(e => `
       <tr>
         <td>${escapeHtml(e.time)}</td>
@@ -209,12 +239,14 @@
   function renderLog(entries) {
     const container = $('#logContainer');
     if (!container) return;
-    logEntries = entries || logEntries;
+    if (Array.isArray(entries)) logEntries = entries;
+    if (!Array.isArray(logEntries)) logEntries = [];
     if (logEntries.length === 0) {
       container.innerHTML = '<div class="log-empty">Waiting for events...</div>';
       return;
     }
     container.innerHTML = logEntries.map(line => {
+      if (typeof line !== 'string') return '';
       const match = line.match(/^\[WEB\]\s+(\S+)\s+(.*)$/);
       if (match) {
         return '<div class="log-entry"><span class="time">[' + escapeHtml(match[1]) + ']</span> <span class="msg">' + escapeHtml(match[2]) + '</span></div>';
@@ -247,8 +279,17 @@
   }
 
   /* ---------- wire events ---------- */
-  $('#btnLoadConfig').addEventListener('click', loadConfig);
-  $('#btnApplyConfig').addEventListener('click', applyConfig);
+  const gridEl = $('#moduleGrid');
+  if (gridEl) {
+    gridEl.addEventListener('click', function (ev) {
+      const btn = ev.target.closest('.btn-toggle');
+      if (btn && gridEl.contains(btn)) handleToggleClick(btn);
+    });
+  }
+  const loadBtn = $('#btnLoadConfig');
+  if (loadBtn) loadBtn.addEventListener('click', loadConfig);
+  const applyBtn = $('#btnApplyConfig');
+  if (applyBtn) applyBtn.addEventListener('click', applyConfig);
 
   /* ---------- boot ---------- */
   initConfigEditor();
@@ -261,12 +302,12 @@
       renderModules(d);
       renderChatGames(d);
     })
-    .catch(() => {});
+    .catch(e => { console.error('initial stats fetch failed', e); });
 
   fetch('/api/log')
     .then(r => r.json())
     .then(renderLog)
-    .catch(() => {});
+    .catch(e => { console.error('initial log fetch failed', e); });
 
   connectSSE();
 

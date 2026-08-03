@@ -74,16 +74,27 @@ public final class SmplCommand extends BaseCommand {
     public void onReload(CommandSender sender) {
         Smp_library plugin = Smp_library.getInstance();
         plugin.reloadConfig();
+        plugin.getManagers().config().reload();
         plugin.getManagers().messages().reload();
-        C.send(sender, "&aSMP-Library reloaded.");
+        plugin.getManagers().modules().reload();
+        C.send(sender, "&aSMP-Library reloaded (config + modules).");
     }
 
     @Subcommand("modules")
     @CommandPermission("smplibrary.admin")
     public void onModules(CommandSender sender) {
         C.send(sender, "&d&lModules:");
-        plugin.modules().active().forEach(m ->
-                C.send(sender, "&7- &f" + m.id() + " &a" + (plugin.modules().isEnabled(m.id()) ? "enabled" : "disabled")));
+        var mm = plugin.getManagers().modules();
+        var cfg = plugin.getManagers().config();
+        mm.active().forEach(m -> {
+            boolean isEnabled = cfg.isEnabled(m.id());
+            boolean isRunning = mm.isRunning(m.id());
+            String status;
+            if (isEnabled && isRunning)        status = "&aenabled (running)";
+            else if (isEnabled && !isRunning) status = "&eenabled (NOT running)";
+            else                              status = "&cdisabled";
+            C.send(sender, "&7- &f" + m.id() + " " + status);
+        });
     }
 
     @Subcommand("webedit")

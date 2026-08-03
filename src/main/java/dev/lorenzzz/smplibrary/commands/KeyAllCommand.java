@@ -17,7 +17,12 @@ public final class KeyAllCommand extends BaseCommand {
 
     @Default
     public void onRun(CommandSender sender) {
-        ConfigurationSection cfg = Smp_library.getInstance().getConfig().getConfigurationSection("MODULES.keyall");
+        Smp_library plugin = Smp_library.getInstance();
+        if (!plugin.getManagers().modules().isEnabled("keyall")) {
+            C.send(sender, "&cKeyAll module is disabled.");
+            return;
+        }
+        ConfigurationSection cfg = plugin.getConfig().getConfigurationSection("MODULES.keyall");
         if (cfg == null) {
             C.send(sender, "&cKeyAll not configured.");
             return;

@@ -112,15 +112,20 @@ public final class ConfigEditor {
         plugin.getConfig().set("MODULES." + moduleId + ".enabled", newState);
         plugin.saveConfig();
 
+        String message = "Toggled module " + moduleId + " " + (newState ? "ON" : "OFF") + " by " + who;
+
         Bukkit.getScheduler().runTask(plugin, () -> {
-            if (plugin.getManagers() != null) {
-                plugin.getManagers().config().reload();
-                plugin.reloadConfig();
-                plugin.getManagers().modules().reload();
+            try {
+                if (plugin.getManagers() != null) {
+                    plugin.reloadConfig();
+                    plugin.getManagers().config().reload();
+                    plugin.getManagers().modules().reload();
+                }
+            } finally {
+                log.log(message);
             }
         });
 
-        log.log("Toggled module " + moduleId + " " + (newState ? "ON" : "OFF") + " by " + who);
         return null;
     }
 

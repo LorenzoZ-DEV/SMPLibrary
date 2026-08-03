@@ -13,6 +13,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -272,6 +273,7 @@ public final class ChatGamesModule implements Module, Listener {
 
     @Override
     public void onDisable() {
+        HandlerList.unregisterAll(this);
         if (taskId != -1) Bukkit.getScheduler().cancelTask(taskId);
         if (timeoutTaskId != -1) Bukkit.getScheduler().cancelTask(timeoutTaskId);
         taskId = -1;

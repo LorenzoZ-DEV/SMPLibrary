@@ -10,7 +10,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 
-import java.math.BigDecimal;
 import java.util.Map;
 
 public class PlaytimeModule implements Module {
@@ -18,7 +17,6 @@ public class PlaytimeModule implements Module {
     private final Smp_library plugin;
     private MessagesManager messages;
     private int taskId = -1;
-    private Object economyManager;
 
     public PlaytimeModule(Smp_library plugin) {
         this.plugin = plugin;
@@ -32,30 +30,15 @@ public class PlaytimeModule implements Module {
         ConfigurationSection cfg = plugin.getConfig().getConfigurationSection("MODULES.playtime");
         if (cfg == null) return;
 
-        setupEconomy();
-
         long intervalTicks = parseTicks(cfg.getString("every", "5m"));
         taskId = Bukkit.getScheduler().runTaskTimer(plugin, this::reward, intervalTicks, intervalTicks).getTaskId();
         C.info("Playtime module enabled — rewarding every " + cfg.getString("every", "5m") + ".");
     }
 
     private void setupEconomy() {
-        try {
-            Object zEssentials = Bukkit.getPluginManager().getPlugin("zEssentials");
-            if (zEssentials != null) {
-                economyManager = zEssentials.getClass().getMethod("getEconomyManager").invoke(zEssentials);
-            }
-        } catch (Exception e) {
-            economyManager = null;
-        }
     }
 
     private void reward() {
-        if (economyManager == null) {
-            setupEconomy();
-            if (economyManager == null) return;
-        }
-
         ConfigurationSection cfg = plugin.getConfig().getConfigurationSection("MODULES.playtime");
         if (cfg == null) return;
 
@@ -75,15 +58,8 @@ public class PlaytimeModule implements Module {
     }
 
     private void giveMoney(Player player, double amount) {
-        try {
-            Class<?> economyCls = Class.forName("fr.maxlego08.essentials.api.economy.Economy");
-            Object defaultEconomy = economyManager.getClass().getMethod("getDefaultEconomy").invoke(economyManager);
-            economyManager.getClass().getMethod("deposit", java.util.UUID.class, economyCls, BigDecimal.class)
-                    .invoke(economyManager, player.getUniqueId(), defaultEconomy, BigDecimal.valueOf(amount));
-        } catch (Exception e) {
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(),
-                    "eco add coins " + player.getName() + " " + (int) amount);
-        }
+        Bukkit.dispatchCommand(Bukkit.getConsoleSender(),
+                "eco give money " + player.getName() + " " + (int) amount);
     }
 
     private static long parseTicks(String period) {
@@ -106,7 +82,6 @@ public class PlaytimeModule implements Module {
     public void onDisable() {
         if (taskId != -1) Bukkit.getScheduler().cancelTask(taskId);
         taskId = -1;
-        economyManager = null;
     }
 
     @Override public Module storage(StorageManager storage) { return this; }

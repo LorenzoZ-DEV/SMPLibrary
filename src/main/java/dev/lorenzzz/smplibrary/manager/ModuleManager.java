@@ -18,6 +18,7 @@ public final class ModuleManager implements Manager {
 
     private final Smp_library plugin;
     private final Map<String, Module> modules = new LinkedHashMap<>();
+    private final java.util.Set<String> running = java.util.concurrent.ConcurrentHashMap.newKeySet();
     private ConfigManager config;
     private StorageManager storage;
     private CommandManager commands;
@@ -59,6 +60,7 @@ public final class ModuleManager implements Manager {
             if (!config.isEnabled(id)) { continue; }
             try {
                 m.storage(storage).commands(commands).messages(messages).onEnable();
+                running.add(id);
                 C.info("Module '" + id + "' enabled.");
             } catch (Exception e) {
                 C.warning("Error loading module '" + id + "': " + e.getMessage());
@@ -108,6 +110,7 @@ public final class ModuleManager implements Manager {
     }
 
     public boolean isEnabled(String id) { return config.isEnabled(id); }
+    public boolean isRunning(String id) { return running.contains(id); }
     public Collection<Module> active() { return modules.values(); }
 
     public void reload() {
@@ -116,6 +119,7 @@ public final class ModuleManager implements Manager {
                 C.warning("Error disabling module '" + m.id() + "': " + e.getMessage());
             }
         }
+        running.clear();
         ConfigurationSection sec = config.modules();
         if (sec == null) return;
         for (String id : sec.getKeys(false)) {
@@ -124,6 +128,7 @@ public final class ModuleManager implements Manager {
             if (!config.isEnabled(id)) continue;
             try {
                 m.storage(storage).commands(commands).messages(messages).onEnable();
+                running.add(id);
             } catch (Exception e) {
                 C.warning("Error reloading module '" + id + "': " + e.getMessage());
                 e.printStackTrace();
@@ -138,5 +143,6 @@ public final class ModuleManager implements Manager {
     public void disable() {
         for (Module m : modules.values()) m.onDisable();
         modules.clear();
+        running.clear();
     }
 }

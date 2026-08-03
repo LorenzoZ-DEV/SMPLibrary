@@ -27,7 +27,7 @@ chat-games:
     &d&lCHATGAMES
     &fNessuno ha risposto in tempo. Riprova al prossimo giro!
 playtime:
-  reward: '&#F3F622&lPLAYTIME &r&8➟ &#a7ff8aHai ricevuto &f%amount%$ &#a7ff8aper aver giocato!'
+  reward: '&#a7ff8aHai ricevuto &f%amount% &#a7ff8adollari per aver giocato nel server!'
 first-join:
   # Sent privately to the player on their FIRST join (and only then).
   # %player% / %player_name% injected; PlaceholderAPI works too if installed.

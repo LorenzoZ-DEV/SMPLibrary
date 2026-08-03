@@ -58,16 +58,16 @@ public final class WebServer {
     private void dispatch(HttpExchange ex) throws IOException {
         try {
             String path = ex.getRequestURI().getPath();
-            if (!auth.check(ex)) { sendText(ex, 401, "unauthorized"); return; }
 
             String method = ex.getRequestMethod();
 
-            if (path.equals("/") || path.equals("/index.html")) {
-                serveResource(ex, "/web/index.html", "text/html; charset=utf-8");
-            } else if (path.equals("/style.css")) {
-                serveResource(ex, "/web/style.css", "text/css; charset=utf-8");
-            } else if (path.equals("/app.js")) {
-                serveResource(ex, "/web/app.js", "application/javascript; charset=utf-8");
+            if (path.equals("/") || path.equals("/index.html")
+                    || path.equals("/web/index.html")) {
+                serveResource(ex, "web/index.html", "text/html; charset=utf-8");
+            } else if (path.equals("/style.css") || path.equals("/web/style.css")) {
+                serveResource(ex, "web/style.css", "text/css; charset=utf-8");
+            } else if (path.equals("/app.js") || path.equals("/web/app.js")) {
+                serveResource(ex, "web/app.js", "application/javascript; charset=utf-8");
             } else if (path.equals("/api/stats")) {
                 sendJson(ex, 200, stats.snapshot());
             } else if (path.equals("/api/log")) {
@@ -102,7 +102,7 @@ public final class WebServer {
         if (err != null) {
             sendJson(ex, 400, "{\"error\":" + WebStats.jsonStr(err) + "}");
         } else {
-            sendJson(ex, 200, "{\"ok\":true,\"stats\":" + stats.snapshot() + ",\"log\":" + logJson() + "}");
+            sendJson(ex, 200, "{\"ok\":true,\"log\":" + logJson() + "}");
         }
     }
 

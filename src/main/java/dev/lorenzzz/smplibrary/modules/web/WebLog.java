@@ -1,5 +1,6 @@
 package dev.lorenzzz.smplibrary.modules.web;
 
+import dev.lorenzzz.smplibrary.Smp_library;
 import org.bukkit.Bukkit;
 
 import java.time.LocalDateTime;
@@ -20,10 +21,25 @@ public final class WebLog {
     private final Deque<String> entries = new ConcurrentLinkedDeque<>();
 
     public void log(String message) {
-        String line = "[WEB] " + LocalDateTime.now().format(FMT) + " " + message;
+        String time = LocalDateTime.now().format(FMT);
+        String line = "[LOG] " + time + " " + message;
         entries.addFirst(line);
         while (entries.size() > MAX) entries.removeLast();
-        Bukkit.getConsoleSender().sendMessage("§9[WEB] §7" + message);
+        String console = "§9[smplibrary] §7[LOG] §f" + message;
+        Bukkit.getConsoleSender().sendMessage(console);
+
+        if (Bukkit.isPrimaryThread()) {
+            broadcastToOps(message);
+        } else {
+            Bukkit.getScheduler().runTask(Smp_library.getInstance(), () -> broadcastToOps(message));
+        }
+    }
+
+    private static void broadcastToOps(String message) {
+        String chat = "§9[smplibrary] §7[LOG] §f" + message;
+        for (var p : Bukkit.getOnlinePlayers()) {
+            if (p.hasPermission("smplibrary.admin")) p.sendMessage(chat);
+        }
     }
 
     public java.util.List<String> recent() {

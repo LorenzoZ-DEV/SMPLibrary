@@ -32,7 +32,19 @@ public final class MessagesManager implements Manager {
     @Override public void disable() { yaml = null; }
 
     public void reload() {
-        yaml = YamlConfiguration.loadConfiguration(file);
+        if (!file.exists()) plugin.saveResource("messages.yml", false);
+        YamlConfiguration disk = YamlConfiguration.loadConfiguration(file);
+        try (java.io.InputStream in = plugin.getResource("messages.yml")) {
+            if (in != null) {
+                YamlConfiguration defaults = YamlConfiguration.loadConfiguration(new java.io.InputStreamReader(in));
+                for (String key : defaults.getKeys(true)) {
+                    if (!disk.contains(key)) {
+                        disk.set(key, defaults.get(key));
+                    }
+                }
+            }
+        } catch (java.io.IOException ignored) {}
+        yaml = disk;
     }
 
     public String raw(String path) {
@@ -59,6 +71,7 @@ public final class MessagesManager implements Manager {
     public void sendBoth(Player target, String path, Map<String, ?> placeholders) {
         String msg = raw(path);
         if (msg.isEmpty()) return;
+        msg = C.replace(msg, placeholders);
         C.sendChatAndAction(target, C.mm(msg));
     }
 }

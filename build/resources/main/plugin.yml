@@ -1,5 +1,5 @@
 name: smp-library
-version: '1.0.5-b041d03'
+version: '1.0.6-b32d6f1'
 main: dev.lorenzzz.smplibrary.Smp_library
 api-version: '1.21'
 softdepend:
@@ -9,6 +9,17 @@ author:
   Lorenzzzzzz
 website:
   "https://lorenzzzz.xyz"
+permissions:
+  smplibrary.*:
+    children:
+      smplibrary.admin: true
+      smplibrary.menu.use: true
+  smplibrary.admin:
+    description: Access to admin log chat broadcast and dashboard actions
+    default: op
+  smplibrary.menu.use:
+    description: Open in-game menus
+    default: true
 commands:
   pistacchi:
     aliases: [pshop]
