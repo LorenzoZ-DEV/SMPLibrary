@@ -174,7 +174,7 @@ public final class ChatGamesModule implements Module, Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGH)
     public void onChat(AsyncChatEvent event) {
         String ans = this.answer;
         if (ans == null) return;
