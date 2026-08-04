@@ -1,6 +1,16 @@
 adaptive-tool:
   morphed: '&5⚡ &#d1e0e0Tool morphed into &#a78bfa{form}&#d1e0e0.'
   destroyed: '&5⚡ &#d1e0e0Your adaptive tool has &cshattered&#d1e0e0!'
+pay:
+  sent: '&d» &fHai inviato &d%amount% pistacchi &fa &d%player%&f. Saldo: &d%balance%&f.'
+  received: '&d» &fHai ricevuto &d%amount% pistacchi &fda &d%player%&f. Saldo: &d%balance%&f.'
+  target-offline: '&cPlayer non trovato o offline: &f%player%&c.'
+  self-pay-disabled: '&cNon puoi pagare te stesso.'
+  invalid-amount: '&cImporto non valido: &f%input%&c.'
+  below-minimum: '&cL''importo minimo è &f%amount% pistacchi&c.'
+  above-maximum: '&cL''importo massimo è &f%amount% pistacchi&c.'
+  insufficient-funds: '&cNon hai abbastanza pistacchi (saldo: &f%balance%&c, richiesti: &f%amount%&c).'
+  error: '&cErrore durante il trasferimento. Riprova.'
 amethyst-tool:
   broken: '&d⚡ &#d1e0e0Your amethyst tool has run out of uses.'
   unknown: '&cUnknown amethyst tool: &f%tool%'

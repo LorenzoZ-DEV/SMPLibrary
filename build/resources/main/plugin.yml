@@ -1,5 +1,5 @@
 name: smp-library
-version: '1.0.7-aaf9f28'
+version: '1.0.8-4daaab5'
 main: dev.lorenzzz.smplibrary.Smp_library
 api-version: '1.21'
 softdepend:
@@ -14,11 +14,15 @@ permissions:
     children:
       smplibrary.admin: true
       smplibrary.menu.use: true
+      smplibrary.pay.use: true
   smplibrary.admin:
     description: Access to admin log chat broadcast and dashboard actions
     default: op
   smplibrary.menu.use:
     description: Open in-game menus
+    default: true
+  smplibrary.pay.use:
+    description: Transfer pistacchi to other players with /pay
     default: true
 commands:
   pistacchi:
@@ -27,3 +31,6 @@ commands:
   settings:
     aliases: [impostazioni]
     permission: smplibrary.menu.use
+  pistacchiopay:
+    aliases: [pistacchipay, pagapers]
+    permission: smplibrary.pay.use

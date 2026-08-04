@@ -46,6 +46,7 @@ public final class ModuleManager implements Manager {
         register(new dev.lorenzzz.smplibrary.modules.trivella.TrivellaModule(plugin));
         register(new dev.lorenzzz.smplibrary.modules.firstjoin.FirstJoinModule(plugin));
         register(new dev.lorenzzz.smplibrary.modules.shop.ShopModule(plugin));
+        register(new dev.lorenzzz.smplibrary.modules.pay.PayModule(plugin));
         register(new dev.lorenzzz.smplibrary.modules.playtime.PlaytimeModule(plugin));
         register(new dev.lorenzzz.smplibrary.modules.settings.SettingsModule(plugin));
         register(new dev.lorenzzz.smplibrary.modules.web.WebModule(plugin));

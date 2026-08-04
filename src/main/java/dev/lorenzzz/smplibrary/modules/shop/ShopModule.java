@@ -27,6 +27,7 @@ public class ShopModule implements Module {
     private Method getDefaultEconomyMethod;
     private Method getBalanceMethod;
     private Method withdrawMethod;
+    private Method depositMethod;
     private Object defaultEconomy;
 
     public ShopModule(Smp_library plugin) {
@@ -60,6 +61,7 @@ public class ShopModule implements Module {
                 getDefaultEconomyMethod = economyManager.getClass().getMethod("getDefaultEconomy");
                 getBalanceMethod = economyManager.getClass().getMethod("getBalance", org.bukkit.OfflinePlayer.class, economyClass);
                 withdrawMethod = economyManager.getClass().getMethod("withdraw", java.util.UUID.class, economyClass, BigDecimal.class);
+                depositMethod = economyManager.getClass().getMethod("deposit", java.util.UUID.class, economyClass, BigDecimal.class);
             }
         } catch (Exception e) {
             economyManager = null;
@@ -105,6 +107,24 @@ public class ShopModule implements Module {
 
         Bukkit.dispatchCommand(Bukkit.getConsoleSender(),
                 "eco take coins " + player.getName() + " " + (int) amount);
+        return true;
+    }
+
+    public boolean giveMoney(Player player, double amount) {
+        if (economyManager != null && depositMethod != null) {
+            try {
+                Object result = depositMethod.invoke(economyManager, player.getUniqueId(), defaultEconomy(), BigDecimal.valueOf(amount));
+                if (result instanceof Boolean ok && ok) return true;
+                C.warning("Failed to give money to " + player.getName());
+                return false;
+            } catch (Exception e) {
+                C.warning("Failed to give money to " + player.getName());
+                return false;
+            }
+        }
+
+        Bukkit.dispatchCommand(Bukkit.getConsoleSender(),
+                "eco give coins " + player.getName() + " " + (int) amount);
         return true;
     }
 
@@ -175,6 +195,7 @@ public class ShopModule implements Module {
         getDefaultEconomyMethod = null;
         getBalanceMethod = null;
         withdrawMethod = null;
+        depositMethod = null;
         defaultEconomy = null;
     }
 

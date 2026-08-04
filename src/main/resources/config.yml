@@ -49,6 +49,12 @@
             answers: ["pickaxe", "piccone", "picco"]
     shop:
       enabled: true
+    pay:
+      enabled: true
+      minimum-amount: 1.0        # importo minimo trasferibile in pistacchi
+      maximum-amount: 1000000.0  # tetto per singolo trasferimento (0 = nessun limite)
+      allow-self: false         # permetti /pay a te stesso (utile solo per test)
+      currency-decimals: 0      # cifre decimali mostrate nei messaggi (0 = interi)
     playtime:
       enabled: true
       every: 5m

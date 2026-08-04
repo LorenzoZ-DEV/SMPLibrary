@@ -4,6 +4,7 @@ import co.aikar.commands.PaperCommandManager;
 import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.commands.KeyAllCommand;
+import dev.lorenzzz.smplibrary.commands.PayCommand;
 import dev.lorenzzz.smplibrary.commands.SmplCommand;
 import dev.lorenzzz.smplibrary.placeholders.LibraryPlaceholders;
 import org.bukkit.Bukkit;
@@ -46,6 +47,7 @@ public final class CommandManager implements Manager {
         // Register the plugin's own ACF commands.
         register(new SmplCommand());
         register(new KeyAllCommand());
+        register(new PayCommand());
     }
 
     public PaperCommandManager acf() { return acf; }

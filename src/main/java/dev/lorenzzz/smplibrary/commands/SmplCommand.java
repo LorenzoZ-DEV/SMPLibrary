@@ -57,11 +57,13 @@ public final class SmplCommand extends BaseCommand {
 
         C.send(sender, "&d&lAltri comandi (separati):");
         C.send(sender, "&8» &f/keyall &7&o(alias: /keys)&7- distribuisce chiavi a tutti i player online");
+        C.send(sender, "&8» &f/pay <player> <amount> &7&o(alias: /pistacchipay, /pagapers)&7- trasferisci pistacchi a un altro player online");
         C.send(sender, "");
 
         C.send(sender, "&7Permessi:");
         C.send(sender, "&8» &fsmplibrary.admin &7- accesso ai comandi admin");
         C.send(sender, "&8» &fsmplibrary.keyall.use &7- uso di /keyall");
+        C.send(sender, "&8» &fsmplibrary.pay.use &7- uso di /pay");
         C.send(sender, "");
 
         C.send(sender, "&7Config: &fplugins/SmpLibrary/config.yml &7(moduli in &fMODULES.<id>&7)");
