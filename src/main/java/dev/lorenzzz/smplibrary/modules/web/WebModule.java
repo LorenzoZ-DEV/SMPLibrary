@@ -2,51 +2,33 @@ package dev.lorenzzz.smplibrary.modules.web;
 
 import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
-import dev.lorenzzz.smplibrary.manager.CommandManager;
-import dev.lorenzzz.smplibrary.manager.MessagesManager;
-import dev.lorenzzz.smplibrary.manager.StorageManager;
-import dev.lorenzzz.smplibrary.modules.Module;
+import dev.lorenzzz.smplibrary.modules.AbstractModule;
 import org.bukkit.configuration.ConfigurationSection;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.util.List;
 
-public final class WebModule implements Module {
+/** Small HTTP dashboard for editing config.yml and watching the server. Configured under MODULES.web. */
+public final class WebModule extends AbstractModule {
 
-    private final Smp_library plugin;
+    private static final List<String> CONNECTION_KEYS = List.of("host", "port", "token");
+    private static final int PORT_SCAN_RANGE = 20;
+
     private WebServer server;
     private WebAuth auth;
     private String boundHost;
     private int boundPort = -1;
 
     public WebModule(Smp_library plugin) {
-        this.plugin = plugin;
+        super(plugin);
     }
 
-    @Override
-    public String id() { return "web"; }
+    @Override public String id() { return "web"; }
 
     @Override
     public void onEnable() {
-        ConfigurationSection cfg = plugin.getConfig().getConfigurationSection("MODULES.web");
-        // Fallback: sezione "web" alla radice del config (per compat con config legacy)
-        if (cfg == null || (!cfg.contains("host") && !cfg.contains("port") && !cfg.contains("token"))) {
-            ConfigurationSection rootCfg = plugin.getConfig().getConfigurationSection("web");
-            if (rootCfg != null && (rootCfg.contains("host") || rootCfg.contains("port") || rootCfg.contains("token"))) {
-                C.warning("Web dashboard: 'host'/'port' troori fuori da MODULES.web. "
-                        + "Sposta la sezione 'web' dentro MODULES per evitare ambiguita'. "
-                        + "Uso temporaneamente i valori dalla radice.");
-                if (cfg == null) {
-                    cfg = rootCfg;
-                } else {
-                    // merga solo i campi mancanti
-                    org.bukkit.configuration.ConfigurationSection merged = cfg;
-                    if (!merged.contains("host") && rootCfg.contains("host")) merged.set("host", rootCfg.get("host"));
-                    if (!merged.contains("port") && rootCfg.contains("port")) merged.set("port", rootCfg.get("port"));
-                    if (!merged.contains("token") && rootCfg.contains("token")) merged.set("token", rootCfg.get("token"));
-                }
-            }
-        }
+        ConfigurationSection cfg = resolveConfig();
         if (cfg == null) {
             C.info("Web dashboard: no config section found, skipping.");
             return;
@@ -54,26 +36,24 @@ public final class WebModule implements Module {
 
         String host = cfg.getString("host", "0.0.0.0");
         int preferred = cfg.getInt("port", 8080);
-        String token = cfg.getString("token", null);
-        int actualPort = findAvailablePort(preferred, preferred + 20);
-
-        if (actualPort == -1) {
-            C.warning("Web dashboard: no available port in range " + preferred + "-" + (preferred + 20));
+        int port = findAvailablePort(preferred, preferred + PORT_SCAN_RANGE);
+        if (port == -1) {
+            C.warning("Web dashboard: no available port in range " + preferred + "-" + (preferred + PORT_SCAN_RANGE));
             return;
         }
 
-        auth = new WebAuth(token);
+        auth = new WebAuth(cfg.getString("token", null));
         WebLog log = new WebLog();
-        WebStats stats = new WebStats(plugin, System.currentTimeMillis());
-        ConfigEditor editor = new ConfigEditor(plugin, log);
-        server = new WebServer(plugin, auth, stats, editor, log);
+        server = new WebServer(plugin, auth,
+                new WebStats(plugin, System.currentTimeMillis()),
+                new ConfigEditor(plugin, log), log);
 
         try {
-            server.start(host, actualPort);
+            server.start(host, port);
             this.boundHost = host;
-            this.boundPort = actualPort;
-            C.info("Web dashboard started on " + host + ":" + actualPort);
-            log.log("Web dashboard started on " + host + ":" + actualPort);
+            this.boundPort = port;
+            C.info("Web dashboard started on " + host + ":" + port);
+            log.log("Web dashboard started on " + host + ":" + port);
         } catch (Exception e) {
             C.warning("Failed to start web dashboard: " + e.getMessage());
             server = null;
@@ -81,35 +61,58 @@ public final class WebModule implements Module {
         }
     }
 
-    @Override
-    public void onDisable() {
-        if (server != null) {
-            server.stop();
-            server = null;
+    /**
+     * Reads MODULES.web, back-filling from a legacy {@code web:} block at the config root.
+     * Older configs kept the connection settings there and silently lost them on upgrade.
+     */
+    private ConfigurationSection resolveConfig() {
+        ConfigurationSection cfg = config();
+        ConfigurationSection legacy = plugin.getConfig().getConfigurationSection("web");
+        if (legacy == null || !hasConnectionSettings(legacy)) return cfg;
+        if (cfg != null && hasConnectionSettings(cfg)) return cfg;
+
+        C.warning("Web dashboard: 'host'/'port' trovati fuori da MODULES.web. "
+                + "Sposta la sezione 'web' dentro MODULES per evitare ambiguita'. "
+                + "Uso temporaneamente i valori dalla radice.");
+        if (cfg == null) return legacy;
+
+        for (String key : CONNECTION_KEYS) {
+            if (!cfg.contains(key) && legacy.contains(key)) cfg.set(key, legacy.get(key));
         }
-        boundPort = -1;
+        return cfg;
+    }
+
+    private static boolean hasConnectionSettings(ConfigurationSection section) {
+        return CONNECTION_KEYS.stream().anyMatch(section::contains);
     }
 
     public String boundHost() { return boundHost; }
+
     public int boundPort() { return boundPort; }
 
     public String generateTempToken() {
-        return auth != null ? auth.generateTempToken() : null;
+        return auth == null ? null : auth.generateTempToken();
     }
 
     private static int findAvailablePort(int start, int end) {
         for (int port = start; port <= end; port++) {
-            try (ServerSocket ss = new ServerSocket(port)) {
-                return port;
-            } catch (IOException ignored) {}
+            try (ServerSocket socket = new ServerSocket(port)) {
+                return socket.getLocalPort();
+            } catch (IOException ignored) {
+                // in use — try the next one
+            }
         }
         return -1;
     }
 
     @Override
-    public Module storage(StorageManager storage) { return this; }
-    @Override
-    public Module commands(CommandManager commands) { return this; }
-    @Override
-    public Module messages(MessagesManager messages) { return this; }
+    protected void onShutdown() {
+        if (server != null) {
+            server.stop();
+            server = null;
+        }
+        auth = null;
+        boundHost = null;
+        boundPort = -1;
+    }
 }

@@ -16,6 +16,8 @@ amethyst-tool:
   unknown: '&cUnknown amethyst tool: &f%tool%'
   given: '&dGave the &#d1e0e0%tool% &dto &f%player%&d.'
 chat-games:
+  # Ogni messaggio può avere una variante "<chiave>-actionbar": una riga breve
+  # mostrata sopra l'hotbar. Se la chiave manca, l'action bar viene semplicemente saltata.
   message-box: |-
     &r
     &r
@@ -23,21 +25,37 @@ chat-games:
     &r
     &fHai %time_left% minuti per rispondere!
     &fScrivi la risposta in chat per vincere un premio!
+  message-box-actionbar: '&d&lCHATGAMES &8&l» &fNuovo gioco: &d%type%&f!'
+  # Riga con la domanda/parola, una per tipo di gioco.
+  word-prompt: '&aIndovina la parola! &fScrivi la parola giusta in chat: &d%word%'
+  math-prompt: '&aQuanto fa &e%question%&a? &fScrivi il risultato in chat.'
+  trivia-prompt: '&a%question% &fScrivi la risposta in chat.'
+  # Etichette mostrate al posto di %type%.
+  type:
+    word: 'Parole'
+    math: 'Matematica'
+    trivia: 'Trivia'
   message-win-player: |-
     &r
     &r
-    &d&lCHATGAMES 
+    &d&lCHATGAMES
     &r
-    &fCongratulazioni &a%player_name%&f! 
+    &fCongratulazioni &a%player_name%&f!
     La risposta corretta era: &d%word%&f!
+  message-win-player-actionbar: '&d&lCHATGAMES &8&l» &a%player_name% &fvince!'
   message-win-player-chat:
     chatgames-win: '&5&lCHATGAMES &8&l» &fEcco a te il tuo premio, &a%player_name%&f!'
   message-timeout: |-
     &r
     &d&lCHATGAMES
-    &fNessuno ha risposto in tempo. Riprova al prossimo giro!
+    &fNessuno ha risposto in tempo! La risposta era &d%word%&f.
+    &fRiprova al prossimo giro!
+  message-timeout-actionbar: '&d&lCHATGAMES &8&l» &cNessuno ha risposto in tempo!'
 playtime:
   reward: '&#a7ff8aHai ricevuto &f%amount% &#a7ff8adollari per aver giocato nel server!'
+keyall:
+  # Feedback mostrato a chi lancia /keyall a mano.
+  executed: '&dKeyAll &7» &fchiavi distribuite a &d%players% &fplayer.'
 first-join:
   # Sent privately to the player on their FIRST join (and only then).
   # %player% / %player_name% injected; PlaceholderAPI works too if installed.
@@ -49,6 +67,9 @@ first-join:
     &fBenvenuto sul server, &d%player%&f!
     &fHai ricevuto il kitstarter: usa il comando &d/kit claim start&f.
     &fBuona avventura!
+  # Riga breve mostrata sopra l'hotbar insieme al messaggio qui sopra.
+  # Vale per ogni chiave: "<chiave>-actionbar" è opzionale, se manca non viene mostrata.
+  welcome-actionbar: '&#F3F622&lBENVENUTO &r&8➟ &fBenvenuto sul server, &d%player%&f!'
   # Optional broadcast to everyone online on first join. Only sent when
   # MODULES.firstjoin.broadcast-first-join is true. Leave empty to disable.
   broadcast: |-
@@ -58,3 +79,4 @@ first-join:
     &r
     &d&lBENTORNATO
     &fBentornato sul server, &d%player%&f!
+  returning-actionbar: '&d&lBENTORNATO &r&8➟ &fBentornato, &d%player%&f!'

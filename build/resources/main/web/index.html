@@ -7,94 +7,197 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <nav class="nav">
+  <header class="nav">
     <div class="nav-inner">
-      <span class="nav-brand">SMP Library</span>
-      <div class="nav-tabs" id="navTabs">
+      <span class="nav-brand">SMP<span>Library</span></span>
+
+      <nav class="nav-tabs" id="navTabs">
         <button class="tab active" data-tab="overview">Overview</button>
         <button class="tab" data-tab="modules">Modules</button>
         <button class="tab" data-tab="chatgames">Chat Games</button>
-        <button class="tab" data-tab="config">Config Editor</button>
-        <button class="tab" data-tab="log">Live Log</button>
+        <button class="tab" data-tab="config">Config</button>
+        <button class="tab" data-tab="log">Log<span class="tab-dot" id="logDot" hidden></span></button>
+      </nav>
+
+      <div class="nav-right">
+        <span class="conn" id="conn" data-state="connecting">
+          <i class="conn-dot"></i><span id="connText">connecting</span>
+        </span>
+        <button class="btn btn-ghost" id="btnLogout" title="End this dashboard session">Sign out</button>
       </div>
     </div>
-  </nav>
+  </header>
 
   <main class="main">
-    <!-- OVERVIEW -->
+    <!-- ─────────────────────────── OVERVIEW ─────────────────────────── -->
     <section id="tab-overview" class="tab-content active">
-      <div class="grid">
-        <div class="card card-tps">
-          <div class="card-label">TPS</div>
-          <div class="card-value" id="tps1">--</div>
-          <div class="card-sub" id="tps5">5m: --</div>
-          <div class="card-sub" id="tps15">15m: --</div>
-        </div>
-        <div class="card card-players">
-          <div class="card-label">Players</div>
-          <div class="card-value" id="players">--</div>
-          <div class="card-sub" id="playersMax">Max: --</div>
-        </div>
-        <div class="card card-uptime">
-          <div class="card-label">Uptime</div>
-          <div class="card-value" id="uptime">--</div>
-          <div class="card-sub">Since last reload</div>
-        </div>
-        <div class="card card-heap">
-          <div class="card-label">Heap Memory</div>
-          <div class="card-value" id="heapUsed">--</div>
-          <div class="card-sub" id="heapMax">Max: --</div>
-        </div>
-        <div class="card card-threads">
-          <div class="card-label">Threads</div>
-          <div class="card-value" id="threads">--</div>
-          <div class="card-sub" id="threadDaemon">Daemon: --</div>
-        </div>
+      <div class="section-head">
+        <h2>Server health</h2>
+        <p class="muted" id="serverMeta">&nbsp;</p>
       </div>
+
+      <div class="grid">
+        <article class="card">
+          <div class="card-top">
+            <span class="card-label">TPS</span>
+            <span class="pill" id="tpsPill">--</span>
+          </div>
+          <div class="card-value" id="tps1">--</div>
+          <svg class="spark" id="sparkTps" viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true">
+            <polyline class="spark-line" points=""></polyline>
+          </svg>
+          <div class="card-sub"><span id="tps5">5m --</span> &middot; <span id="tps15">15m --</span></div>
+        </article>
+
+        <article class="card">
+          <div class="card-top"><span class="card-label">Players</span></div>
+          <div class="card-value" id="players">--</div>
+          <div class="meter"><i id="playersBar" style="width:0%"></i></div>
+          <div class="card-sub" id="playersMax">slots --</div>
+        </article>
+
+        <article class="card">
+          <div class="card-top"><span class="card-label">Heap memory</span></div>
+          <div class="card-value" id="heapUsed">--</div>
+          <div class="meter"><i id="heapBar" style="width:0%"></i></div>
+          <div class="card-sub" id="heapMax">max --</div>
+        </article>
+
+        <article class="card">
+          <div class="card-top"><span class="card-label">Uptime</span></div>
+          <div class="card-value small" id="uptime">--</div>
+          <div class="card-sub">since the plugin loaded</div>
+        </article>
+
+        <article class="card">
+          <div class="card-top"><span class="card-label">Threads</span></div>
+          <div class="card-value" id="threads">--</div>
+          <div class="card-sub" id="threadDaemon">daemon --</div>
+        </article>
+
+        <article class="card">
+          <div class="card-top"><span class="card-label">Modules running</span></div>
+          <div class="card-value" id="modulesRunning">--</div>
+          <div class="card-sub" id="modulesSub">&nbsp;</div>
+        </article>
+      </div>
+
+      <article class="card chart-card">
+        <div class="chart-head">
+          <div>
+            <h3 class="chart-title">Players online</h3>
+            <p class="chart-sub" id="chartSub">last 24 hours</p>
+          </div>
+
+          <dl class="chart-stats">
+            <div>
+              <dt>Peak today</dt>
+              <dd id="peakValue">--</dd>
+              <dd class="at" id="peakAt">&nbsp;</dd>
+            </div>
+            <div>
+              <dt>Average</dt>
+              <dd id="avgValue">--</dd>
+              <dd class="at">over the window</dd>
+            </div>
+          </dl>
+
+          <button class="btn btn-ghost btn-sm" id="btnChartTable"
+                  aria-pressed="false">Table</button>
+        </div>
+
+        <figure class="chart-wrap" id="chartWrap">
+          <svg id="playerChart" role="img" aria-label="Players online over the last 24 hours"></svg>
+          <div class="chart-tip" id="chartTip" hidden></div>
+          <figcaption class="chart-empty" id="chartEmpty">Waiting for the first sample…</figcaption>
+        </figure>
+
+        <div class="table-wrap chart-table" id="chartTable" hidden>
+          <table>
+            <caption class="sr-only">Players online per hour, last 24 hours</caption>
+            <thead><tr><th scope="col">Hour</th><th scope="col">Peak players</th></tr></thead>
+            <tbody id="chartTableBody"></tbody>
+          </table>
+        </div>
+      </article>
     </section>
 
-    <!-- MODULES -->
+    <!-- ──────────────────────────── MODULES ─────────────────────────── -->
     <section id="tab-modules" class="tab-content">
-      <h2>Feature Modules</h2>
-      <p class="text-muted">Click Toggle to enable/disable a module in real time.</p>
+      <div class="section-head">
+        <h2>Feature modules</h2>
+        <input class="input search" id="moduleSearch" type="search" placeholder="Filter modules…" autocomplete="off">
+      </div>
+      <p class="muted">Toggling writes <code>MODULES.&lt;id&gt;.enabled</code> to config.yml and reloads the module in place.</p>
       <div class="module-grid" id="moduleGrid"></div>
     </section>
 
-    <!-- CHAT GAMES -->
+    <!-- ─────────────────────────── CHAT GAMES ───────────────────────── -->
     <section id="tab-chatgames" class="tab-content">
-      <h2>Chat Games</h2>
-      <div class="cg-status" id="cgStatus">Loading...</div>
-      <h3>Recent Games</h3>
+      <div class="section-head">
+        <h2>Chat games</h2>
+        <button class="btn btn-primary" id="btnStartGame">Start a round</button>
+      </div>
+
+      <article class="card round-card" id="roundCard">
+        <div class="round-head">
+          <span class="status-chip" id="roundStatus">idle</span>
+          <span class="round-type" id="roundType"></span>
+          <span class="round-clock" id="roundClock"></span>
+        </div>
+        <div class="round-prompt" id="roundPrompt">No round in progress.</div>
+        <div class="meter round-meter"><i id="roundBar" style="width:0%"></i></div>
+        <div class="round-answer">
+          <button class="btn btn-ghost btn-sm" id="btnReveal" hidden>Reveal answer</button>
+          <code id="roundAnswer" hidden></code>
+        </div>
+      </article>
+
+      <h3>Recent rounds</h3>
       <div class="table-wrap">
-        <table id="cgTable">
+        <table>
           <thead><tr><th>Time</th><th>Event</th><th>Type</th><th>Detail</th></tr></thead>
-          <tbody id="cgBody"></tbody>
+          <tbody id="cgBody"><tr class="empty"><td colspan="4">No rounds yet.</td></tr></tbody>
         </table>
       </div>
     </section>
 
-    <!-- CONFIG EDITOR -->
+    <!-- ───────────────────────── CONFIG EDITOR ──────────────────────── -->
     <section id="tab-config" class="tab-content">
-      <h2>Configuration Editor</h2>
-      <div class="config-bar">
-        <label for="scopeSelect">Scope:</label>
-        <select id="scopeSelect"></select>
-        <span id="scopeReadonly" class="badge badge-ro">read-only</span>
-        <button id="btnLoadConfig">Load</button>
-        <button id="btnApplyConfig" class="btn-primary">Apply</button>
+      <div class="section-head">
+        <h2>Configuration</h2>
+        <div class="scope-tabs" id="scopeTabs"></div>
       </div>
-      <textarea id="configEditor" class="config-textarea" spellcheck="false"></textarea>
-      <div id="configResult" class="config-result"></div>
+
+      <div class="editor-bar">
+        <span class="badge badge-ro" id="scopeReadonly" hidden>read-only</span>
+        <span class="dirty" id="dirtyFlag" hidden>unsaved changes</span>
+        <span class="spacer"></span>
+        <button class="btn btn-ghost" id="btnRevert" disabled>Revert</button>
+        <button class="btn btn-primary" id="btnApplyConfig" disabled>Save &amp; reload <kbd>Ctrl+S</kbd></button>
+      </div>
+
+      <div class="editor" id="editorWrap">
+        <pre class="gutter" id="gutter" aria-hidden="true">1</pre>
+        <textarea id="configEditor" spellcheck="false" autocomplete="off"
+                  autocapitalize="off" wrap="off" placeholder="Select a file above…"></textarea>
+      </div>
+      <div id="configResult" class="result" hidden></div>
     </section>
 
-    <!-- LOG -->
+    <!-- ─────────────────────────────── LOG ──────────────────────────── -->
     <section id="tab-log" class="tab-content">
-      <h2>Live Action Log</h2>
-      <div class="log-container" id="logContainer">
-        <div class="log-empty">Waiting for events...</div>
+      <div class="section-head">
+        <h2>Action log</h2>
+        <input class="input search" id="logSearch" type="search" placeholder="Filter log…" autocomplete="off">
+      </div>
+      <div class="log" id="logContainer">
+        <div class="log-empty">Waiting for events…</div>
       </div>
     </section>
   </main>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
 
   <script src="/app.js"></script>
 </body>

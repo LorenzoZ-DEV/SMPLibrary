@@ -1,31 +1,28 @@
 package dev.lorenzzz.smplibrary.modules.keyall;
 
-import dev.lorenzzz.smplibrary.manager.CommandManager;
-import dev.lorenzzz.smplibrary.manager.MessagesManager;
-import dev.lorenzzz.smplibrary.manager.StorageManager;
-import dev.lorenzzz.smplibrary.modules.Module;
+import dev.lorenzzz.smplibrary.Smp_library;
+import dev.lorenzzz.smplibrary.modules.AbstractModule;
+import dev.lorenzzz.smplibrary.util.Ticks;
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.entity.Player;
 
 /**
- * Reference module — periodic command that gives every online player a crate key.
- * Configured under MODULES.keyall in config.yml.
+ * Periodic command that gives every online player a crate key.
+ * Configured under MODULES.keyall in config.yml; {@code /keyall} fires it manually.
  */
-public final class KeyAllModule implements Module {
+public final class KeyAllModule extends AbstractModule {
 
-    private final JavaPlugin plugin;
-    private ConfigurationSection cfg;
-    private StorageManager storage;
-    private CommandManager commands;
-    private MessagesManager messages;
-    private int taskId = -1;
+    private static final long DEFAULT_PERIOD = Ticks.HOUR;
+    private static final long MINIMUM_PERIOD = Ticks.MINUTE; // ponytail: never spam keys.
 
-    // ponytail: epoch millis of the next scheduled run. Drifts if server lags hard, good enough for a scoreboard countdown.
-    private long nextRunEpoch = 0;
-    private long periodMillis = 0;
+    // ponytail: epoch millis of the next scheduled run. Drifts if the server lags hard,
+    // good enough for a scoreboard countdown.
+    private long nextRunEpoch;
+    private long periodMillis;
 
-    public KeyAllModule(JavaPlugin plugin) {
-        this.plugin = plugin;
+    public KeyAllModule(Smp_library plugin) {
+        super(plugin);
     }
 
     @Override public String id() { return "keyall"; }
@@ -35,58 +32,48 @@ public final class KeyAllModule implements Module {
 
     @Override
     public void onEnable() {
-        cfg = plugin.getConfig().getConfigurationSection("MODULES.keyall");
+        ConfigurationSection cfg = config();
         if (cfg == null) return;
 
-        String every = cfg.getString("task-every", "1h");
-        long ticks = parseTicks(every);
-        long periodTicks = Math.max(ticks, 20L * 60); // ponytail: floor at 1 min — never spam keys.
-
-        periodMillis = periodTicks / 20L * 1000L;
+        long periodTicks = Ticks.parseAtLeast(cfg.getString("task-every"), DEFAULT_PERIOD, MINIMUM_PERIOD);
+        periodMillis = periodTicks / Ticks.SECOND * 1000L;
         nextRunEpoch = System.currentTimeMillis() + periodMillis;
-        taskId = plugin.getServer().getScheduler().runTaskTimer(plugin, this::runKeyAll, periodTicks, periodTicks).getTaskId();
+
+        repeat(this::onTick, periodTicks, periodTicks);
     }
 
-    private void runKeyAll() {
-        nextRunEpoch = System.currentTimeMillis() + periodMillis;   // roll the countdown for the next tick
+    private void onTick() {
+        nextRunEpoch = System.currentTimeMillis() + periodMillis; // roll the countdown
+        run();
+    }
+
+    /**
+     * Runs the configured command once per online player, substituting %player%,
+     * %crate-name% and %amount%. Returns how many players were served.
+     */
+    public int run() {
+        ConfigurationSection cfg = config();
+        if (cfg == null) return 0;
+
         String command = cfg.getString("command", "");
-        int amount = cfg.getInt("amount", 1);
+        if (command.isBlank()) return 0;
+
         String crate = cfg.getString("crate-name", "common_crate");
+        String amount = String.valueOf(cfg.getInt("amount", 1));
 
-        // %player%, %crate-name%, %amount% replaced per-player. Flat keys handled by config.
-        plugin.getServer().getOnlinePlayers().forEach(p -> {
-            String cmd = command
-                    .replace("%player%", p.getName())
+        int served = 0;
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command
+                    .replace("%player%", player.getName())
                     .replace("%crate-name%", crate)
-                    .replace("%amount%", String.valueOf(amount));
-            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), cmd);
-        });
-    }
-
-    private static long parseTicks(String period) {
-        if (period == null || period.isBlank()) return 20L * 60 * 60; // 1h default
-        period = period.trim().toLowerCase();
-        char unit = period.charAt(period.length() - 1);
-        long n;
-        try { n = Long.parseLong(period.substring(0, period.length() - 1)); }
-        catch (NumberFormatException e) { return 20L * 60 * 60; }
-        long seconds = switch (unit) {
-            case 's' -> n;
-            case 'm' -> n * 60;
-            case 'h' -> n * 60 * 60;
-            case 'd' -> n * 60 * 60 * 24;
-            default -> n; // plain number → seconds
-        };
-        return seconds * 20L;
+                    .replace("%amount%", amount));
+            served++;
+        }
+        return served;
     }
 
     @Override
-    public void onDisable() {
-        if (taskId != -1) plugin.getServer().getScheduler().cancelTask(taskId);
-        taskId = -1;
+    protected void onShutdown() {
+        nextRunEpoch = 0;
     }
-
-    @Override public Module storage(StorageManager storage) { this.storage = storage; return this; }
-    @Override public Module commands(CommandManager commands) { this.commands = commands; return this; }
-    @Override public Module messages(MessagesManager messages) { this.messages = messages; return this; }
 }

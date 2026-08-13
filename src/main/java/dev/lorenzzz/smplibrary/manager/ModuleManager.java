@@ -3,26 +3,46 @@ package dev.lorenzzz.smplibrary.manager;
 import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.Module;
+import dev.lorenzzz.smplibrary.modules.adaptive.AdaptiveToolModule;
+import dev.lorenzzz.smplibrary.modules.amethyst.AmethystToolModule;
+import dev.lorenzzz.smplibrary.modules.chatgames.ChatGamesModule;
+import dev.lorenzzz.smplibrary.modules.firstjoin.FirstJoinModule;
+import dev.lorenzzz.smplibrary.modules.keyall.KeyAllModule;
+import dev.lorenzzz.smplibrary.modules.pay.PayModule;
+import dev.lorenzzz.smplibrary.modules.playerstats.PlayerStatsModule;
+import dev.lorenzzz.smplibrary.modules.playtime.PlaytimeModule;
+import dev.lorenzzz.smplibrary.modules.settings.SettingsModule;
+import dev.lorenzzz.smplibrary.modules.shop.ShopModule;
+import dev.lorenzzz.smplibrary.modules.trivella.TrivellaModule;
+import dev.lorenzzz.smplibrary.modules.web.WebModule;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
 
 /**
- * "Does everything" for features: keeps module id -> Module, reflects enable flags,
- * boots only modules {@code enabled: true} under the MODULES block in config.yml.
- * Tracks created/controlled by ModuleManager.
+ * Registry + lifecycle for features: keeps module id -> Module and boots only the ones
+ * flagged {@code enabled: true} under the MODULES block in config.yml. Missing sections
+ * are auto-written from the bundled config.yml (or from the module's own defaults).
  */
 public final class ModuleManager implements Manager {
 
+    private static final String ROOT = "MODULES";
+
     private final Smp_library plugin;
     private final Map<String, Module> modules = new LinkedHashMap<>();
-    private final java.util.Set<String> running = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private final Set<String> running = ConcurrentHashMap.newKeySet();
+
+    private ManagerService managers;
     private ConfigManager config;
-    private StorageManager storage;
-    private CommandManager commands;
-    private MessagesManager messages;
 
     public ModuleManager(Smp_library plugin) {
         this.plugin = plugin;
@@ -32,70 +52,95 @@ public final class ModuleManager implements Manager {
 
     @Override
     public void enable() {
-        ManagerService s = plugin.getManagers();
-        config = s.config();
-        storage = s.storage();
-        commands = s.commands();
-        messages = s.messages();
+        managers = plugin.getManagers();
+        config = managers.config();
 
         // Register concrete modules here as they land.
-        register(new dev.lorenzzz.smplibrary.modules.keyall.KeyAllModule(plugin));
-        register(new dev.lorenzzz.smplibrary.modules.chatgames.ChatGamesModule(plugin));
-        register(new dev.lorenzzz.smplibrary.modules.amethyst.AmethystToolModule(plugin));
-        register(new dev.lorenzzz.smplibrary.modules.adaptive.AdaptiveToolModule(plugin));
-        register(new dev.lorenzzz.smplibrary.modules.trivella.TrivellaModule(plugin));
-        register(new dev.lorenzzz.smplibrary.modules.firstjoin.FirstJoinModule(plugin));
-        register(new dev.lorenzzz.smplibrary.modules.shop.ShopModule(plugin));
-        register(new dev.lorenzzz.smplibrary.modules.pay.PayModule(plugin));
-        register(new dev.lorenzzz.smplibrary.modules.playtime.PlaytimeModule(plugin));
-        register(new dev.lorenzzz.smplibrary.modules.settings.SettingsModule(plugin));
-        register(new dev.lorenzzz.smplibrary.modules.web.WebModule(plugin));
+        register(new KeyAllModule(plugin));
+        register(new ChatGamesModule(plugin));
+        register(new AmethystToolModule(plugin));
+        register(new AdaptiveToolModule(plugin));
+        register(new TrivellaModule(plugin));
+        register(new FirstJoinModule(plugin));
+        register(new ShopModule(plugin));
+        register(new PayModule(plugin));
+        register(new PlaytimeModule(plugin));
+        register(new PlayerStatsModule(plugin));
+        register(new SettingsModule(plugin));
+        register(new WebModule(plugin));
 
         ensureConfig();
+        startEnabledModules();
+    }
 
-        ConfigurationSection modules = config.modules();
-        if (modules == null) return;
-        for (String id : modules.getKeys(false)) {
-            Module m = this.modules.get(id);
-            if (m == null) continue;
-            if (!config.isEnabled(id)) { continue; }
+    /** Registers a module. Must happen before {@link #enable()} boots them. */
+    public ModuleManager register(Module module) {
+        modules.put(module.id(), module);
+        return this;
+    }
+
+    /** Stops everything that is running, then boots the modules currently flagged enabled. */
+    public void reload() {
+        stopRunningModules();
+        startEnabledModules();
+    }
+
+    private void startEnabledModules() {
+        ConfigurationSection section = config.modules();
+        if (section == null) return;
+
+        for (String id : section.getKeys(false)) {
+            Module module = modules.get(id);
+            if (module == null || !config.isEnabled(id)) continue;
             try {
-                m.storage(storage).commands(commands).messages(messages).onEnable();
+                module.bind(managers);
+                module.onEnable();
                 running.add(id);
                 C.info("Module '" + id + "' enabled.");
             } catch (Exception e) {
                 C.warning("Error loading module '" + id + "': " + e.getMessage());
-                e.printStackTrace();
+                plugin.getLogger().log(Level.WARNING, "Module '" + id + "' failed to start", e);
             }
         }
     }
 
+    /** Disables only the modules that actually started, so onDisable never runs unpaired. */
+    private void stopRunningModules() {
+        for (String id : List.copyOf(running)) {
+            Module module = modules.get(id);
+            if (module == null) continue;
+            try {
+                module.onDisable();
+            } catch (Exception e) {
+                C.warning("Error disabling module '" + id + "': " + e.getMessage());
+            }
+        }
+        running.clear();
+    }
+
+    /**
+     * Writes a MODULES section for any module the config doesn't know yet — copied from the
+     * bundled config.yml when it has one, otherwise from the module's own {@link Module#defaults()}.
+     */
     private void ensureConfig() {
-        org.bukkit.configuration.file.YamlConfiguration defaults = null;
-        try (java.io.InputStream in = plugin.getResource("config.yml")) {
-            if (in != null) {
-                defaults = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(new java.io.InputStreamReader(in));
-            }
-        } catch (Exception ignored) {}
-
+        YamlConfiguration bundled = bundledConfig();
         boolean changed = false;
-        for (Module m : modules.values()) {
-            String id = m.id();
-            if (config.raw() != null && config.raw().contains("MODULES." + id)) continue;
 
-            if (defaults != null && defaults.contains("MODULES." + id)) {
-                org.bukkit.configuration.ConfigurationSection sec = defaults.getConfigurationSection("MODULES." + id);
-                if (sec != null) {
-                    plugin.getConfig().set("MODULES." + id, sec.getValues(true));
-                    changed = true;
-                    C.info("Auto-added config section for module '" + id + "'");
-                    continue;
+        for (Module module : modules.values()) {
+            String path = ROOT + "." + module.id();
+            if (config.raw() != null && config.raw().contains(path)) continue;
+
+            ConfigurationSection bundledSection = bundled == null ? null : bundled.getConfigurationSection(path);
+            if (bundledSection != null) {
+                plugin.getConfig().set(path, bundledSection.getValues(true));
+                C.info("Auto-added config section for module '" + module.id() + "'");
+            } else {
+                for (Map.Entry<String, Object> entry : module.defaults().entrySet()) {
+                    plugin.getConfig().set(path + "." + entry.getKey(), entry.getValue());
                 }
+                C.info("Auto-added default config for module '" + module.id() + "'");
             }
-
-            plugin.getConfig().set("MODULES." + id + ".enabled", true);
             changed = true;
-            C.info("Auto-added enabled flag for module '" + id + "'");
         }
 
         if (changed) {
@@ -104,46 +149,30 @@ public final class ModuleManager implements Manager {
         }
     }
 
-    /** Called by AuthService/server boot order; the marker id reads config. */
-    public ModuleManager register(Module module) {
-        modules.put(module.id(), module);
-        return this;
+    private YamlConfiguration bundledConfig() {
+        try (InputStream in = plugin.getResource("config.yml")) {
+            return in == null ? null : YamlConfiguration.loadConfiguration(new InputStreamReader(in));
+        } catch (Exception e) {
+            return null;
+        }
     }
 
-    public boolean isEnabled(String id) { return config.isEnabled(id); }
+    public boolean isEnabled(String id) { return config != null && config.isEnabled(id); }
     public boolean isRunning(String id) { return running.contains(id); }
     public Collection<Module> active() { return modules.values(); }
 
-    public void reload() {
-        for (Module m : modules.values()) {
-            try { m.onDisable(); } catch (Exception e) {
-                C.warning("Error disabling module '" + m.id() + "': " + e.getMessage());
-            }
-        }
-        running.clear();
-        ConfigurationSection sec = config.modules();
-        if (sec == null) return;
-        for (String id : sec.getKeys(false)) {
-            Module m = this.modules.get(id);
-            if (m == null) continue;
-            if (!config.isEnabled(id)) continue;
-            try {
-                m.storage(storage).commands(commands).messages(messages).onEnable();
-                running.add(id);
-            } catch (Exception e) {
-                C.warning("Error reloading module '" + id + "': " + e.getMessage());
-                e.printStackTrace();
-            }
-        }
-    }
-
-    /** Typed lookup by module id — for command classes that need a specific module instance. */
+    /** Lookup by module id — for command classes that need a specific module instance. */
     public Module module(String id) { return modules.get(id); }
+
+    /** Lookup by id and type in one step; {@code null} when absent, not running or of another type. */
+    public <T extends Module> T module(String id, Class<T> type) {
+        Module module = modules.get(id);
+        return type.isInstance(module) && running.contains(id) ? type.cast(module) : null;
+    }
 
     @Override
     public void disable() {
-        for (Module m : modules.values()) m.onDisable();
+        stopRunningModules();
         modules.clear();
-        running.clear();
     }
 }

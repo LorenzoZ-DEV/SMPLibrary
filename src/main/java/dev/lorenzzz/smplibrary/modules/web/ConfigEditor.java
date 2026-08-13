@@ -91,8 +91,9 @@ public final class ConfigEditor {
                 }
                 case "shop" -> {
                     if (plugin.getManagers() != null) {
-                        ShopModule shop = (ShopModule) plugin.getManagers().modules().module("shop");
-                        if (shop != null) shop.getConfigLoader().reload();
+                        // Typed lookup: a shop module that isn't running has no loader to reload.
+                        ShopModule shop = plugin.getManagers().modules().module("shop", ShopModule.class);
+                        if (shop != null && shop.getConfigLoader() != null) shop.getConfigLoader().reload();
                     }
                 }
             }
@@ -104,7 +105,11 @@ public final class ConfigEditor {
 
     public String toggleModule(String moduleId, String who) {
         if (moduleId == null || moduleId.isBlank()) return "invalid module id";
-        if ("web".equals(moduleId)) return "cannot toggle web module via dashboard";
+        // Toggling web off from the web dashboard would kill the connection mid-request.
+        if ("web".equals(moduleId)) return "cannot toggle the web module from the dashboard";
+        if (plugin.getManagers() == null || plugin.getManagers().modules().module(moduleId) == null) {
+            return "unknown module '" + moduleId + "'";
+        }
 
         boolean current = plugin.getConfig().getBoolean("MODULES." + moduleId + ".enabled", false);
         boolean newState = !current;

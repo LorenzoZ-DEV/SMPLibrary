@@ -6,22 +6,21 @@ import co.aikar.commands.annotation.CommandCompletion;
 import co.aikar.commands.annotation.CommandPermission;
 import co.aikar.commands.annotation.Default;
 import co.aikar.commands.annotation.Description;
-import co.aikar.commands.annotation.Syntax;
 import co.aikar.commands.annotation.Single;
+import co.aikar.commands.annotation.Syntax;
 import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
-import dev.lorenzzz.smplibrary.modules.Module;
 import dev.lorenzzz.smplibrary.modules.pay.PayModule;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
- * /pay <player> <amount> — transfers "pistacchi" from the sender
- * to another online player. Shares economy with the shop module (zEssentials).
+ * {@code /pay <player> <amount>} — transfers "pistacchi" from the sender to another online
+ * player. The money itself moves through {@link PayModule#transfer}, which refunds the sender
+ * if the deposit fails; this class only validates the request and reports the outcome.
  */
 @CommandAlias("pistacchipay|pagapers")
 @CommandPermission("smplibrary.pay.use")
@@ -37,90 +36,70 @@ public final class PayCommand extends BaseCommand {
             return;
         }
 
-        Smp_library plugin = Smp_library.getInstance();
-        Module m = plugin.getManagers().modules().module("pay");
-        if (!(m instanceof PayModule mod) || !plugin.getManagers().modules().isRunning("pay")) {
+        PayModule pay = Smp_library.getInstance().getManagers().modules().module("pay", PayModule.class);
+        if (pay == null) {
             C.send(sender, "&cPay module is disabled.");
-            return;
-        }
-
-        if (mod.shop() == null) {
-            C.send(sender, "&cShop module (economy) is not enabled. Cannot transfer pistacchi.");
             return;
         }
 
         Player target = Bukkit.getPlayerExact(targetName);
         if (target == null) {
-            mod.send(sender, "target-offline", Map.of("%player%", targetName));
+            pay.send(sender, "target-offline", Map.of("%player%", targetName));
+            return;
+        }
+        if (target.equals(player) && !pay.selfPayAllowed()) {
+            pay.send(sender, "self-pay-disabled", Map.of());
             return;
         }
 
-        if (target.getUniqueId().equals(player.getUniqueId()) && !mod.selfPayAllowed()) {
-            mod.send(sender, "self-pay-disabled", Map.of());
-            return;
-        }
-
-        double amount;
-        try {
-            amount = Double.parseDouble(amountRaw.replace(',', '.'));
-        } catch (NumberFormatException e) {
-            mod.send(sender, "invalid-amount", Map.of("%input%", amountRaw));
-            return;
-        }
-
+        double amount = parseAmount(amountRaw);
         if (amount <= 0) {
-            mod.send(sender, "invalid-amount", Map.of("%input%", amountRaw));
+            pay.send(sender, "invalid-amount", Map.of("%input%", amountRaw));
             return;
         }
-        if (amount < mod.minimumAmount()) {
-            Map<String, Object> ph = new HashMap<>();
-            ph.put("%amount%", mod.formatAmount(mod.minimumAmount()));
-            mod.send(sender, "below-minimum", ph);
+        if (amount < pay.minimumAmount()) {
+            pay.send(sender, "below-minimum", Map.of("%amount%", pay.formatAmount(pay.minimumAmount())));
             return;
         }
-        double max = mod.maximumAmount();
-        if (max > 0 && amount > max) {
-            Map<String, Object> ph = new HashMap<>();
-            ph.put("%amount%", mod.formatAmount(max));
-            mod.send(sender, "above-maximum", ph);
+        double maximum = pay.maximumAmount();
+        if (maximum > 0 && amount > maximum) {
+            pay.send(sender, "above-maximum", Map.of("%amount%", pay.formatAmount(maximum)));
             return;
         }
 
-        double formattedAmount = mod.currencyDecimals() <= 0
-                ? Math.floor(amount)
-                : amount;
-        String amountStr = mod.formatAmount(formattedAmount);
+        double total = pay.normalizeAmount(amount);
+        String formatted = pay.formatAmount(total);
 
-        double balance = mod.getBalance(player);
-        if (balance < formattedAmount) {
-            Map<String, Object> ph = new HashMap<>();
-            ph.put("%balance%", mod.formatAmount(balance));
-            ph.put("%amount%", amountStr);
-            mod.send(sender, "insufficient-funds", ph);
+        double balance = pay.getBalance(player);
+        if (balance < total) {
+            pay.send(sender, "insufficient-funds", Map.of(
+                    "%balance%", pay.formatAmount(balance),
+                    "%amount%", formatted));
             return;
         }
 
-        if (!mod.takeMoney(player, formattedAmount)) {
-            mod.send(sender, "error", Map.of());
-            return;
-        }
-        if (!mod.giveMoney(target, formattedAmount)) {
-            // ponytail: refund the sender if the deposit to the target failed
-            mod.giveMoney(player, formattedAmount);
-            mod.send(sender, "error", Map.of());
+        if (!pay.transfer(player, target, total)) {
+            pay.send(sender, "error", Map.of());
             return;
         }
 
-        Map<String, Object> senderPh = new HashMap<>();
-        senderPh.put("%player%", target.getName());
-        senderPh.put("%amount%", amountStr);
-        senderPh.put("%balance%", mod.formatAmount(mod.getBalance(player)));
-        mod.send(player, "sent", senderPh);
+        pay.send(player, "sent", Map.of(
+                "%player%", target.getName(),
+                "%amount%", formatted,
+                "%balance%", pay.formatAmount(pay.getBalance(player))));
+        pay.send(target, "received", Map.of(
+                "%player%", player.getName(),
+                "%amount%", formatted,
+                "%balance%", pay.formatAmount(pay.getBalance(target))));
+    }
 
-        Map<String, Object> targetPh = new HashMap<>();
-        targetPh.put("%player%", player.getName());
-        targetPh.put("%amount%", amountStr);
-        targetPh.put("%balance%", mod.formatAmount(mod.getBalance(target)));
-        mod.send(target, "received", targetPh);
+    /** Accepts both {@code 12.5} and the Italian {@code 12,5}; 0 marks anything unparsable. */
+    private static double parseAmount(String raw) {
+        try {
+            double amount = Double.parseDouble(raw.replace(',', '.'));
+            return Double.isFinite(amount) ? amount : 0;
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 }

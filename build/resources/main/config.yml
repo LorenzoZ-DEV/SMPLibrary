@@ -17,6 +17,25 @@
         - WORD
         - MATH
         - TRIVIA
+      # Suoni riprodotti a tutti i player online. Il blocco e' opzionale: senza,
+      # valgono i default qui sotto. Accetta sia 'block.note_block.pling' che
+      # 'BLOCK_NOTE_BLOCK_PLING'. Usa enabled: false per silenziarne uno.
+      sounds:
+        start:
+          type: block.note_block.pling
+          volume: 0.8
+          pitch: 1.2
+          enabled: true
+        win:
+          type: entity.player.levelup
+          volume: 0.7
+          pitch: 1.4
+          enabled: true
+        timeout:
+          type: block.note_block.bass
+          volume: 0.7
+          pitch: 0.8
+          enabled: true
       words:
         - "ananas"
         - "diamante"
@@ -49,6 +68,9 @@
             answers: ["pickaxe", "piccone", "picco"]
     shop:
       enabled: true
+      # Economia zEssentials usata dal negozio e da /pistacchipay (pistacchi).
+      # Deve corrispondere al nome di un'economia in zEssentials (default: coins).
+      economy: coins
     pay:
       enabled: true
       minimum-amount: 1.0        # importo minimo trasferibile in pistacchi
@@ -59,6 +81,11 @@
       enabled: true
       every: 5m
       amount: 100.0
+    playerstats:
+      # Storico dei player online, mostrato come grafico nella web dashboard.
+      enabled: true
+      sample-every: 1m       # ogni quanto viene registrato il numero di player
+      retention-days: 7      # per quanti giorni i campioni restano nel database
     amethyst-tool:
       enabled: true
       durability-uses: 500

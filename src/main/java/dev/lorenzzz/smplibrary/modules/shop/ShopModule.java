@@ -2,159 +2,64 @@ package dev.lorenzzz.smplibrary.modules.shop;
 
 import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
-import dev.lorenzzz.smplibrary.manager.CommandManager;
-import dev.lorenzzz.smplibrary.manager.MessagesManager;
-import dev.lorenzzz.smplibrary.manager.StorageManager;
-import dev.lorenzzz.smplibrary.modules.Module;
+import dev.lorenzzz.smplibrary.modules.AbstractModule;
 import net.j4c0b3y.api.menu.MenuHandler;
-import org.bukkit.Bukkit;
+import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
 
-import java.lang.reflect.Method;
-import java.math.BigDecimal;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
-public class ShopModule implements Module {
+/**
+ * Menu-driven shop. The inventories come from inventories/shop.yml via {@link ShopConfigLoader};
+ * money goes through the shared {@link dev.lorenzzz.smplibrary.manager.EconomyManager}, so the
+ * shop no longer owns any economy plumbing of its own.
+ */
+public final class ShopModule extends AbstractModule {
 
-    private final Smp_library plugin;
+    /** Commands declared in plugin.yml that simply open the shop. */
+    private static final List<String> OPEN_COMMANDS = List.of("pistacchi", "live");
+
     private MenuHandler menuHandler;
     private ShopConfigLoader configLoader;
-    private Object economyManager;
-    // ponytail: economy reflection resolved once at enable; the zEssentials API
-    // classes/methods don't move at runtime, so caching beats Class.forName per call.
-    private Class<?> economyClass;
-    private Method getDefaultEconomyMethod;
-    private Method getBalanceMethod;
-    private Method withdrawMethod;
-    private Method depositMethod;
-    private Object defaultEconomy;
 
     public ShopModule(Smp_library plugin) {
-        this.plugin = plugin;
+        super(plugin);
     }
 
-    @Override
-    public String id() { return "shop"; }
+    @Override public String id() { return "shop"; }
 
     @Override
     public void onEnable() {
-        this.menuHandler = plugin.getManagers().menuHandler();
-
+        this.menuHandler = managers.menuHandler();
         this.configLoader = new ShopConfigLoader(plugin);
         configLoader.load();
 
-        setupEconomy();
-        registerCommands();
+        CommandExecutor openShop = (sender, command, label, args) -> {
+            if (sender instanceof Player player) {
+                openMainMenu(player);
+            } else {
+                C.send(sender, "&cOnly players.");
+            }
+            return true;
+        };
+        OPEN_COMMANDS.forEach(name -> setExecutor(name, openShop));
 
         C.info("Shop system enabled with " + configLoader.get().categories().size() + " categories.");
     }
 
-    private void setupEconomy() {
-        try {
-            Object zEssentials = Bukkit.getPluginManager().getPlugin("zEssentials");
-            if (zEssentials != null) {
-                economyManager = zEssentials.getClass().getMethod("getEconomyManager").invoke(zEssentials);
-            }
-            if (economyManager != null) {
-                economyClass = Class.forName("fr.maxlego08.essentials.api.economy.Economy");
-                getDefaultEconomyMethod = economyManager.getClass().getMethod("getDefaultEconomy");
-                getBalanceMethod = economyManager.getClass().getMethod("getBalance", org.bukkit.OfflinePlayer.class, economyClass);
-                withdrawMethod = economyManager.getClass().getMethod("withdraw", java.util.UUID.class, economyClass, BigDecimal.class);
-                depositMethod = economyManager.getClass().getMethod("deposit", java.util.UUID.class, economyClass, BigDecimal.class);
-            }
-        } catch (Exception e) {
-            economyManager = null;
+    private void setExecutor(String name, CommandExecutor executor) {
+        PluginCommand command = plugin.getCommand(name);
+        if (command == null) {
+            C.warning("Command '" + name + "' is missing from plugin.yml — shop entry point skipped.");
+            return;
         }
+        command.setExecutor(executor);
     }
 
-    // ponytail: default economy cached once; restart the plugin if the server's
-    // default economy ever changes at runtime (it won't in normal setups).
-    private Object defaultEconomy() {
-        if (defaultEconomy == null && getDefaultEconomyMethod != null) {
-            try { defaultEconomy = getDefaultEconomyMethod.invoke(economyManager); } catch (Exception ignored) {}
-        }
-        return defaultEconomy;
-    }
-
-    public double getBalance(Player player) {
-        if (economyManager != null && getBalanceMethod != null) {
-            try {
-                Object balance = getBalanceMethod.invoke(economyManager, player, defaultEconomy());
-                if (balance instanceof BigDecimal bd) return bd.doubleValue();
-            } catch (Exception ignored) {}
-        }
-
-        if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
-            String parsed = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, "%zessentials_user_balance_coins%");
-            try { return Double.parseDouble(parsed); } catch (NumberFormatException e) { return 0; }
-        }
-        return 0;
-    }
-
-    public boolean takeMoney(Player player, double amount) {
-        if (economyManager != null && withdrawMethod != null) {
-            try {
-                Object result = withdrawMethod.invoke(economyManager, player.getUniqueId(), defaultEconomy(), BigDecimal.valueOf(amount));
-                if (result instanceof Boolean ok && ok) return true;
-                C.warning("Failed to take money from " + player.getName());
-                return false;
-            } catch (Exception e) {
-                C.warning("Failed to take money from " + player.getName());
-                return false;
-            }
-        }
-
-        Bukkit.dispatchCommand(Bukkit.getConsoleSender(),
-                "eco take coins " + player.getName() + " " + (int) amount);
-        return true;
-    }
-
-    public boolean giveMoney(Player player, double amount) {
-        if (economyManager != null && depositMethod != null) {
-            try {
-                Object result = depositMethod.invoke(economyManager, player.getUniqueId(), defaultEconomy(), BigDecimal.valueOf(amount));
-                if (result instanceof Boolean ok && ok) return true;
-                C.warning("Failed to give money to " + player.getName());
-                return false;
-            } catch (Exception e) {
-                C.warning("Failed to give money to " + player.getName());
-                return false;
-            }
-        }
-
-        Bukkit.dispatchCommand(Bukkit.getConsoleSender(),
-                "eco give coins " + player.getName() + " " + (int) amount);
-        return true;
-    }
-
-    private void registerCommands() {
-        setExecutor("pistacchi");
-        PluginCommand live = plugin.getCommand("live");
-        if (live != null) {
-            live.setExecutor((sender, command, label, args) -> {
-                if (!(sender instanceof Player player)) {
-                    sender.sendMessage("§cOnly players.");
-                    return true;
-                }
-                openMainMenu(player);
-                return true;
-            });
-        }
-    }
-
-    private void setExecutor(String cmdName) {
-        PluginCommand cmd = plugin.getCommand(cmdName);
-        if (cmd == null) return;
-        cmd.setExecutor((sender, command, label, args) -> {
-            if (!(sender instanceof Player player)) {
-                sender.sendMessage("§cOnly players.");
-                return true;
-            }
-            openMainMenu(player);
-            return true;
-        });
-    }
+    // ------------------------------------------------------------------ menus
 
     public void openMainMenu(Player player) {
         ShopConfig cfg = configLoader.get();
@@ -163,46 +68,50 @@ public class ShopModule implements Module {
     }
 
     public void openCategory(Player player, CategoryConfig category) {
-        new ShopCategoryMenu(configLoader.get(), category, player, menuHandler, this).open();
-        playSound(player, configLoader.get().openCategorySound());
+        ShopConfig cfg = configLoader.get();
+        new ShopCategoryMenu(cfg, category, player, menuHandler, this).open();
+        playSound(player, cfg.openCategorySound());
     }
 
     public void openConfirm(Player player, ProductConfig product, CategoryConfig category) {
-        new ShopConfirmMenu(configLoader.get(), product, category, player, menuHandler, this).open();
-        playSound(player, configLoader.get().selectItemSound());
+        ShopConfig cfg = configLoader.get();
+        new ShopConfirmMenu(cfg, product, category, player, menuHandler, this).open();
+        playSound(player, cfg.selectItemSound());
     }
 
     public void playSound(Player player, SoundConfig sound) {
-        if (sound != null && sound.enabled() && sound.sound() != null && !sound.sound().isEmpty()) {
-            String name = sound.sound();
-            if (!name.contains(":")) name = name.toLowerCase(Locale.ROOT).replace("_", ".");
-            player.playSound(player.getLocation(), name, sound.volume(), sound.pitch());
-        }
+        if (sound == null || !sound.enabled() || sound.sound() == null || sound.sound().isEmpty()) return;
+        String name = sound.sound();
+        if (!name.contains(":")) name = name.toLowerCase(Locale.ROOT).replace('_', '.');
+        player.playSound(player.getLocation(), name, sound.volume(), sound.pitch());
     }
 
-    public Smp_library getPlugin() { return plugin; }
+    // ---------------------------------------------------------------- economy
+
+    public double getBalance(Player player) {
+        return economy().balance(player);
+    }
+
+    public boolean takeMoney(Player player, double amount) {
+        return economy().withdraw(player, amount);
+    }
+
+    public boolean giveMoney(Player player, double amount) {
+        return economy().deposit(player, amount);
+    }
+
     public ShopConfigLoader getConfigLoader() { return configLoader; }
 
     @Override
-    public void onDisable() {
-        if (menuHandler != null) {
-            menuHandler.getOpenMenus().values().forEach(menu -> menu.close(false));
-        }
+    protected void onShutdown() {
+        managers.closeOpenMenus();
+        OPEN_COMMANDS.forEach(name -> setExecutor(name, null));
         menuHandler = null;
         configLoader = null;
-        economyManager = null;
-        economyClass = null;
-        getDefaultEconomyMethod = null;
-        getBalanceMethod = null;
-        withdrawMethod = null;
-        depositMethod = null;
-        defaultEconomy = null;
     }
 
     @Override
-    public Module storage(StorageManager storage) { return this; }
-    @Override
-    public Module commands(CommandManager commands) { return this; }
-    @Override
-    public Module messages(MessagesManager messages) { return this; }
+    public Map<String, Object> defaults() {
+        return Map.of("enabled", true, "economy", "coins");
+    }
 }

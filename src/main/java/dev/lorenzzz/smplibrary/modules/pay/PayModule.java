@@ -2,117 +2,96 @@ package dev.lorenzzz.smplibrary.modules.pay;
 
 import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
-import dev.lorenzzz.smplibrary.manager.CommandManager;
-import dev.lorenzzz.smplibrary.manager.MessagesManager;
-import dev.lorenzzz.smplibrary.manager.StorageManager;
-import dev.lorenzzz.smplibrary.modules.Module;
-import dev.lorenzzz.smplibrary.modules.shop.ShopModule;
+import dev.lorenzzz.smplibrary.modules.AbstractModule;
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.Locale;
 import java.util.Map;
 
 /**
- * Player-to-player "pistacchi" transfers. Delegates the actual economy
- * operations (balance / withdraw / deposit) to {@link ShopModule}, which owns
- * the zEssentials economy reflection. Configured under MODULES.pay in config.yml.
+ * Player-to-player "pistacchi" transfers, driven by {@code /pay}. Money moves through the
+ * shared EconomyManager; the limits below come from MODULES.pay in config.yml.
  */
-public final class PayModule implements Module {
+public final class PayModule extends AbstractModule {
 
-    private final JavaPlugin plugin;
-    private ConfigurationSection cfg;
-    private StorageManager storage;
-    private CommandManager commands;
-    private MessagesManager messages;
+    private static final String MESSAGE_ROOT = "pay.";
 
-    public PayModule(JavaPlugin plugin) {
-        this.plugin = plugin;
+    public PayModule(Smp_library plugin) {
+        super(plugin);
     }
 
     @Override public String id() { return "pay"; }
 
     @Override
     public void onEnable() {
-        cfg = plugin.getConfig().getConfigurationSection("MODULES.pay");
-        if (cfg == null) {
-            cfg = plugin.getConfig().createSection("MODULES.pay");
-        }
-        C.info("Pay module enabled (currency: pistacchi).");
+        C.info("Pay module enabled (currency: " + economy().defaultCurrency() + ").");
     }
 
-    public ShopModule shop() {
-        Module m = Smp_library.getInstance().getManagers().modules().module("shop");
-        return m instanceof ShopModule s ? s : null;
+    // ----------------------------------------------------------------- limits
+
+    public double minimumAmount() { return setting("minimum-amount", 1.0); }
+
+    public double maximumAmount() { return setting("maximum-amount", 1_000_000.0); }
+
+    public boolean selfPayAllowed() {
+        ConfigurationSection cfg = config();
+        return cfg != null && cfg.getBoolean("allow-self", false);
     }
 
-    public double getBalance(Player player) {
-        ShopModule s = shop();
-        return s == null ? 0 : s.getBalance(player);
+    public int currencyDecimals() {
+        ConfigurationSection cfg = config();
+        return cfg == null ? 0 : cfg.getInt("currency-decimals", 0);
     }
 
-    public boolean takeMoney(Player player, double amount) {
-        ShopModule s = shop();
-        return s != null && s.takeMoney(player, amount);
+    private double setting(String key, double fallback) {
+        ConfigurationSection cfg = config();
+        return cfg == null ? fallback : cfg.getDouble(key, fallback);
     }
 
-    public boolean giveMoney(Player player, double amount) {
-        ShopModule s = shop();
-        return s != null && s.giveMoney(player, amount);
+    /** Rounds the request to the configured precision — whole pistacchi by default. */
+    public double normalizeAmount(double amount) {
+        return currencyDecimals() <= 0 ? Math.floor(amount) : amount;
     }
-
-    public double minimumAmount() { return cfg == null ? 1.0 : cfg.getDouble("minimum-amount", 1.0); }
-    public double maximumAmount() { return cfg == null ? 1_000_000.0 : cfg.getDouble("maximum-amount", 1_000_000.0); }
-    public boolean selfPayAllowed() { return cfg != null && cfg.getBoolean("allow-self", false); }
-
-    public int currencyDecimals() { return cfg == null ? 0 : cfg.getInt("currency-decimals", 0); }
 
     public String formatAmount(double amount) {
         int decimals = currencyDecimals();
-        String s = decimals <= 0
+        return decimals <= 0
                 ? String.valueOf((long) amount)
-                : String.format(java.util.Locale.ROOT, "%." + decimals + "f", amount);
-        return s;
+                : String.format(Locale.ROOT, "%." + decimals + "f", amount);
     }
 
-    public String message(String key, Map<String, ?> placeholders) {
-        String raw = messages == null ? "" : messages.raw("pay." + key);
-        String out = C.replace(raw, placeholders);
-        return C.color(out);
+    // ---------------------------------------------------------------- economy
+
+    public double getBalance(Player player) {
+        return economy().balance(player);
     }
 
-    public void send(org.bukkit.command.CommandSender target, String key, Map<String, ?> placeholders) {
-        String msg = message(key, placeholders);
-        if (msg == null || msg.isEmpty()) return;
-        C.send(target, msg);
+    /** Moves {@code amount} from one player to the other; false leaves both balances untouched. */
+    public boolean transfer(Player from, Player to, double amount) {
+        if (!economy().withdraw(from, amount)) return false;
+        if (economy().deposit(to, amount)) return true;
+
+        // ponytail: the deposit failed — put the money back where it came from.
+        economy().deposit(from, amount);
+        C.warning("Refunded " + amount + " to " + from.getName() + " after a failed transfer to " + to.getName());
+        return false;
     }
 
-    public void messageBoth(Player target, String key, Map<String, ?> placeholders) {
-        String raw = messages == null ? "" : messages.raw("pay." + key);
-        if (raw == null || raw.isEmpty()) return;
-        String out = C.replace(raw, placeholders);
-        C.sendChatAndAction(target, C.mm(out));
+    // --------------------------------------------------------------- messages
+
+    public void send(CommandSender target, String key, Map<String, ?> placeholders) {
+        messages.send(target, MESSAGE_ROOT + key, placeholders);
     }
 
     @Override
-    public void onDisable() {
-        cfg = null;
-    }
-
-    @Override public Module storage(StorageManager storage) { this.storage = storage; return this; }
-    @Override public Module commands(CommandManager commands) { this.commands = commands; return this; }
-    @Override public Module messages(MessagesManager messages) { this.messages = messages; return this; }
-
-    public MessagesManager messages() { return messages; }
-
-    @Override
-    public java.util.Map<String, Object> defaults() {
-        return java.util.Map.of(
+    public Map<String, Object> defaults() {
+        return Map.of(
                 "enabled", true,
                 "minimum-amount", 1.0,
-                "maximum-amount", 1000000.0,
+                "maximum-amount", 1_000_000.0,
                 "allow-self", false,
-                "currency-decimals", 0
-        );
+                "currency-decimals", 0);
     }
 }

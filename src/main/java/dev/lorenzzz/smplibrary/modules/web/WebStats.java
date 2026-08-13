@@ -4,11 +4,14 @@ import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.manager.ModuleManager;
 import dev.lorenzzz.smplibrary.modules.Module;
 import dev.lorenzzz.smplibrary.modules.chatgames.ChatGamesModule;
+import dev.lorenzzz.smplibrary.modules.playerstats.PlayerStatsModule;
+import dev.lorenzzz.smplibrary.modules.playerstats.PlayerStatsModule.Peak;
+import dev.lorenzzz.smplibrary.modules.playerstats.PlayerStatsModule.Sample;
 import org.bukkit.Bukkit;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -17,6 +20,9 @@ import java.util.Map;
  * ponytail: no Jackson dependency, ~one spot builds the whole string.
  */
 public final class WebStats {
+
+    /** Upper bound on points sent to the chart — more than this is invisible at chart width. */
+    private static final int CHART_POINTS = 180;
 
     private final Smp_library plugin;
     private final long startedAt;
@@ -27,121 +33,178 @@ public final class WebStats {
     }
 
     public String snapshot() {
-        ThreadMXBean tb = ManagementFactory.getThreadMXBean();
-        Runtime r = Runtime.getRuntime();
-        long total = r.totalMemory();
-        long free = r.freeMemory();
-        long used = total - free;
-        long max = r.maxMemory();
+        ThreadMXBean threads = ManagementFactory.getThreadMXBean();
+        Runtime runtime = Runtime.getRuntime();
+        long total = runtime.totalMemory();
+        long used = total - runtime.freeMemory();
 
-        double tps1 = 20, tps5 = 20, tps15 = 20;
+        double[] tps = { 20, 20, 20 };
         try {
-            double[] tps = Bukkit.getTPS();
-            if (tps != null) { tps1 = tps[0]; tps5 = tps[1]; tps15 = tps[2]; }
-        } catch (Throwable ignored) {}
+            double[] live = Bukkit.getTPS();
+            if (live != null && live.length >= 3) tps = live;
+        } catch (Throwable ignored) {
+            // not a Paper server, or TPS not available yet
+        }
 
-        int online = Bukkit.getOnlinePlayers().size();
-        int maxPlayers = Bukkit.getMaxPlayers();
-        long uptimeMs = System.currentTimeMillis() - startedAt;
-
-        return snap(tps1, tps5, tps15,
-                tb.getThreadCount(), tb.getDaemonThreadCount(),
-                used, total, max,
-                online, maxPlayers, uptimeMs);
-    }
-
-    private String snap(double tps1, double tps5, double tps15,
-                        int threads, int daemons,
-                        long heapUsed, long heapTotal, long heapMax,
-                        int online, int maxPlayers, long uptimeMs) {
-        StringBuilder s = new StringBuilder(800);
-        s.append('{');
-        s.append("\"uptime\":").append(uptimeMs).append(',');
-        s.append("\"tps\":{\"1m\":").append(round(tps1))
-         .append(",\"5m\":").append(round(tps5))
-         .append(",\"15m\":").append(round(tps15)).append("},");
-        s.append("\"threads\":{\"count\":").append(threads)
-         .append(",\"daemon\":").append(daemons).append("},");
-        s.append("\"heap\":{\"used\":").append(heapUsed)
-         .append(",\"total\":").append(heapTotal)
-         .append(",\"max\":").append(heapMax).append("},");
-        s.append("\"players\":{\"online\":").append(online)
-         .append(",\"max\":").append(maxPlayers).append("},");
-        s.append("\"modules\":").append(modulesJson()).append(',');
-        s.append("\"chatgames\":").append(chatgamesJson());
-        s.append('}');
-        return s.toString();
+        StringBuilder json = new StringBuilder(1024);
+        json.append('{');
+        json.append("\"now\":").append(System.currentTimeMillis()).append(',');
+        json.append("\"uptime\":").append(System.currentTimeMillis() - startedAt).append(',');
+        json.append("\"server\":").append(jsonStr(Bukkit.getVersion())).append(',');
+        json.append("\"plugin\":").append(jsonStr(plugin.getPluginMeta().getVersion())).append(',');
+        json.append("\"tps\":{\"1m\":").append(round(tps[0]))
+                .append(",\"5m\":").append(round(tps[1]))
+                .append(",\"15m\":").append(round(tps[2])).append("},");
+        json.append("\"threads\":{\"count\":").append(threads.getThreadCount())
+                .append(",\"daemon\":").append(threads.getDaemonThreadCount()).append("},");
+        json.append("\"heap\":{\"used\":").append(used)
+                .append(",\"total\":").append(total)
+                .append(",\"max\":").append(runtime.maxMemory()).append("},");
+        json.append("\"players\":{\"online\":").append(Bukkit.getOnlinePlayers().size())
+                .append(",\"max\":").append(Bukkit.getMaxPlayers()).append("},");
+        json.append("\"modules\":").append(modulesJson()).append(',');
+        json.append("\"chatgames\":").append(chatgamesJson());
+        json.append('}');
+        return json.toString();
     }
 
     private String modulesJson() {
-        ModuleManager mm = plugin.modules();
-        if (mm == null) return "[]";
-        Collection<Module> mods = mm.active();
-        StringBuilder b = new StringBuilder();
-        b.append('[');
+        ModuleManager modules = plugin.modules();
+        if (modules == null) return "[]";
+
+        StringBuilder json = new StringBuilder("[");
         boolean first = true;
-        for (Module m : mods) {
-            if (!first) b.append(',');
+        for (Module module : modules.active()) {
+            if (!first) json.append(',');
             first = false;
-            String id = jsonStr(m.id());
-            boolean enabled = mm.isEnabled(m.id());
-            b.append("{\"id\":").append(id)
-             .append(",\"enabled\":").append(enabled).append('}');
+            json.append("{\"id\":").append(jsonStr(module.id()))
+                    .append(",\"enabled\":").append(modules.isEnabled(module.id()))
+                    // enabled in config but not started = it threw on boot; worth surfacing
+                    .append(",\"running\":").append(modules.isRunning(module.id()))
+                    .append('}');
         }
-        b.append(']');
-        return b.toString();
+        return json.append(']').toString();
     }
 
     private String chatgamesJson() {
-        ModuleManager mm = plugin.modules();
-        if (mm == null) return "{}";
-        Module m = mm.module("chatgames");
-        if (!(m instanceof ChatGamesModule cgm)) return "{\"enabled\":false}";
-        boolean active = cgm.currentAnswer() != null;
-        String type = cgm.currentType() != null ? cgm.currentType().name() : null;
-        List<Map<String, String>> recent = cgm.recentGames();
-        StringBuilder b = new StringBuilder();
-        b.append("{\"enabled\":true,\"active\":").append(active);
-        b.append(",\"type\":").append(type == null ? "null" : jsonStr(type));
-        b.append(",\"answer\":").append(jsonStr(cgm.currentAnswer()));
-        b.append(",\"history\":[");
-        boolean first = true;
-        for (Map<String, String> e : recent) {
-            if (!first) b.append(',');
-            first = false;
-            b.append("{\"time\":").append(jsonStr(e.getOrDefault("time", "")))
-             .append(",\"event\":").append(jsonStr(e.getOrDefault("event", "")))
-             .append(",\"type\":").append(jsonStr(e.getOrDefault("type", "")))
-             .append(",\"detail\":").append(jsonStr(e.getOrDefault("detail", "")))
-             .append('}');
+        ModuleManager modules = plugin.modules();
+        ChatGamesModule chatGames = modules == null ? null : modules.module("chatgames", ChatGamesModule.class);
+        if (chatGames == null) return "{\"enabled\":false}";
+
+        StringBuilder json = new StringBuilder("{\"enabled\":true");
+        json.append(",\"active\":").append(chatGames.currentAnswer() != null);
+        json.append(",\"type\":").append(jsonStr(chatGames.currentType() == null
+                ? null : chatGames.currentType().name()));
+        json.append(",\"prompt\":").append(jsonStr(chatGames.currentPrompt()));
+        json.append(",\"answer\":").append(jsonStr(chatGames.currentAnswer()));
+        json.append(",\"endsAt\":").append(chatGames.roundEndsAt());
+        json.append(",\"history\":[");
+
+        List<Map<String, String>> history = chatGames.recentGames();
+        for (int i = 0; i < history.size(); i++) {
+            Map<String, String> entry = history.get(i);
+            if (i > 0) json.append(',');
+            json.append("{\"time\":").append(jsonStr(entry.getOrDefault("time", "")))
+                    .append(",\"event\":").append(jsonStr(entry.getOrDefault("event", "")))
+                    .append(",\"type\":").append(jsonStr(entry.getOrDefault("type", "")))
+                    .append(",\"detail\":").append(jsonStr(entry.getOrDefault("detail", "")))
+                    .append('}');
         }
-        b.append("]}");
-        return b.toString();
+        return json.append("]}").toString();
     }
 
-    private static double round(double v) {
-        return Math.round(v * 100.0) / 100.0;
+    /**
+     * The player-count history for the chart, as {@code [[timestamp, online], …]}.
+     *
+     * <p>Samples are bucketed down to at most {@link #CHART_POINTS} points — a day at one
+     * sample a minute is 1440 readings, far more than a chart that wide can show. Each bucket
+     * keeps its <em>maximum</em>, not its mean, because the peak is the thing being asked
+     * about and averaging would flatten it away.
+     */
+    public String playerHistory() {
+        ModuleManager modules = plugin.modules();
+        PlayerStatsModule playerStats = modules == null
+                ? null : modules.module("playerstats", PlayerStatsModule.class);
+        if (playerStats == null) {
+            return "{\"enabled\":false,\"points\":[],\"peak\":null}";
+        }
+
+        List<Sample> samples = playerStats.window();
+        Peak peak = playerStats.peakToday();
+
+        // The spacing of the points we actually send — which is the bucket width once
+        // downsampling kicks in, not the raw sample interval. The chart uses this to tell a
+        // real outage apart from normal spacing; sending the raw interval made every
+        // downsampled point look like a gap and drew nothing at all.
+        long resolution = playerStats.sampleIntervalMs();
+        List<Sample> plotted = samples;
+        if (samples.size() > CHART_POINTS) {
+            long span = samples.get(samples.size() - 1).timestamp() - samples.get(0).timestamp();
+            resolution = Math.max(resolution, Math.max(1L, span / CHART_POINTS));
+            plotted = downsample(samples, resolution);
+        }
+
+        StringBuilder json = new StringBuilder(4096);
+        json.append("{\"enabled\":true");
+        json.append(",\"now\":").append(System.currentTimeMillis());
+        json.append(",\"sampleInterval\":").append(playerStats.sampleIntervalMs());
+        json.append(",\"resolution\":").append(resolution);
+        json.append(",\"average\":").append(round(playerStats.average()));
+        json.append(",\"peak\":");
+        if (peak.online() <= 0) json.append("null");
+        else json.append("{\"online\":").append(peak.online())
+                .append(",\"at\":").append(peak.timestamp()).append('}');
+        json.append(",\"points\":[");
+
+        boolean first = true;
+        for (Sample sample : plotted) {
+            if (!first) json.append(',');
+            first = false;
+            json.append('[').append(sample.timestamp()).append(',').append(sample.online()).append(']');
+        }
+        return json.append("]}").toString();
     }
 
-    static String jsonStr(String s) {
-        if (s == null) return "null";
-        StringBuilder b = new StringBuilder(s.length() + 2);
-        b.append('"');
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
+    /** Buckets by time so gaps stay gaps, keeping the max (and its real timestamp) per bucket. */
+    private static List<Sample> downsample(List<Sample> samples, long bucketMs) {
+        long from = samples.get(0).timestamp();
+        List<Sample> out = new ArrayList<>(CHART_POINTS + 1);
+        Sample best = null;
+        long bucketEnd = from + bucketMs;
+
+        for (Sample sample : samples) {
+            if (sample.timestamp() > bucketEnd) {
+                if (best != null) out.add(best);
+                best = null;
+                bucketEnd = sample.timestamp() + bucketMs;
+            }
+            if (best == null || sample.online() > best.online()) best = sample;
+        }
+        if (best != null) out.add(best);
+        return out;
+    }
+
+    private static double round(double value) {
+        return Math.round(value * 100.0) / 100.0;
+    }
+
+    static String jsonStr(String value) {
+        if (value == null) return "null";
+        StringBuilder out = new StringBuilder(value.length() + 2).append('"');
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
             switch (c) {
-                case '"' -> b.append("\\\"");
-                case '\\' -> b.append("\\\\");
-                case '\n' -> b.append("\\n");
-                case '\r' -> b.append("\\r");
-                case '\t' -> b.append("\\t");
+                case '"' -> out.append("\\\"");
+                case '\\' -> out.append("\\\\");
+                case '\n' -> out.append("\\n");
+                case '\r' -> out.append("\\r");
+                case '\t' -> out.append("\\t");
                 default -> {
-                    if (c < 0x20) b.append(String.format("\\u%04x", (int) c));
-                    else b.append(c);
+                    if (c < 0x20) out.append(String.format("\\u%04x", (int) c));
+                    else out.append(c);
                 }
             }
         }
-        b.append('"');
-        return b.toString();
+        return out.append('"').toString();
     }
 }

@@ -1,13 +1,17 @@
 package dev.lorenzzz.smplibrary.placeholders;
 
 import dev.lorenzzz.smplibrary.Smp_library;
-import dev.lorenzzz.smplibrary.modules.Module;
+import dev.lorenzzz.smplibrary.manager.ManagerService;
+import dev.lorenzzz.smplibrary.manager.ModuleManager;
 import dev.lorenzzz.smplibrary.modules.keyall.KeyAllModule;
+import dev.lorenzzz.smplibrary.util.Ticks;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.ConfigurationSection;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Locale;
 
 /**
  * Exposes library placeholders to PlaceholderAPI.
@@ -21,6 +25,8 @@ import org.jetbrains.annotations.Nullable;
  */
 public final class LibraryPlaceholders extends PlaceholderExpansion {
 
+    private static final String KEYALL_PREFIX = "keyall_";
+
     @Override public @NotNull String getIdentifier() { return "smplibrary"; }
     @Override public @NotNull String getAuthor() { return "lorenzzz"; }
     @Override public @NotNull String getVersion() { return "1.0-SNAPSHOT"; }
@@ -28,53 +34,41 @@ public final class LibraryPlaceholders extends PlaceholderExpansion {
 
     @Override
     public @Nullable String onRequest(OfflinePlayer player, @NotNull String params) {
-        Smp_library plugin = Smp_library.getInstance();
-        if (plugin == null) return "";
-        if (plugin.getManagers() == null || plugin.getManagers().modules() == null) return "";
-        String p = params.toLowerCase();
+        ModuleManager modules = modules();
+        if (modules == null) return "";
 
-        if (p.startsWith("keyall_")) {
-            if (!plugin.getManagers().modules().isEnabled("keyall")) return "";
-            ConfigurationSection cfg = plugin.getConfig().getConfigurationSection("MODULES.keyall");
-            if (cfg == null) return "";
-            int amount = cfg.getInt("amount", 1);
-            String crate = cfg.getString("crate-name", "common_crate");
-
-            Module m = plugin.getManagers().modules().module("keyall");
-            long next = (m instanceof KeyAllModule k) ? k.nextRunEpoch() : 0L;
-
-            return switch (p) {
-                case "keyall_formatted" -> formatCountdown(next);
-                case "keyall_seconds"   -> String.valueOf(Math.max(0, (next - System.currentTimeMillis()) / 1000L));
-                case "keyall_crate"     -> crate;
-                case "keyall_amount"    -> String.valueOf(amount);
-                default -> null;
-            };
-        }
-        if (p.equals("modules_active")) {
-            int n = 0;
-            var mods = plugin.getConfig().getConfigurationSection("MODULES");
-            if (mods != null) for (String id : mods.getKeys(false)) if (plugin.getManagers().modules().isEnabled(id)) n++;
-            return String.valueOf(n);
-        }
+        String key = params.toLowerCase(Locale.ROOT);
+        if (key.startsWith(KEYALL_PREFIX)) return keyall(modules, key);
+        if (key.equals("modules_active")) return String.valueOf(countEnabled(modules));
         return null;
     }
 
-    /** "2d 3h 4m 5s" trimmed to the first non-zero pair, "now" once expired. */
-    private static String formatCountdown(long nextRunEpoch) {
-        long remaining = (nextRunEpoch - System.currentTimeMillis()) / 1000L;
-        if (remaining <= 0) return "now";
+    private String keyall(ModuleManager modules, String key) {
+        KeyAllModule module = modules.module("keyall", KeyAllModule.class);
+        if (module == null) return "";
 
-        long days = remaining / 86_400L;   remaining %= 86_400L;
-        long hrs  = remaining / 3_600L;    remaining %= 3_600L;
-        long mins = remaining / 60L;       remaining %= 60L;
-        long secs = remaining;
+        ConfigurationSection cfg = Smp_library.getInstance().getConfig()
+                .getConfigurationSection("MODULES.keyall");
+        if (cfg == null) return "";
 
-        StringBuilder sb = new StringBuilder();
-        if (days > 0) sb.append(days).append('d');
-        if (hrs  > 0 || sb.length() > 0) sb.append(sb.length() > 0 ? " " : "").append(hrs).append('h');
-        if (mins > 0 || sb.length() > 0) sb.append(sb.length() > 0 ? " " : "").append(mins).append('m');
-        sb.append(sb.length() > 0 ? " " : "").append(secs).append('s');
-        return sb.toString();
+        long remaining = module.nextRunEpoch() - System.currentTimeMillis();
+        return switch (key) {
+            case "keyall_formatted" -> Ticks.countdown(remaining);
+            case "keyall_seconds" -> String.valueOf(Math.max(0, remaining / 1000L));
+            case "keyall_crate" -> cfg.getString("crate-name", "common_crate");
+            case "keyall_amount" -> String.valueOf(cfg.getInt("amount", 1));
+            default -> null;
+        };
+    }
+
+    private static int countEnabled(ModuleManager modules) {
+        return (int) modules.active().stream().filter(m -> modules.isEnabled(m.id())).count();
+    }
+
+    private static ModuleManager modules() {
+        Smp_library plugin = Smp_library.getInstance();
+        if (plugin == null) return null;
+        ManagerService managers = plugin.getManagers();
+        return managers == null ? null : managers.modules();
     }
 }

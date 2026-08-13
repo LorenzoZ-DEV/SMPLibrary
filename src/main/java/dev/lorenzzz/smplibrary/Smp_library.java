@@ -13,9 +13,10 @@ public final class Smp_library extends JavaPlugin {
     private ManagerService managers;
 
     @Override
-    public void onLoad(){
+    public void onLoad() {
         C.logload();
     }
+
     @Override
     public void onEnable() {
         instance = this;
@@ -28,9 +29,9 @@ public final class Smp_library extends JavaPlugin {
 
         this.managers = new ManagerService(this);
         managers.enable();
+
         C.line();
         C.logstart();
-
     }
 
     @Override
@@ -43,5 +44,8 @@ public final class Smp_library extends JavaPlugin {
         instance = null;
     }
 
-    public ModuleManager modules() { return managers == null ? null : managers.modules(); }
+    /** Shortcut for the module registry; {@code null} before enable and after disable. */
+    public ModuleManager modules() {
+        return managers == null ? null : managers.modules();
+    }
 }
