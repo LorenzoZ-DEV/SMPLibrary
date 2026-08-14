@@ -26,10 +26,12 @@ public final class WebStats {
 
     private final Smp_library plugin;
     private final long startedAt;
+    private final SparkHook spark;
 
-    public WebStats(Smp_library plugin, long startedAt) {
+    public WebStats(Smp_library plugin, long startedAt, SparkHook spark) {
         this.plugin = plugin;
         this.startedAt = startedAt;
+        this.spark = spark;
     }
 
     public String snapshot() {
@@ -61,14 +63,62 @@ public final class WebStats {
                 .append(",\"total\":").append(total)
                 .append(",\"max\":").append(runtime.maxMemory()).append("},");
         json.append("\"players\":{\"online\":").append(Bukkit.getOnlinePlayers().size())
-                .append(",\"max\":").append(Bukkit.getMaxPlayers()).append("},");
+                .append(",\"max\":").append(Bukkit.getMaxPlayers())
+                .append(",\"record\":").append(recordJson()).append("},");
+        json.append("\"cpu\":").append(cpuJson()).append(',');
         json.append("\"modules\":").append(modulesJson()).append(',');
-        json.append("\"chatgames\":").append(chatgamesJson());
+        json.append("\"chatgames\":").append(chatgamesJson()).append(',');
+        // Polled every snapshot rather than cached: the whole point of the spark panel is
+        // that it moves in real time alongside TPS and heap.
+        json.append("\"spark\":").append(spark.json());
         json.append('}');
         return json.toString();
     }
 
-    private String modulesJson() {
+    /**
+     * The all-time concurrent-player record, or null when playerstats is not running.
+     * It rides in the one-second snapshot rather than the hourly history payload so the
+     * dashboard's progress bar tracks the live player count.
+     */
+    private String recordJson() {
+        ModuleManager modules = plugin.modules();
+        PlayerStatsModule playerStats = modules == null
+                ? null : modules.module("playerstats", PlayerStatsModule.class);
+        if (playerStats == null) return "null";
+
+        Peak record = playerStats.record();
+        if (record.online() <= 0) return "null";
+        // A zero timestamp means the figure was declared in config, so there is no "when".
+        return "{\"online\":" + record.online()
+                + ",\"at\":" + (record.timestamp() > 0 ? record.timestamp() : "null") + '}';
+    }
+
+    /**
+     * JVM-level CPU load, as a percentage. This is the fallback the overview card uses when
+     * spark is absent; spark's own reading is finer-grained and wins when it is hooked.
+     * The values come from the HotSpot-specific MXBean, hence the guarded cast.
+     */
+    private static String cpuJson() {
+        try {
+            var bean = ManagementFactory.getOperatingSystemMXBean();
+            if (bean instanceof com.sun.management.OperatingSystemMXBean os) {
+                return "{\"process\":" + load(os.getProcessCpuLoad())
+                        + ",\"system\":" + load(os.getCpuLoad()) + '}';
+            }
+        } catch (Throwable ignored) {
+            // non-HotSpot JVM, or the bean is not exposed
+        }
+        return "{\"process\":null,\"system\":null}";
+    }
+
+    /** The MXBean returns a negative value until it has a reading; that is "unknown", not 0%. */
+    private static String load(double fraction) {
+        if (fraction < 0 || !Double.isFinite(fraction)) return "null";
+        return String.valueOf(round(fraction * 100.0));
+    }
+
+    /** Module states, also returned on their own so a toggle can answer with the new truth. */
+    public String modulesJson() {
         ModuleManager modules = plugin.modules();
         if (modules == null) return "[]";
 

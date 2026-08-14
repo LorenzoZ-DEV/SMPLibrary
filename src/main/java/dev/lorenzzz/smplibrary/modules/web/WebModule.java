@@ -14,9 +14,12 @@ public final class WebModule extends AbstractModule {
 
     private static final List<String> CONNECTION_KEYS = List.of("host", "port", "token");
     private static final int PORT_SCAN_RANGE = 20;
+    /** Five seconds — long enough for a bundled or plugin spark to have published its API. */
+    private static final long SPARK_PROBE_DELAY_TICKS = 100L;
 
     private WebServer server;
     private WebAuth auth;
+    private SparkHook spark;
     private String boundHost;
     private int boundPort = -1;
 
@@ -43,9 +46,10 @@ public final class WebModule extends AbstractModule {
         }
 
         auth = new WebAuth(cfg.getString("token", null));
+        spark = new SparkHook();
         WebLog log = new WebLog();
         server = new WebServer(plugin, auth,
-                new WebStats(plugin, System.currentTimeMillis()),
+                new WebStats(plugin, System.currentTimeMillis(), spark),
                 new ConfigEditor(plugin, log), log);
 
         try {
@@ -54,6 +58,12 @@ public final class WebModule extends AbstractModule {
             this.boundPort = port;
             C.info("Web dashboard started on " + host + ":" + port);
             log.log("Web dashboard started on " + host + ":" + port);
+
+            // Probe spark once the server has settled, purely so the console reports the
+            // integration at boot. Without this the hook only attaches — and only logs — when
+            // somebody first opens the dashboard. Failure here is not interesting: the hook
+            // keeps retrying on its own, and the Performance tab explains the current state.
+            later(() -> spark.attached(), SPARK_PROBE_DELAY_TICKS);
         } catch (Exception e) {
             C.warning("Failed to start web dashboard: " + e.getMessage());
             server = null;
@@ -112,6 +122,10 @@ public final class WebModule extends AbstractModule {
             server = null;
         }
         auth = null;
+        if (spark != null) {
+            spark.detach();
+            spark = null;
+        }
         boundHost = null;
         boundPort = -1;
     }

@@ -81,40 +81,84 @@ public final class ModuleManager implements Manager {
 
     /** Stops everything that is running, then boots the modules currently flagged enabled. */
     public void reload() {
-        stopRunningModules();
-        startEnabledModules();
+        reload(Set.of());
+    }
+
+    /**
+     * Same as {@link #reload()}, but leaves the named modules exactly as they are.
+     *
+     * <p>The web dashboard needs this: it is itself a module, and a blanket reload would stop
+     * and restart the HTTP server that is still serving the request asking for the reload —
+     * dropping the event stream and invalidating the caller's session mid-flight.
+     */
+    public void reload(Set<String> skip) {
+        for (String id : List.copyOf(running)) {
+            if (!skip.contains(id)) stopModule(id);
+        }
+        startEnabledModules(skip);
+    }
+
+    /**
+     * Starts or stops a single module in place, without disturbing its neighbours.
+     * Returns {@code null} on success, otherwise a message fit to show the caller.
+     */
+    public String setEnabled(String id, boolean enabled) {
+        if (!modules.containsKey(id)) return "unknown module '" + id + "'";
+        if (!enabled) {
+            stopModule(id);
+            return null;
+        }
+        if (running.contains(id)) return null;
+        return startModule(id) ? null : "module '" + id + "' threw while starting — check the console";
     }
 
     private void startEnabledModules() {
+        startEnabledModules(Set.of());
+    }
+
+    private void startEnabledModules(Set<String> skip) {
         ConfigurationSection section = config.modules();
         if (section == null) return;
 
         for (String id : section.getKeys(false)) {
-            Module module = modules.get(id);
-            if (module == null || !config.isEnabled(id)) continue;
-            try {
-                module.bind(managers);
-                module.onEnable();
-                running.add(id);
-                C.info("Module '" + id + "' enabled.");
-            } catch (Exception e) {
-                C.warning("Error loading module '" + id + "': " + e.getMessage());
-                plugin.getLogger().log(Level.WARNING, "Module '" + id + "' failed to start", e);
-            }
+            if (skip.contains(id) || !config.isEnabled(id)) continue;
+            startModule(id);
+        }
+    }
+
+    /** Boots one module. Returns false when it is unknown or threw on the way up. */
+    private boolean startModule(String id) {
+        Module module = modules.get(id);
+        if (module == null) return false;
+        if (running.contains(id)) return true;
+        try {
+            module.bind(managers);
+            module.onEnable();
+            running.add(id);
+            C.info("Module '" + id + "' enabled.");
+            return true;
+        } catch (Exception e) {
+            C.warning("Error loading module '" + id + "': " + e.getMessage());
+            plugin.getLogger().log(Level.WARNING, "Module '" + id + "' failed to start", e);
+            return false;
+        }
+    }
+
+    /** Stops one module, but only if it actually started — onDisable must never run unpaired. */
+    private void stopModule(String id) {
+        Module module = modules.get(id);
+        if (module == null || !running.remove(id)) return;
+        try {
+            module.onDisable();
+            C.info("Module '" + id + "' disabled.");
+        } catch (Exception e) {
+            C.warning("Error disabling module '" + id + "': " + e.getMessage());
         }
     }
 
     /** Disables only the modules that actually started, so onDisable never runs unpaired. */
     private void stopRunningModules() {
-        for (String id : List.copyOf(running)) {
-            Module module = modules.get(id);
-            if (module == null) continue;
-            try {
-                module.onDisable();
-            } catch (Exception e) {
-                C.warning("Error disabling module '" + id + "': " + e.getMessage());
-            }
-        }
+        for (String id : List.copyOf(running)) stopModule(id);
         running.clear();
     }
 

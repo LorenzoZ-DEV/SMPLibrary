@@ -9,19 +9,58 @@ def getBuildVersion() {
     try {
         def hash = 'git rev-parse --short HEAD'.execute().text.trim()
         def count = 'git rev-list --count HEAD'.execute().text.trim()
-        if (hash && count) return "1.0.${count}-${hash}"
+        if (hash && count) return "1.121.${count}-${hash}"
     } catch (Exception ignored) {}
     return "1.0-" + new Date().format('yyyyMMdd-HHmmss')
 }
 version = getBuildVersion()
 
+/*
+ * Every repository declares which groups it actually hosts.
+ *
+ * Without these filters Gradle walks the whole list for each artifact, so a single slow or
+ * unreachable host stalls resolution of dependencies it does not even serve — which is where
+ * "Connection timed out: getsockopt" comes from. repo.papermc.io in particular can take ~10s
+ * to answer, and it was being asked about every group in the build.
+ *
+ * It also fixes a resolution surprise: papermc's maven-public mirrors an old spark-api snapshot
+ * (0.1-20240720), and because it is listed first that stale copy won, not the current one from
+ * lucko's own repo.
+ */
 repositories {
     mavenCentral()
-    maven { url 'https://repo.papermc.io/repository/maven-public/' }   // Paper / Adventure
-    maven { url 'https://repo.aikar.co/content/groups/aikar/' }        // ACF
-    maven { url 'https://repo.extendedclip.com/content/repositories/placeholderapi/' } // PlaceholderAPI
-    maven { url 'https://repo.j4c0b3y.net/public/' }                  // MenuAPI
-    maven { url 'https://repo.groupez.dev/releases' }                 // zEssentials API
+
+    maven {
+        url 'https://repo.papermc.io/repository/maven-public/'          // Paper / Adventure
+        content {
+            includeGroupByRegex 'io\\.papermc.*'
+            includeGroupByRegex 'com\\.destroystokyo.*'
+            // paper-api's own transitives, none of which are on Maven Central:
+            includeGroup 'com.mojang'                                   // brigadier
+            includeGroup 'net.md-5'                                     // bungeecord-chat
+            includeGroup 'org.spigotmc'
+        }
+    }
+    maven {
+        url 'https://repo.aikar.co/content/groups/aikar/'               // ACF
+        content { includeGroupByRegex 'co\\.aikar.*' }
+    }
+    maven {
+        url 'https://repo.extendedclip.com/content/repositories/placeholderapi/'
+        content { includeGroup 'me.clip' }
+    }
+    maven {
+        url 'https://repo.j4c0b3y.net/public/'                          // MenuAPI
+        content { includeGroupByRegex 'net\\.j4c0b3y.*' }
+    }
+    maven {
+        url 'https://repo.groupez.dev/releases'                         // zEssentials API
+        content { includeGroupByRegex 'fr\\.maxlego08.*' }
+    }
+    maven {
+        url 'https://repo.lucko.me/'                                    // spark-api (flat layout)
+        content { includeGroupByRegex 'me\\.lucko.*' }
+    }
 }
 
 dependencies {
@@ -29,6 +68,9 @@ dependencies {
     compileOnly 'io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT'
     compileOnly 'me.clip:placeholderapi:2.11.6'
     compileOnly 'fr.maxlego08.essentials:zessentials-api:1.0.2.6'     // zEssentials API
+    // spark, for the live performance panel. Soft dependency: every reference to these
+    // classes is confined to SparkBridge, which only loads when the plugin is installed.
+    compileOnly 'me.lucko:spark-api:0.1-SNAPSHOT'
 
     // Lombok — compile-time only, never shaded:
     compileOnly 'org.projectlombok:lombok:1.18.34'

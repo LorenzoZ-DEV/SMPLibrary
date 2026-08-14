@@ -236,12 +236,31 @@ public final class WebServer {
             return;
         }
         String moduleId = path.substring("/api/module/".length(), path.length() - "/toggle".length());
-        String error = editor.toggleModule(moduleId, remoteHost(exchange));
-        if (error != null) {
-            sendJson(exchange, 400, "{\"error\":" + WebStats.jsonStr(error) + "}");
-        } else {
-            sendJson(exchange, 200, "{\"ok\":true,\"log\":" + logJson() + "}");
+
+        // Starting a module registers listeners and schedules tasks: server thread only. We
+        // wait for the result rather than fire-and-forget, so the response carries the state
+        // the module is actually in — the browser used to be told "ok" before anything moved.
+        ConfigEditor.ToggleResult result =
+                onMainThread(() -> editor.toggleModule(moduleId, remoteHost(exchange)));
+
+        if (result == null) {
+            sendJson(exchange, 504, "{\"error\":\"the server did not apply the toggle in time\"}");
+            return;
         }
+        if (result.id() == null) {
+            sendJson(exchange, 400, "{\"error\":" + WebStats.jsonStr(result.error()) + "}");
+            return;
+        }
+
+        // The flip landed even when the module then threw on the way up; that is a warning to
+        // show, not a failed request, and the module list below already reflects it.
+        sendJson(exchange, 200, "{\"ok\":true"
+                + ",\"id\":" + WebStats.jsonStr(result.id())
+                + ",\"enabled\":" + result.enabled()
+                + ",\"running\":" + result.running()
+                + ",\"warning\":" + WebStats.jsonStr(result.error())
+                + ",\"modules\":" + stats.modulesJson()
+                + ",\"log\":" + logJson() + "}");
     }
 
     private void configRoute(HttpExchange exchange, String scope) throws IOException {
@@ -411,21 +430,36 @@ public final class WebServer {
                 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
                 <meta name="viewport" content="width=device-width,initial-scale=1">
                 <title>SMP Library — Sign in</title><style>
-                :root{color-scheme:dark}
-                body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0d1117;color:#e6edf3;
-                font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
-                form{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:32px;width:min(92vw,380px)}
-                h1{margin:0 0 4px;font-size:18px}p{margin:0 0 20px;color:#8b949e;font-size:13px;line-height:1.5}
-                input{width:100%;padding:10px 12px;border-radius:8px;border:1px solid #30363d;background:#0d1117;
-                color:#e6edf3;font-family:ui-monospace,monospace;font-size:13px}
-                button{width:100%;margin-top:12px;padding:10px;border:0;border-radius:8px;background:#58a6ff;
-                color:#0d1117;font-weight:600;font-size:14px;cursor:pointer}
-                button:hover{background:#79b8ff}
+                :root{color-scheme:dark;--line:#222c3b;--accent:#58a6ff}
+                *{box-sizing:border-box;margin:0}
+                body{min-height:100vh;display:grid;place-items:center;padding:20px;background:#0a0e15;color:#e7edf5;
+                font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;
+                background-image:radial-gradient(900px 500px at 20% -10%,#1b2a45 0,transparent 60%),
+                radial-gradient(700px 400px at 100% 10%,#1d2140 0,transparent 55%)}
+                form{background:#10151e;border:1px solid var(--line);border-radius:16px;padding:32px;
+                width:min(94vw,390px);box-shadow:0 12px 40px #0000008c}
+                .mark{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;font-size:19px;
+                background:linear-gradient(140deg,var(--accent),#7c8cff);margin-bottom:16px}
+                h1{font-size:17px;font-weight:650;letter-spacing:-.2px}
+                p{margin:6px 0 22px;color:#93a1b5;font-size:13px;line-height:1.55}
+                code{font-family:ui-monospace,monospace;color:#e7edf5;background:#1d2634;
+                padding:1px 5px;border-radius:5px;font-size:12px}
+                label{display:block;font-size:11.5px;font-weight:600;letter-spacing:.05em;
+                text-transform:uppercase;color:#93a1b5;margin-bottom:6px}
+                input{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);
+                background:#080c12;color:#e7edf5;font-family:ui-monospace,monospace;font-size:13px;outline:none}
+                input:focus{border-color:var(--accent);box-shadow:0 0 0 3px #58a6ff1f}
+                button{width:100%;margin-top:14px;padding:11px;border:0;border-radius:8px;
+                background:linear-gradient(160deg,var(--accent),#4a86e8);
+                color:#06101f;font-weight:650;font-size:14px;cursor:pointer}
+                button:hover{filter:brightness(1.09)}
                 </style></head><body>
                 <form onsubmit="location.search='?token='+encodeURIComponent(this.t.value.trim());return false">
+                <div class="mark">&#128218;</div>
                 <h1>SMP Library Dashboard</h1>
                 <p>Paste the dashboard token, or open the link from <code>/smpl webedit</code> in game.</p>
-                <input name="t" autofocus placeholder="token" autocomplete="off" spellcheck="false">
+                <label for="t">Access token</label>
+                <input id="t" name="t" autofocus placeholder="paste it here" autocomplete="off" spellcheck="false">
                 <button type="submit">Sign in</button>
                 </form></body></html>
                 """;

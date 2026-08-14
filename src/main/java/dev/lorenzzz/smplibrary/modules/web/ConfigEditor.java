@@ -79,11 +79,18 @@ public final class ConfigEditor {
         Bukkit.getScheduler().runTask(plugin, () -> {
             switch (scope) {
                 case "config" -> {
+                    // Snapshot the dashboard's own settings before the reload, so we can tell
+                    // whether restarting it is actually necessary — see below.
+                    String webBefore = webSettings();
                     plugin.reloadConfig();
                     if (plugin.getManagers() != null) {
                         plugin.getManagers().config().reload();
                         plugin.getManagers().messages().reload();
-                        plugin.getManagers().modules().reload();
+                        // Restarting the web module drops this connection and every session with
+                        // it, so only do it when its own section changed (host, port, token…).
+                        boolean webChanged = !webBefore.equals(webSettings());
+                        if (webChanged) log.log("MODULES.web changed — restarting the dashboard");
+                        plugin.getManagers().modules().reload(webChanged ? Set.of() : Set.of("web"));
                     }
                 }
                 case "messages" -> {
@@ -103,35 +110,71 @@ public final class ConfigEditor {
         return null;
     }
 
-    public String toggleModule(String moduleId, String who) {
-        if (moduleId == null || moduleId.isBlank()) return "invalid module id";
+    /**
+     * Outcome of a toggle. {@code error} non-null means nothing changed; otherwise the two
+     * flags are the module's state <em>after</em> the flip, so the caller can answer the HTTP
+     * request with the new truth instead of leaving the browser to guess.
+     */
+    public record ToggleResult(String error, String id, boolean enabled, boolean running) {
+        static ToggleResult failed(String message) { return new ToggleResult(message, null, false, false); }
+    }
+
+    /**
+     * Flips {@code MODULES.<id>.enabled} and starts or stops that one module.
+     *
+     * <p>Must run on the server thread — enabling a module registers listeners and schedules
+     * tasks. It used to hand the work to the scheduler and return immediately, which meant the
+     * HTTP response went out before anything had actually changed.
+     *
+     * <p>It also used to call {@code modules().reload()}, restarting <em>every</em> module. That
+     * included the web module: the dashboard tore down its own HTTP server mid-request, closing
+     * the event stream and throwing away the session that had just asked for the toggle. The
+     * browser then reconnected into a fresh {@link WebAuth} that had never heard of its cookie,
+     * so the UI sat there frozen on the state from before the click. Touching only the module
+     * being toggled is both the correct fix and much cheaper.
+     */
+    public ToggleResult toggleModule(String moduleId, String who) {
+        if (moduleId == null || moduleId.isBlank()) return ToggleResult.failed("invalid module id");
         // Toggling web off from the web dashboard would kill the connection mid-request.
-        if ("web".equals(moduleId)) return "cannot toggle the web module from the dashboard";
+        if ("web".equals(moduleId)) return ToggleResult.failed("cannot toggle the web module from the dashboard");
         if (plugin.getManagers() == null || plugin.getManagers().modules().module(moduleId) == null) {
-            return "unknown module '" + moduleId + "'";
+            return ToggleResult.failed("unknown module '" + moduleId + "'");
         }
 
-        boolean current = plugin.getConfig().getBoolean("MODULES." + moduleId + ".enabled", false);
-        boolean newState = !current;
+        // Re-read first: the editor writes config.yml straight to disk, so the copy behind
+        // plugin.getConfig() can be stale, and saveConfig() would write those stale values back.
+        plugin.reloadConfig();
 
-        plugin.getConfig().set("MODULES." + moduleId + ".enabled", newState);
+        String path = "MODULES." + moduleId + ".enabled";
+        boolean newState = !plugin.getConfig().getBoolean(path, false);
+
+        plugin.getConfig().set(path, newState);
         plugin.saveConfig();
+        // ConfigManager keeps its own copy loaded from the file — that is the one ModuleManager
+        // and /api/stats read, so it has to be re-read too or the dashboard reports the old flag.
+        plugin.getManagers().config().reload();
 
-        String message = "Toggled module " + moduleId + " " + (newState ? "ON" : "OFF") + " by " + who;
+        String error = plugin.getManagers().modules().setEnabled(moduleId, newState);
+        boolean running = plugin.getManagers().modules().isRunning(moduleId);
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            try {
-                if (plugin.getManagers() != null) {
-                    plugin.reloadConfig();
-                    plugin.getManagers().config().reload();
-                    plugin.getManagers().modules().reload();
-                }
-            } finally {
-                log.log(message);
-            }
-        });
+        log.log("Toggled module " + moduleId + " " + (newState ? "ON" : "OFF") + " by " + who
+                + (error == null ? "" : " (" + error + ")"));
 
-        return null;
+        return new ToggleResult(error, moduleId, newState, running);
+    }
+
+    /**
+     * The dashboard settings that decide whether it must be rebound, as a comparable string.
+     *
+     * <p>Only these four matter: everything else under {@code MODULES.web} is read per request.
+     * Comparing the {@code ConfigurationSection}s themselves does not work — two separately
+     * loaded sections are never equal, so every save would have looked like a change.
+     */
+    private String webSettings() {
+        return String.valueOf(plugin.getConfig().get("MODULES.web.enabled"))
+                + '|' + plugin.getConfig().get("MODULES.web.host")
+                + '|' + plugin.getConfig().get("MODULES.web.port")
+                + '|' + plugin.getConfig().get("MODULES.web.token");
     }
 
     public Map<String, Boolean> scopeFlags() {
