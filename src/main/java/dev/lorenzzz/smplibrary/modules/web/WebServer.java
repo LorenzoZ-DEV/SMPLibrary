@@ -21,6 +21,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -33,8 +34,15 @@ import java.util.concurrent.TimeUnit;
  */
 public final class WebServer {
 
-    private static final long SSE_PERIOD_TICKS = 20L;      // one snapshot per second
+    private static final long SSE_PERIOD_MILLIS = 1000L;   // one snapshot per second
     private static final String ASSET_PREFIX = "web/";
+
+    /**
+     * A wedged client costs one parked thread until its socket finally errors out, and it keeps
+     * its slot for exactly that long, so this is a hard ceiling on threads rather than on tabs.
+     * Legitimate use needs one per open dashboard.
+     */
+    private static final int MAX_STREAMS = 16;
 
     /** Static assets, mapped to their content type. */
     private static final Map<String, String> ASSETS = Map.of(
@@ -48,10 +56,12 @@ public final class WebServer {
     private final ConfigEditor editor;
     private final WebLog log;
 
-    private final Set<HttpExchange> openStreams = ConcurrentHashMap.newKeySet();
+    private final Set<SseClient> clients = ConcurrentHashMap.newKeySet();
 
     private HttpServer server;
     private ExecutorService executor;
+    private ScheduledExecutorService broadcaster;
+    private volatile long lastLogVersion = -1L;
     private String boundHost;
     private int boundPort;
 
@@ -73,6 +83,17 @@ public final class WebServer {
             return thread;
         });
 
+        // One thread pushes snapshots to every stream. scheduleAtFixedRate never overlaps runs,
+        // and the tick itself only builds strings and hands them to per-client queues, so a slow
+        // browser can no longer make the server grow threads.
+        broadcaster = Executors.newSingleThreadScheduledExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "smplibrary-sse-broadcast");
+            thread.setDaemon(true);
+            return thread;
+        });
+        broadcaster.scheduleAtFixedRate(
+                this::broadcast, SSE_PERIOD_MILLIS, SSE_PERIOD_MILLIS, TimeUnit.MILLISECONDS);
+
         server = HttpServer.create(new InetSocketAddress(host, port), 0);
         server.setExecutor(executor);
         server.createContext("/", this::dispatch);
@@ -85,10 +106,14 @@ public final class WebServer {
     public int boundPort() { return boundPort; }
 
     public void stop() {
-        for (HttpExchange exchange : openStreams) {
-            try { exchange.close(); } catch (Exception ignored) { /* already gone */ }
+        if (broadcaster != null) {
+            broadcaster.shutdownNow();
+            broadcaster = null;
         }
-        openStreams.clear();
+        for (SseClient client : clients) {
+            client.close();
+        }
+        clients.clear();
 
         if (server != null) {
             server.stop(0);
@@ -148,8 +173,7 @@ public final class WebServer {
             case "/api/players/history" -> sendJson(exchange, 200, stats.playerHistory());
             case "/api/chatgames/start" -> chatGamesStartRoute(exchange);
             case "/api/stream" -> {
-                sse(exchange);
-                return true;
+                return sse(exchange);
             }
             default -> {
                 if (path.startsWith("/api/config/")) {
@@ -300,7 +324,24 @@ public final class WebServer {
 
     // ------------------------------------------------------------------- SSE
 
-    private void sse(HttpExchange exchange) throws IOException {
+    /** Returns true once the stream is live and owns the exchange; false when it was refused. */
+    private boolean sse(HttpExchange exchange) throws IOException {
+        if (clients.size() >= MAX_STREAMS) {
+            // Nothing has been written yet, so this is still an ordinary response. Refusing is the
+            // right failure: the alternative is growing threads again, which is what got us here.
+            C.warning("Web dashboard: refusing a new event stream, " + MAX_STREAMS + " already open."
+                    + " If this persists, clients are wedged mid-write and their threads have not"
+                    + " been released yet.");
+            sendJson(exchange, 503, "{\"error\":\"too many open streams\"}");
+            return false;
+        }
+
+        // Seed frames so the tab draws immediately instead of waiting for the next tick, and gets
+        // the log without waiting for the next change to it. Built before the response starts, so
+        // that a failure here is still an ordinary 500 and never leaves a half-owned exchange.
+        byte[] snapshot = frame("data: " + stats.snapshot() + "\n\n");
+        byte[] logFrame = frame("event: log\ndata: " + logJson() + "\n\n");
+
         var headers = exchange.getResponseHeaders();
         headers.set("Content-Type", "text/event-stream; charset=utf-8");
         headers.set("Cache-Control", "no-cache");
@@ -308,39 +349,47 @@ public final class WebServer {
         headers.set("X-Accel-Buffering", "no");
         exchange.sendResponseHeaders(200, 0);
 
-        openStreams.add(exchange);
-        OutputStream out = exchange.getResponseBody();
-
-        int[] taskId = { -1 };
-        long[] lastLogVersion = { -1L };
-        taskId[0] = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
-            if (!openStreams.contains(exchange)) {
-                Bukkit.getScheduler().cancelTask(taskId[0]);
-                return;
-            }
-            try {
-                write(out, "data: " + stats.snapshot() + "\n\n");
-                // The log rarely changes; pushing it every second was pure noise.
-                long version = log.version();
-                if (version != lastLogVersion[0]) {
-                    lastLogVersion[0] = version;
-                    write(out, "event: log\ndata: " + logJson() + "\n\n");
-                }
-                out.flush();
-            } catch (IOException disconnected) {
-                closeStream(exchange, taskId[0]);
-            }
-        }, 0L, SSE_PERIOD_TICKS).getTaskId();
+        SseClient client = new SseClient(exchange, clients::remove);
+        clients.add(client);
+        client.start();
+        client.send(snapshot);
+        client.send(logFrame);
+        return true;
     }
 
-    private void closeStream(HttpExchange exchange, int taskId) {
-        openStreams.remove(exchange);
-        Bukkit.getScheduler().cancelTask(taskId);
-        try { exchange.close(); } catch (Exception ignored) { /* already gone */ }
+    /**
+     * Builds this second's frames once and offers them to every stream. Runs on the broadcaster
+     * thread and must never block: {@link SseClient#send} only queues, and drops clients that
+     * have stopped draining. The snapshot doubles as the heartbeat that reveals dead connections.
+     */
+    private void broadcast() {
+        // Clients hang around after being given up on, until their writer thread really ends, so
+        // "not empty" is not the same as "somebody is listening".
+        if (clients.stream().allMatch(SseClient::isClosed)) return;
+        try {
+            byte[] snapshot = frame("data: " + stats.snapshot() + "\n\n");
+
+            // The log rarely changes; pushing it every second was pure noise.
+            byte[] logFrame = null;
+            long version = log.version();
+            if (version != lastLogVersion) {
+                lastLogVersion = version;
+                logFrame = frame("event: log\ndata: " + logJson() + "\n\n");
+            }
+
+            for (SseClient client : clients) {
+                client.send(snapshot);
+                if (logFrame != null) client.send(logFrame);
+            }
+        } catch (Exception e) {
+            // scheduleAtFixedRate drops the task on the first throw, and the dashboard would go
+            // quiet with no explanation. Log it and keep ticking.
+            C.warning("Web dashboard: stream broadcast failed: " + e);
+        }
     }
 
-    private static void write(OutputStream out, String payload) throws IOException {
-        out.write(payload.getBytes(StandardCharsets.UTF_8));
+    private static byte[] frame(String payload) {
+        return payload.getBytes(StandardCharsets.UTF_8);
     }
 
     // -------------------------------------------------------------- plumbing

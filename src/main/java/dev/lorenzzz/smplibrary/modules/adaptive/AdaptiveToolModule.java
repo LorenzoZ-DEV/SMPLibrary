@@ -6,12 +6,15 @@ import dev.lorenzzz.smplibrary.modules.AbstractModule;
 import dev.lorenzzz.smplibrary.modules.ToolMeta;
 import dev.lorenzzz.smplibrary.util.SoundCue;
 import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
+import org.bukkit.Color;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Tag;
+import org.bukkit.World;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -49,11 +52,27 @@ public final class AdaptiveToolModule extends AbstractModule implements Listener
     private static final SoundCue DEFAULT_MORPH_SOUND = SoundCue.of("entity.ender_dragon.flap", 0.6f, 1.5f);
     private static final SoundCue SHATTER_SOUND = SoundCue.of("entity.ender_dragon.death", 0.4f, 1.8f);
 
+    // DRAGON_BREATH takes a float for the power of the breath, so both of these carry one.
+    // Passing no data at all is what threw "missing required data class java.lang.Float" out of
+    // the block-damage handler on every hit.
+    private static final ParticleSpec DEFAULT_PARTICLE =
+            new ParticleSpec(Particle.DRAGON_BREATH, 20, 0.5, 1.0, 0.5, 0.05, 1.0f);
+    private static final ParticleSpec SHATTER_PARTICLE =
+            new ParticleSpec(Particle.DRAGON_BREATH, 60, 0.6, 1.0, 0.6, 0.08, 1.0f);
+
     /** A configured form: the material it morphs into plus its own enchantment block. */
     private record Form(Material material, ConfigurationSection section) {}
 
+    /**
+     * A configured particle, plus the extra object its type requires.
+     *
+     * <p>{@code data} is null for the majority of particles, which take none. Bukkit's
+     * {@code spawnParticle} overload without a data argument throws
+     * {@code IllegalArgumentException: missing required data} for the ones that do need it, so
+     * the two cases take different overloads at spawn time.
+     */
     private record ParticleSpec(Particle particle, int count, double offsetX, double offsetY,
-                                double offsetZ, double speed) {}
+                                double offsetZ, double speed, Object data) {}
 
     private final NamespacedKey usesKey;
     private final NamespacedKey maxKey;
@@ -67,7 +86,7 @@ public final class AdaptiveToolModule extends AbstractModule implements Listener
     private int maxUses = 1500;
     private String nameFormat = "";
     private List<String> loreFormat = List.of();
-    private ParticleSpec morphParticle = new ParticleSpec(Particle.DRAGON_BREATH, 20, 0.5, 1.0, 0.5, 0.05);
+    private ParticleSpec morphParticle = DEFAULT_PARTICLE;
     private SoundCue morphSound = DEFAULT_MORPH_SOUND;
 
     public AdaptiveToolModule(Smp_library plugin) {
@@ -107,7 +126,9 @@ public final class AdaptiveToolModule extends AbstractModule implements Listener
         defaultForm = cfg.getString("default-form", "pickaxe").toLowerCase(Locale.ROOT);
 
         loadForms(cfg.getConfigurationSection("forms"));
-        morphParticle = loadParticle(cfg.getConfigurationSection("particles"), morphParticle);
+        // Falls back to the constant, never to the current field: the runtime guard below can
+        // set that to null, and a reload has to be able to recover from it.
+        morphParticle = loadParticle(cfg.getConfigurationSection("particles"), DEFAULT_PARTICLE);
         morphSound = SoundCue.from(cfg.getConfigurationSection("sound"), DEFAULT_MORPH_SOUND);
     }
 
@@ -133,12 +154,96 @@ public final class AdaptiveToolModule extends AbstractModule implements Listener
         } catch (IllegalArgumentException e) {
             C.warning("adaptive-tool: unknown particle '" + section.getString("type") + "', keeping default.");
         }
+
+        // Resolve the extra data here, not at spawn time. A particle that needs data and does
+        // not get it throws from inside the BlockDamageEvent handler — once per block hit — so
+        // an unusable configuration has to be caught while we can still fall back quietly.
+        Object data;
+        try {
+            data = particleData(particle, section);
+        } catch (UnsupportedOperationException unsupported) {
+            C.warning("adaptive-tool: " + unsupported.getMessage()
+                    + " Falling back to " + fallback.particle().name() + ".");
+            particle = fallback.particle();
+            data = fallback.data();
+        }
+
         return new ParticleSpec(particle,
                 section.getInt("count", fallback.count()),
                 section.getDouble("offset-x", fallback.offsetX()),
                 section.getDouble("offset-y", fallback.offsetY()),
                 section.getDouble("offset-z", fallback.offsetZ()),
-                section.getDouble("speed", fallback.speed()));
+                section.getDouble("speed", fallback.speed()),
+                data);
+    }
+
+    /**
+     * Builds the extra object {@code particle} needs, reading the optional keys that go with it.
+     *
+     * <p>Returns null for the particles that take no data — the common case. Throws
+     * {@link UnsupportedOperationException} for the handful whose data this module has no
+     * sensible way to configure (vibrations need a destination, trails need a target), which
+     * the caller turns into a warning plus a fallback.
+     */
+    private static Object particleData(Particle particle, ConfigurationSection section) {
+        Class<?> type = particle.getDataType();
+        if (type == Void.class) return null;
+
+        if (type == Float.class) {
+            // Two particles want a float and mean different things by it: DRAGON_BREATH reads
+            // it as the power of the breath, where 0 draws nothing, while SCULK_CHARGE reads it
+            // as a roll angle in radians, where 0 is the natural value.
+            double sane = particle == Particle.SCULK_CHARGE ? 0.0 : 1.0;
+            return (float) section.getDouble("data", sane);
+        }
+        if (type == Integer.class) {
+            // SHRIEK's delay, in ticks.
+            return section.getInt("data", 0);
+        }
+        if (type == Color.class) {
+            return colorOf(section.getString("color"), Color.FUCHSIA);
+        }
+        if (type == Particle.DustOptions.class) {
+            return new Particle.DustOptions(
+                    colorOf(section.getString("color"), Color.FUCHSIA),
+                    (float) section.getDouble("size", 1.0));
+        }
+        if (type == Particle.DustTransition.class) {
+            return new Particle.DustTransition(
+                    colorOf(section.getString("color"), Color.FUCHSIA),
+                    colorOf(section.getString("to-color"), Color.AQUA),
+                    (float) section.getDouble("size", 1.0));
+        }
+        if (type == BlockData.class) {
+            Material material = Material.matchMaterial(section.getString("block", "STONE"));
+            if (material == null || !material.isBlock()) {
+                throw new UnsupportedOperationException("particle " + particle.name()
+                        + " needs a valid 'block:' material, got '" + section.getString("block") + "'.");
+            }
+            return material.createBlockData();
+        }
+        if (type == ItemStack.class) {
+            Material material = Material.matchMaterial(section.getString("item", "STONE"));
+            if (material == null || material.isAir()) {
+                throw new UnsupportedOperationException("particle " + particle.name()
+                        + " needs a valid 'item:' material, got '" + section.getString("item") + "'.");
+            }
+            return new ItemStack(material);
+        }
+
+        throw new UnsupportedOperationException("particle " + particle.name() + " requires "
+                + type.getSimpleName() + " data, which this module cannot build from config.");
+    }
+
+    /** {@code #rrggbb} or {@code rrggbb}; the fallback keeps a typo from killing the config. */
+    private static Color colorOf(String hex, Color fallback) {
+        if (hex == null || hex.isBlank()) return fallback;
+        try {
+            return Color.fromRGB(Integer.parseInt(hex.startsWith("#") ? hex.substring(1) : hex, 16));
+        } catch (IllegalArgumentException bad) {
+            C.warning("adaptive-tool: bad particle colour '" + hex + "', using the default.");
+            return fallback;
+        }
     }
 
     // ------------------------------------------------------------------ build
@@ -307,15 +412,48 @@ public final class AdaptiveToolModule extends AbstractModule implements Listener
     private void shatter(Player player) {
         player.getInventory().setItemInMainHand(null);
         Location loc = player.getLocation().add(0, 1, 0);
-        player.getWorld().spawnParticle(Particle.DRAGON_BREATH, loc, 60, 0.6, 1.0, 0.6, 0.08);
+        spawn(player.getWorld(), loc, SHATTER_PARTICLE);
         SHATTER_SOUND.play(player);
         if (messages != null) messages.sendBoth(player, "adaptive-tool.destroyed", Map.of());
     }
 
     private void playMorph(Player player) {
         Location loc = player.getLocation().add(0, 1, 0);
-        player.getWorld().spawnParticle(morphParticle.particle(), loc, morphParticle.count(),
-                morphParticle.offsetX(), morphParticle.offsetY(), morphParticle.offsetZ(), morphParticle.speed());
+        spawnMorphParticle(player.getWorld(), loc);
         morphSound.playAt(loc);
+    }
+
+    /**
+     * Spawns the configured morph particle, and gives up on it if the server refuses.
+     *
+     * <p>The load-time check catches configurations we can reason about, but particle data
+     * requirements shift between versions and forks, so a rejection at spawn time is still
+     * possible. This runs from a {@link BlockDamageEvent} handler: left to throw, it would take
+     * down the handler and log a stack trace on every single block hit. Disabling the particle
+     * after the first failure keeps the tool working and the console readable — a reload picks
+     * the setting back up.
+     */
+    private void spawnMorphParticle(World world, Location loc) {
+        ParticleSpec spec = morphParticle;
+        if (spec != null && !spawn(world, loc, spec)) morphParticle = null;
+    }
+
+    /** Spawns one spec, picking the overload its data requirement needs. False if refused. */
+    private static boolean spawn(World world, Location loc, ParticleSpec spec) {
+        try {
+            if (spec.data() == null) {
+                world.spawnParticle(spec.particle(), loc, spec.count(),
+                        spec.offsetX(), spec.offsetY(), spec.offsetZ(), spec.speed());
+            } else {
+                world.spawnParticle(spec.particle(), loc, spec.count(),
+                        spec.offsetX(), spec.offsetY(), spec.offsetZ(), spec.speed(), spec.data());
+            }
+            return true;
+        } catch (RuntimeException rejected) {
+            C.warning("adaptive-tool: the server rejected particle " + spec.particle().name()
+                    + " (" + rejected.getMessage() + "). Not drawing it again until the next"
+                    + " reload; check MODULES.adaptive-tool.particles in config.yml.");
+            return false;
+        }
     }
 }

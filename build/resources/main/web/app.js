@@ -5,23 +5,54 @@
   const $ = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => [...(root || document).querySelectorAll(sel)];
 
-  /* ── tabs ──────────────────────────────────────────────────────────── */
-  const tabs = $$('.tab');
+  /* ── navigation ────────────────────────────────────────────────────── */
+  const PAGES = {
+    overview:    ['Overview', 'Live server health'],
+    performance: ['Performance', 'Real-time metrics from spark'],
+    modules:     ['Modules', 'Turn features on and off in place'],
+    chatgames:   ['Chat games', 'Rounds, answers and history'],
+    config:      ['Configuration', "Edit the plugin's YAML files"],
+    log:         ['Action log', 'Everything this dashboard changed']
+  };
+
+  const navItems = $$('.nav-item');
   let activeTab = 'overview';
 
-  tabs.forEach(tab => tab.addEventListener('click', () => selectTab(tab.dataset.tab)));
+  navItems.forEach(item => item.addEventListener('click', () => {
+    selectTab(item.dataset.tab);
+    closeSidebar();
+  }));
 
   function selectTab(name) {
+    if (!PAGES[name]) return;
     activeTab = name;
-    tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+    navItems.forEach(i => i.classList.toggle('active', i.dataset.tab === name));
     $$('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + name));
+    $('#pageTitle').textContent = PAGES[name][0];
+    $('#pageSub').textContent = PAGES[name][1];
     if (name === 'log') $('#logDot').hidden = true;
     // The chart measures its container, which is unmeasurable while the tab is hidden.
     if (name === 'overview') requestAnimationFrame(renderChart);
     location.hash = name;
   }
 
-  if (location.hash && $('#tab-' + location.hash.slice(1))) selectTab(location.hash.slice(1));
+  if (location.hash && PAGES[location.hash.slice(1)]) selectTab(location.hash.slice(1));
+  else selectTab('overview');
+
+  // Each tab writes its name to the hash, so back/forward should move between them.
+  window.addEventListener('hashchange', () => {
+    const name = location.hash.slice(1);
+    if (PAGES[name] && name !== activeTab) selectTab(name);
+  });
+
+  /* ── sidebar drawer (narrow screens) ───────────────────────────────── */
+  function openSidebar() { $('#side').classList.add('open'); $('#sideScrim').hidden = false; }
+  function closeSidebar() { $('#side').classList.remove('open'); $('#sideScrim').hidden = true; }
+
+  $('#sideToggle').addEventListener('click', openSidebar);
+  $('#sideClose').addEventListener('click', closeSidebar);
+  $('#sideScrim').addEventListener('click', closeSidebar);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar(); });
 
   /* ── helpers ───────────────────────────────────────────────────────── */
   function esc(value) {
@@ -29,6 +60,10 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
+
+  /** A finite number, or null — the server sends null for every reading it does not have. */
+  const num = v => (typeof v === 'number' && isFinite(v) ? v : null);
+  const fixed = (v, digits) => (num(v) === null ? '--' : v.toFixed(digits == null ? 2 : digits));
 
   function fmtDuration(ms) {
     let s = Math.max(0, Math.floor(ms / 1000));
@@ -38,6 +73,14 @@
     if (d) return d + 'd ' + h + 'h ' + m + 'm';
     if (h) return h + 'h ' + m + 'm ' + s + 's';
     return m + 'm ' + s + 's';
+  }
+
+  /** Compact form for the topbar chip, where the full string does not fit. */
+  function fmtShort(ms) {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    if (s >= 86400) return Math.floor(s / 86400) + 'd ' + Math.floor((s % 86400) / 3600) + 'h';
+    if (s >= 3600) return Math.floor(s / 3600) + 'h ' + Math.floor((s % 3600) / 60) + 'm';
+    return Math.floor(s / 60) + 'm';
   }
 
   function fmtClock(ms) {
@@ -51,6 +94,15 @@
     if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
     if (b < 1073741824) return (b / 1048576).toFixed(0) + ' MB';
     return (b / 1073741824).toFixed(2) + ' GB';
+  }
+
+  /** Milliseconds as the shortest sensible unit — GC totals run from ms to hours. */
+  function fmtMillis(ms) {
+    if (num(ms) === null) return '--';
+    if (ms < 1000) return Math.round(ms) + ' ms';
+    if (ms < 60000) return (ms / 1000).toFixed(1) + ' s';
+    if (ms < 3600000) return (ms / 60000).toFixed(1) + ' min';
+    return (ms / 3600000).toFixed(1) + ' h';
   }
 
   function toast(message, kind) {
@@ -73,6 +125,19 @@
     return data;
   }
 
+  function setMeter(el, percent, kind) {
+    if (!el) return;
+    el.style.width = Math.max(0, Math.min(100, num(percent) || 0)) + '%';
+    el.className = kind || '';
+  }
+
+  /** The shared health grading: good / warn / bad from a value and two thresholds. */
+  function grade(value, warnAt, badAt, higherIsBetter) {
+    if (num(value) === null) return '';
+    if (higherIsBetter) return value >= warnAt ? 'good' : value >= badAt ? 'warn' : 'bad';
+    return value <= warnAt ? 'good' : value <= badAt ? 'warn' : 'bad';
+  }
+
   /* ── connection indicator ──────────────────────────────────────────── */
   function setConnection(state) {
     $('#conn').dataset.state = state;
@@ -80,37 +145,53 @@
   }
 
   /* ── overview ──────────────────────────────────────────────────────── */
-  const SPARK_POINTS = 40;
+  const SPARK_POINTS = 48;
   const tpsHistory = [];
+  const msptHistory = [];
 
   function renderOverview(d) {
+    const spark = d.spark || {};
+    const sparkTps = spark.available && spark.tps ? spark.tps : null;
+
     const tps = d.tps || {};
-    const tps1 = typeof tps['1m'] === 'number' ? tps['1m'] : 0;
-    $('#tps1').textContent = tps1.toFixed(2);
-    $('#tps5').textContent = '5m ' + (tps['5m'] || 0).toFixed(2);
-    $('#tps15').textContent = '15m ' + (tps['15m'] || 0).toFixed(2);
+    const tps1 = num(tps['1m']) != null ? tps['1m'] : 0;
+    $('#tps1').textContent = fixed(tps1);
+    // spark's 5-second window is the one that actually moves; show it beside the averages.
+    $('#tps5').textContent = sparkTps && num(sparkTps['5s']) !== null
+      ? '5s ' + fixed(sparkTps['5s']) : '5m ' + fixed(tps['5m']);
+    $('#tps15').textContent = '15m ' + fixed(tps['15m']);
 
-    const grade = tps1 >= 19.5 ? 'good' : tps1 >= 18 ? 'warn' : 'bad';
+    const tpsGrade = grade(tps1, 19.5, 18, true);
     const pill = $('#tpsPill');
-    pill.className = 'pill ' + grade;
-    pill.textContent = grade === 'good' ? 'healthy' : grade === 'warn' ? 'lagging' : 'overloaded';
+    pill.className = 'pill ' + tpsGrade;
+    pill.textContent = tpsGrade === 'good' ? 'healthy' : tpsGrade === 'warn' ? 'lagging' : 'overloaded';
 
-    tpsHistory.push(tps1);
+    tpsHistory.push(sparkTps && num(sparkTps['5s']) !== null ? sparkTps['5s'] : tps1);
     while (tpsHistory.length > SPARK_POINTS) tpsHistory.shift();
-    drawSpark($('#sparkTps'), tpsHistory, 0, 20);
+    drawSpark($('#sparkTpsLine'), tpsHistory, 0, 20);
 
     const players = d.players || {};
+    const playerPct = players.max ? (players.online / players.max) * 100 : 0;
     $('#players').textContent = (players.online || 0) + '/' + (players.max || 0);
+    $('#playersPct').textContent = Math.round(playerPct) + '%';
     $('#playersMax').textContent = 'slots ' + (players.max || 0);
-    setMeter($('#playersBar'), players.max ? (players.online / players.max) * 100 : 0);
+    setMeter($('#playersBar'), playerPct);
+
+    renderRecord(players);
 
     const heap = d.heap || {};
-    $('#heapUsed').textContent = fmtBytes(heap.used);
-    $('#heapMax').textContent = 'max ' + fmtBytes(heap.max);
     const heapPct = heap.max ? (heap.used / heap.max) * 100 : 0;
+    $('#heapUsed').textContent = fmtBytes(heap.used);
+    $('#heapPct').textContent = Math.round(heapPct) + '%';
+    $('#heapMax').textContent = 'max ' + fmtBytes(heap.max);
     setMeter($('#heapBar'), heapPct, heapPct > 90 ? 'bad' : heapPct > 75 ? 'warn' : '');
 
-    if (typeof d.uptime === 'number') $('#uptime').textContent = fmtDuration(d.uptime);
+    renderCpuCard(d);
+
+    if (num(d.uptime) !== null) {
+      $('#uptimeShort').textContent = fmtShort(d.uptime);
+      $('#uptimeChip').title = 'Up for ' + fmtDuration(d.uptime);
+    }
 
     const threads = d.threads || {};
     $('#threads').textContent = threads.count != null ? threads.count : '--';
@@ -120,26 +201,227 @@
     const running = mods.filter(m => m.running).length;
     const stalled = mods.filter(m => m.enabled && !m.running).length;
     $('#modulesRunning').textContent = running + '/' + mods.length;
-    $('#modulesSub').textContent = stalled ? stalled + ' enabled but not running' : 'all enabled modules started';
+    $('#modulesPill').textContent = stalled ? stalled + ' err' : 'ok';
+    $('#modulesPill').className = 'pill ' + (stalled ? 'warn' : 'ghost');
+    $('#modulesSub').textContent = stalled
+      ? stalled + ' enabled but not running' : 'all enabled modules started';
+    $('#moduleCount').textContent = mods.length ? running + '/' + mods.length : '';
 
-    $('#serverMeta').textContent = [d.server, d.plugin ? 'plugin v' + d.plugin : '']
-      .filter(Boolean).join('  •  ');
+    if (d.plugin) $('#pluginVersion').textContent = 'plugin v' + d.plugin;
+    if (d.server) { $('#serverBrand').textContent = d.server; $('#serverBrand').title = d.server; }
   }
 
-  function setMeter(el, percent, kind) {
-    el.style.width = Math.max(0, Math.min(100, percent)) + '%';
-    el.className = kind || '';
+  /**
+   * The all-time concurrent-player record, with the live count as a progress bar against it.
+   * The bar is the point of the card: it answers "how close are we right now" at a glance.
+   */
+  function renderRecord(players) {
+    const record = players.record;
+    const card = $('#recordCard');
+    const online = num(players.online) || 0;
+
+    if (!record || !num(record.online)) {
+      // playerstats is off, or nothing has been recorded and no figure was declared in config.
+      $('#recordValue').textContent = '--';
+      $('#recordPct').textContent = '--';
+      $('#recordSub').textContent = 'no record yet';
+      setMeter($('#recordBar'), 0);
+      card.classList.remove('is-record');
+      return;
+    }
+
+    const pct = (online / record.online) * 100;
+    const tied = online >= record.online;
+
+    $('#recordValue').textContent = online + '/' + record.online;
+    $('#recordPct').textContent = Math.round(pct) + '%';
+    $('#recordPct').className = 'pill ' + (tied ? 'good' : 'ghost');
+    // A record with no timestamp came from the config key, so there is no date to show.
+    $('#recordSub').textContent = tied ? 'at the all-time record right now'
+      : record.at ? 'record ' + record.online + ' on ' + fmtDate(record.at)
+      : 'record ' + record.online + ' players';
+    setMeter($('#recordBar'), pct, tied ? 'record' : '');
+    card.classList.toggle('is-record', tied);
+  }
+
+  const fmtDate = ts => new Date(ts).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+
+  /** Prefers spark's reading, falls back to the JVM MXBean the server always sends. */
+  function renderCpuCard(d) {
+    const spark = d.spark || {};
+    const sparkCpu = spark.available && spark.cpu ? spark.cpu : null;
+    const jvm = d.cpu || {};
+
+    const process = sparkCpu && sparkCpu.process ? num(sparkCpu.process['10s']) : num(jvm.process);
+    const system = sparkCpu && sparkCpu.system ? num(sparkCpu.system['10s']) : num(jvm.system);
+
+    $('#cpuSource').textContent = sparkCpu ? 'spark 10s' : 'jvm';
+    $('#cpuProcess').textContent = process === null ? '--' : process.toFixed(1) + '%';
+    $('#cpuSystem').textContent = 'system ' + (system === null ? '--' : system.toFixed(1) + '%');
+    setMeter($('#cpuBar'), process, process > 90 ? 'bad' : process > 70 ? 'warn' : '');
   }
 
   function drawSpark(svg, values, min, max) {
-    if (values.length < 2) return;
+    if (!svg || values.length < 2) return;
+    const box = svg.viewBox.baseVal;
+    const height = box.height || 32;
     const span = max - min || 1;
     const points = values.map((v, i) => {
       const x = (i / (values.length - 1)) * 100;
-      const y = 30 - ((Math.max(min, Math.min(max, v)) - min) / span) * 28;
+      const clamped = Math.max(min, Math.min(max, num(v) === null ? min : v));
+      const y = (height - 2) - ((clamped - min) / span) * (height - 4);
       return x.toFixed(1) + ',' + y.toFixed(1);
     });
     $('.spark-line', svg).setAttribute('points', points.join(' '));
+  }
+
+  /* ── performance (spark) ───────────────────────────────────────────────
+     Built once and then updated in place. Rebuilding this tab's markup on every
+     one-second snapshot threw away the browser's text selection and made the
+     numbers visibly flicker.                                                   */
+  const TPS_WINDOWS = [['5s', '5 seconds'], ['10s', '10 seconds'], ['1m', '1 minute'],
+                       ['5m', '5 minutes'], ['15m', '15 minutes']];
+  const MSPT_WINDOWS = [['10s', '10 seconds'], ['1m', '1 minute'], ['5m', '5 minutes']];
+  const CPU_WINDOWS = ['10s', '1m', '15m'];
+
+  let sparkBuilt = false;
+  const tpsTiles = {};
+  const msptCells = {};
+  const cpuRows = {};
+  let gcSignature = '';
+
+  function buildSparkSkeleton() {
+    if (sparkBuilt) return;
+    sparkBuilt = true;
+
+    const tiles = $('#sparkTpsTiles');
+    TPS_WINDOWS.forEach(([key, label]) => {
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      tile.innerHTML = '<span class="tile-label">' + esc(label) + '</span>'
+        + '<span class="tile-value">--</span>'
+        + '<span class="tile-meter"><i style="width:0%"></i></span>';
+      tiles.appendChild(tile);
+      tpsTiles[key] = { value: $('.tile-value', tile), bar: $('.tile-meter i', tile) };
+    });
+
+    const msptBody = $('#msptBody');
+    MSPT_WINDOWS.forEach(([key, label]) => {
+      const row = document.createElement('tr');
+      row.innerHTML = '<td>' + esc(label) + '</td>'
+        + '<td class="mean">--</td><td>--</td><td>--</td><td>--</td><td>--</td>';
+      msptBody.appendChild(row);
+      msptCells[key] = [...row.children].slice(1);
+    });
+
+    const groups = $('#cpuGroups');
+    [['process', 'This server process'], ['system', 'Whole machine']].forEach(([key, label]) => {
+      const group = document.createElement('div');
+      group.innerHTML = '<div class="cpu-group-title">' + esc(label) + '</div>';
+      cpuRows[key] = {};
+      CPU_WINDOWS.forEach(window => {
+        const row = document.createElement('div');
+        row.className = 'cpu-row';
+        row.innerHTML = '<span class="w">' + window + '</span>'
+          + '<span class="meter"><i style="width:0%"></i></span>'
+          + '<span class="v">--</span>';
+        group.appendChild(row);
+        cpuRows[key][window] = { bar: $('.meter i', row), value: $('.v', row) };
+      });
+      groups.appendChild(group);
+    });
+  }
+
+  function renderSpark(d) {
+    const spark = (d && d.spark) || {};
+    const offline = $('#sparkOffline');
+    const panel = $('#sparkPanel');
+    const tag = $('#sparkTag');
+
+    if (!spark.available) {
+      offline.hidden = false;
+      panel.hidden = true;
+      tag.hidden = true;
+      $('#sparkReason').textContent = spark.reason || 'Waiting for the spark plugin…';
+      return;
+    }
+
+    offline.hidden = true;
+    panel.hidden = false;
+    tag.hidden = false;
+    // Naming the route makes an embedded-spark server (UniverseSpigot and the like) visibly
+    // different from a plugin install, which is the first thing to check when this tab is empty.
+    if (spark.source) {
+      $('#sparkSource').textContent = 'rolling windows, via ' + spark.source;
+      tag.title = 'Hooked into spark via ' + spark.source;
+    }
+    buildSparkSkeleton();
+
+    // ── TPS ──
+    const tps = spark.tps || {};
+    TPS_WINDOWS.forEach(([key]) => {
+      const cell = tpsTiles[key];
+      const value = num(tps[key]);
+      cell.value.textContent = value === null ? '--' : value.toFixed(2);
+      cell.value.className = 'tile-value ' + grade(value, 19.5, 18, true);
+      cell.bar.style.width = (value === null ? 0 : Math.min(100, (value / 20) * 100)) + '%';
+    });
+
+    // ── MSPT ──
+    const mspt = spark.mspt || {};
+    MSPT_WINDOWS.forEach(([key]) => {
+      const info = mspt[key] || {};
+      const cells = msptCells[key];
+      const values = [info.mean, info.median, info.p95, info.min, info.max];
+      values.forEach((value, i) => { cells[i].textContent = num(value) === null ? '--' : fixed(value) + ' ms'; });
+      // A tick has 50 ms before the server falls behind; colour the mean against that budget.
+      cells[0].className = 'mean ' + gradeToColour(grade(info.mean, 25, 45, false));
+    });
+
+    const live = mspt['10s'] && num(mspt['10s'].mean) !== null ? mspt['10s'].mean : null;
+    if (live !== null) {
+      msptHistory.push(live);
+      while (msptHistory.length > SPARK_POINTS) msptHistory.shift();
+      drawSpark($('#sparkMsptLine'), msptHistory, 0, Math.max(50, ...msptHistory));
+    }
+
+    // ── CPU ──
+    const cpu = spark.cpu || {};
+    ['process', 'system'].forEach(key => {
+      const series = cpu[key] || {};
+      CPU_WINDOWS.forEach(window => {
+        const row = cpuRows[key][window];
+        const value = num(series[window]);
+        row.value.textContent = value === null ? '--' : value.toFixed(1) + '%';
+        setMeter(row.bar, value, value > 90 ? 'bad' : value > 70 ? 'warn' : '');
+      });
+    });
+
+    renderGc(spark.gc || []);
+  }
+
+  /** The tile/cell colour classes reuse the pill vocabulary. */
+  function gradeToColour(g) { return g === 'good' ? '' : g; }
+
+  function renderGc(collectors) {
+    const signature = collectors.map(c => c.name + c.collections + c.totalTime).join('|');
+    if (signature === gcSignature) return;
+    gcSignature = signature;
+
+    const body = $('#gcBody');
+    if (!collectors.length) {
+      body.innerHTML = '<tr class="empty"><td colspan="5">No collections yet.</td></tr>';
+      return;
+    }
+    body.innerHTML = collectors.map(c =>
+      '<tr><td>' + esc(c.name) + '</td>'
+      // Pinned locale: the browser's own would render 18422 as "18.422" next to real
+      // decimals like "11.66 ms", which reads as eighteen point four.
+      + '<td>' + (c.collections != null ? c.collections.toLocaleString('en-US') : '--') + '</td>'
+      + '<td>' + fmtMillis(c.totalTime) + '</td>'
+      + '<td>' + fixed(c.avgTime) + ' ms</td>'
+      + '<td>' + (num(c.avgFrequency) ? 'every ' + fmtMillis(c.avgFrequency) : '--') + '</td></tr>'
+    ).join('');
   }
 
   /* ── players chart ─────────────────────────────────────────────────────
@@ -182,7 +464,7 @@
     const peak = chartData.peak;
     $('#peakValue').textContent = peak && peak.online > 0 ? peak.online : '--';
     $('#peakAt').textContent = peak && peak.online > 0 ? 'at ' + hhmm(peak.at) : 'no players yet today';
-    $('#avgValue').textContent = chartData.average != null ? chartData.average.toFixed(1) : '--';
+    $('#avgValue').textContent = num(chartData.average) !== null ? chartData.average.toFixed(1) : '--';
   }
 
   function renderChart() {
@@ -371,7 +653,7 @@
     table.hidden = !showing;
     $('#chartWrap').hidden = showing;
     $('#btnChartTable').setAttribute('aria-pressed', String(showing));
-    $('#btnChartTable').textContent = showing ? 'Chart' : 'Table';
+    $('span', $('#btnChartTable')).textContent = showing ? 'Chart' : 'Table';
     if (!showing) renderChart();
   });
 
@@ -416,22 +698,27 @@
       const desc = state === 'on' ? 'Running'
         : state === 'warn' ? 'Enabled but not running — check console'
         : 'Disabled';
-      return `<article class="module-card">
-        <div>
+      // The web module is the one serving this page: toggling it off would cut the wire.
+      const control = m.id === 'web'
+        ? '<span class="status status-off" title="This dashboard">SELF</span>'
+        : `<button class="switch" data-module="${id}" role="switch"
+             aria-checked="${state !== 'off'}" aria-label="Toggle ${id}"${busy ? ' disabled' : ''}></button>`;
+
+      return `<article class="module-card is-${state}${busy ? ' is-busy' : ''}">
+        <div class="module-body">
           <div class="name">${id}</div>
           <div class="desc${state === 'warn' ? ' warn' : ''}">${desc}</div>
         </div>
-        <div class="actions">
+        <div class="module-actions">
           <span class="status status-${state}">${label}</span>
-          ${m.id === 'web' ? '' :
-            `<button class="btn btn-sm btn-toggle" data-module="${id}"${busy ? ' disabled' : ''}>${busy ? '…' : 'Toggle'}</button>`}
+          ${control}
         </div>
       </article>`;
     }).join('');
   }
 
   $('#moduleGrid').addEventListener('click', event => {
-    const btn = event.target.closest('.btn-toggle');
+    const btn = event.target.closest('.switch');
     if (!btn || btn.disabled) return;
 
     const id = btn.dataset.module;
@@ -442,14 +729,20 @@
 
     api('/api/module/' + encodeURIComponent(id) + '/toggle', { method: 'POST' })
       .then(data => {
+        // Apply the state the server reports straight away. Waiting for the next snapshot
+        // left the card showing the old state, and showed nothing at all if the stream
+        // happened to be down.
+        if (lastSnapshot && Array.isArray(data.modules)) lastSnapshot.modules = data.modules;
         if (data.log) renderLog(data.log);
-        toast('Module "' + id + '" toggled', 'ok');
+        if (data.warning) toast(data.warning, 'warn');
+        else toast('Module "' + id + '" is now ' + (data.enabled ? 'ON' : 'OFF'), 'ok');
       })
       .catch(e => toast('Toggle failed: ' + e.message, 'err'))
       .finally(() => {
         pending.delete(id);
         moduleSignature = '';
         renderModules(lastSnapshot);
+        if (lastSnapshot) renderOverview(lastSnapshot);
       });
   });
 
@@ -471,6 +764,7 @@
       $('#roundType').textContent = '';
       $('#roundClock').textContent = '';
       $('#btnStartGame').disabled = true;
+      $('#cgDot').hidden = true;
       round = { active: false, endsAt: 0, answer: null };
       return;
     }
@@ -485,6 +779,7 @@
 
     chip.className = 'status-chip' + (cg.active ? ' live' : '');
     chip.textContent = cg.active ? 'round live' : 'waiting';
+    $('#cgDot').hidden = !cg.active || activeTab === 'chatgames';
     $('#roundType').textContent = cg.type ? cg.type.toLowerCase() : '';
     $('#roundPrompt').textContent = cg.active && cg.prompt ? cg.prompt : 'No round in progress.';
 
@@ -493,7 +788,7 @@
     reveal.hidden = !cg.active;
     answer.hidden = !cg.active || !revealed;
     if (revealed) answer.textContent = cg.answer || '';
-    reveal.textContent = revealed ? 'Hide answer' : 'Reveal answer';
+    $('span', reveal).textContent = revealed ? 'Hide answer' : 'Reveal answer';
 
     renderHistory(Array.isArray(cg.history) ? cg.history : []);
     tickRound();
@@ -540,7 +835,7 @@
     revealed = !revealed;
     $('#roundAnswer').hidden = !revealed;
     $('#roundAnswer').textContent = round.answer || '';
-    $('#btnReveal').textContent = revealed ? 'Hide answer' : 'Reveal answer';
+    $('span', $('#btnReveal')).textContent = revealed ? 'Hide answer' : 'Reveal answer';
   });
 
   $('#btnStartGame').addEventListener('click', () => {
@@ -571,7 +866,7 @@
     api('/api/scopes')
       .then(scopes => {
         $('#scopeTabs').innerHTML = scopes.map(s =>
-          `<button class="scope-tab" data-scope="${esc(s.scope)}" data-ro="${s.readonly}">${esc(s.scope)}</button>`
+          `<button class="scope-tab" data-scope="${esc(s.scope)}" data-ro="${s.readonly}">${esc(s.scope)}.yml</button>`
         ).join('');
         if (scopes.length) selectScope(scopes[0].scope, scopes[0].readonly);
       })
@@ -621,6 +916,7 @@
     }
     const dirty = isDirty();
     $('#dirtyFlag').hidden = !dirty;
+    $('#cfgDot').hidden = !dirty;
     $('#btnApplyConfig').disabled = !dirty;
     $('#btnRevert').disabled = !dirty;
   }
@@ -723,19 +1019,37 @@
   let lastSnapshot = null;
   let stream = null;
   let retryDelay = 1000;
+  let pollTimer = null;
 
   function applySnapshot(data) {
     lastSnapshot = data;
     renderOverview(data);
     renderModules(data);
     renderChatGames(data);
+    renderSpark(data);
+  }
+
+  /**
+   * While the event stream is down, fall back to polling. Without this the whole UI froze
+   * on the last frame it received and gave no sign that its numbers had stopped being true.
+   */
+  function startPolling() {
+    if (pollTimer) return;
+    pollTimer = setInterval(() => {
+      api('/api/stats').then(applySnapshot).catch(() => {});
+    }, 5000);
+  }
+
+  function stopPolling() {
+    clearInterval(pollTimer);
+    pollTimer = null;
   }
 
   function connect() {
     setConnection('connecting');
     stream = new EventSource('/api/stream');
 
-    stream.onopen = () => { setConnection('live'); retryDelay = 1000; };
+    stream.onopen = () => { setConnection('live'); retryDelay = 1000; stopPolling(); };
 
     stream.onmessage = event => {
       try { applySnapshot(JSON.parse(event.data)); } catch (ignored) { /* partial frame */ }
@@ -751,6 +1065,7 @@
     stream.onerror = () => {
       setConnection('offline');
       stream.close();
+      startPolling();
       // Back off up to 15s so a stopped server doesn't get hammered.
       setTimeout(connect, retryDelay);
       retryDelay = Math.min(retryDelay * 2, 15000);
@@ -759,6 +1074,7 @@
 
   $('#btnLogout').addEventListener('click', () => {
     if (stream) stream.close();
+    stopPolling();
     fetch('/api/logout', { method: 'POST' }).finally(() => location.reload());
   });
 

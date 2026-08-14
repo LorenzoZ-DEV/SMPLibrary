@@ -86,6 +86,11 @@
       enabled: true
       sample-every: 1m       # ogni quanto viene registrato il numero di player
       retention-days: 7      # per quanti giorni i campioni restano nel database
+      # Record storico di player contemporanei, mostrato nella dashboard con una barra
+      # di progresso sugli online attuali. Serve a dichiarare un record raggiunto prima
+      # che il plugin lo registrasse: e' un minimo, non un valore fisso. Il modulo lo
+      # alza da solo (e lo salva nel database) appena qualcuno lo supera.
+      record: 45
     amethyst-tool:
       enabled: true
       durability-uses: 500
@@ -151,7 +156,18 @@
             EFFICIENCY: 5
             UNBREAKING: 3
       particles:
+        # Alcune particelle richiedono un dato extra, altrimenti il server rifiuta di
+        # disegnarle. Se ne serve uno e manca, il modulo avvisa in console e usa il
+        # default invece di crashare. Chiavi accettate a seconda del tipo:
+        #   DRAGON_BREATH / SCULK_CHARGE -> data: <numero>  (potenza / angolo in radianti)
+        #   SHRIEK                       -> data: <tick di ritardo>
+        #   DUST                         -> color: "#ff00ff" + size: 1.0
+        #   DUST_COLOR_TRANSITION        -> color + to-color + size
+        #   ENTITY_EFFECT / FLASH        -> color: "#ff00ff"
+        #   BLOCK / FALLING_DUST / ...   -> block: STONE
+        #   ITEM                         -> item: DIAMOND
         type: DRAGON_BREATH
+        data: 1.0              # potenza del soffio: 0 non disegna nulla
         count: 30
         offset-x: 0.5
         offset-y: 1.0
