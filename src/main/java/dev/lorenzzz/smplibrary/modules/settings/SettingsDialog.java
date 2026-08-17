@@ -18,8 +18,6 @@ import org.bukkit.entity.Player;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * /settings GUI costruita con la Dialog API di Paper 1.21.7+.
@@ -28,40 +26,37 @@ import java.util.concurrent.ConcurrentHashMap;
  * dialog di tipo {@code multiAction}. Il clic viene gestito in-place tramite
  * {@link DialogAction#customClick} che esegue i comandi configurati per quel
  * pulsante, togglea lo stato ON/OFF e riapre il dialog aggiornato istantaneamente.</p>
+ *
+ * <p>Lo stato ON/OFF vive in {@link SettingsStateStore}, che lo salva sul database:
+ * prima veniva tenuto solo in memoria e ogni sessione ripartiva con tutto su ON.</p>
  */
 public final class SettingsDialog {
 
     private final SettingsConfig config;
     private final Smp_library plugin;
+    private final SettingsStateStore store;
 
-    /** Stato toggle per-player: <PlayerUUID, <ItemKey, true=ON / false=OFF>> */
-    private static final Map<UUID, Map<String, Boolean>> states = new ConcurrentHashMap<>();
-
-    public SettingsDialog(Smp_library plugin, SettingsConfig config) {
+    public SettingsDialog(Smp_library plugin, SettingsConfig config, SettingsStateStore store) {
         this.plugin = plugin;
         this.config = config;
+        this.store = store;
     }
 
+    /** Apre il dialog, attendendo se serve che i toggle salvati siano stati letti. */
     public void show(Player player) {
-        renderDialog(player);
-    }
-
-    /** Pulisce lo stato di un player (chiamare su PlayerQuitEvent per evitare leak). */
-    public static void clearStates(UUID playerId) {
-        states.remove(playerId);
+        store.whenLoaded(player.getUniqueId(), () -> {
+            if (player.isOnline()) renderDialog(player);
+        });
     }
 
     // ------------------------------------------------------------------
 
     private void renderDialog(Player player) {
-        Map<String, Boolean> playerStates = states.computeIfAbsent(
-                player.getUniqueId(), k -> new ConcurrentHashMap<>());
-
         List<ActionButton> buttons = new ArrayList<>();
         for (Map.Entry<String, SettingsItemConfig> entry : config.items().entrySet()) {
             String key = entry.getKey();
             SettingsItemConfig item = entry.getValue();
-            boolean enabled = playerStates.getOrDefault(key, true);
+            boolean enabled = store.get(player.getUniqueId(), key);
             buttons.add(buildButton(player, key, item, enabled));
         }
 
@@ -147,11 +142,8 @@ public final class SettingsDialog {
             return;
         }
 
-        // Toggle dello stato
-        Map<String, Boolean> playerStates = states.computeIfAbsent(
-                player.getUniqueId(), k -> new ConcurrentHashMap<>());
-        boolean newState = !playerStates.getOrDefault(key, true);
-        playerStates.put(key, newState);
+        // Toggle dello stato (salvato subito, cosi' sopravvive al logout)
+        store.set(player.getUniqueId(), key, !store.get(player.getUniqueId(), key));
 
         // Esegue i comandi configurati
         String name = player.getName();

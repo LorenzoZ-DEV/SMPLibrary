@@ -3,10 +3,12 @@ package dev.lorenzzz.smplibrary.modules.settings;
 import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.AbstractModule;
+import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 /**
@@ -18,6 +20,7 @@ public final class SettingsModule extends AbstractModule implements Listener {
     private static final String COMMAND = "settings";
 
     private SettingsConfigLoader configLoader;
+    private SettingsStateStore store;
 
     public SettingsModule(Smp_library plugin) {
         super(plugin);
@@ -30,10 +33,19 @@ public final class SettingsModule extends AbstractModule implements Listener {
         this.configLoader = new SettingsConfigLoader(plugin);
         configLoader.load();
 
+        this.store = new SettingsStateStore(plugin, storage);
+        boolean persistent = store.initialize();
+
         registerCommand();
         listen(this);
 
-        C.info("Settings module enabled (Dialog API).");
+        // Su /reload i giocatori sono gia' online: nessun join in arrivo per loro.
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            store.whenLoaded(online.getUniqueId(), () -> {});
+        }
+
+        C.info("Settings module enabled (Dialog API)"
+                + (persistent ? " — toggle persistenti." : " — toggle solo in memoria."));
     }
 
     private void registerCommand() {
@@ -54,18 +66,26 @@ public final class SettingsModule extends AbstractModule implements Listener {
 
     public void openDialog(Player player) {
         SettingsConfig cfg = configLoader == null ? null : configLoader.get();
-        if (cfg == null) return;
-        new SettingsDialog(plugin, cfg).show(player);
+        if (cfg == null || store == null) return;
+        new SettingsDialog(plugin, cfg, store).show(player);
     }
 
-    /** Drops the cached ON/OFF states when a player leaves. */
+    /** Reads the stored toggles ahead of the first /settings so the dialog opens instantly. */
+    @EventHandler
+    public void onJoin(PlayerJoinEvent event) {
+        if (store != null) store.whenLoaded(event.getPlayer().getUniqueId(), () -> {});
+    }
+
+    /** Drops the cached ON/OFF states when a player leaves; the database keeps them. */
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
-        SettingsDialog.clearStates(event.getPlayer().getUniqueId());
+        if (store != null) store.unload(event.getPlayer().getUniqueId());
     }
 
     @Override
     protected void onShutdown() {
+        if (store != null) store.clear();
+        store = null;
         configLoader = null;
     }
 }
