@@ -1,0 +1,16 @@
+# Gradle local state. These are per-machine caches and lock files: committing them causes
+# conflicts on every build and can feed Gradle stale state from another machine.
+.gradle/
+build/
+
+# IDE
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/usage.statistics.xml
+.idea/shelf/
+*.iml
+out/
+
+# OS
+.DS_Store
+Thumbs.db

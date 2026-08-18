@@ -6,13 +6,16 @@ import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.chatgames.ChatGameType;
 import dev.lorenzzz.smplibrary.modules.chatgames.ChatGamesModule;
+import dev.lorenzzz.smplibrary.modules.competitors.CompetitorsModule;
 import org.bukkit.Bukkit;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -171,6 +174,10 @@ public final class WebServer {
             case "/api/log" -> sendJson(exchange, 200, logJson());
             case "/api/scopes" -> sendJson(exchange, 200, scopesJson());
             case "/api/players/history" -> sendJson(exchange, 200, stats.playerHistory());
+            case "/api/competitors" -> sendJson(exchange, 200, competitorsJson());
+            case "/api/competitors/add" -> competitorsAddRoute(exchange);
+            case "/api/competitors/remove" -> competitorsRemoveRoute(exchange);
+            case "/api/competitors/refresh" -> competitorsRefreshRoute(exchange);
             case "/api/chatgames/start" -> chatGamesStartRoute(exchange);
             case "/api/stream" -> {
                 return sse(exchange);
@@ -252,6 +259,120 @@ public final class WebServer {
         log.log("Started a " + started.name() + " chat game from the dashboard by " + remoteHost(exchange));
         sendJson(exchange, 200, "{\"ok\":true,\"type\":" + WebStats.jsonStr(started.name())
                 + ",\"log\":" + logJson() + "}");
+    }
+
+    // ----------------------------------------------------------- competitors
+
+    private CompetitorsModule competitors() {
+        return plugin.modules() == null
+                ? null : plugin.modules().module("competitors", CompetitorsModule.class);
+    }
+
+    private String competitorsJson() {
+        CompetitorsModule module = competitors();
+        return module == null
+                ? "{\"enabled\":false,\"board\":[],\"tracked\":0,\"ahead\":0,\"rank\":0}"
+                : module.json();
+    }
+
+    /** {@code POST /api/competitors/add?name=…&ip=host[:port]} */
+    private void competitorsAddRoute(HttpExchange exchange) throws IOException {
+        CompetitorsModule module = postToCompetitors(exchange);
+        if (module == null) return;
+
+        Map<String, String> params = query(exchange);
+        String ip = params.getOrDefault("ip", "");
+        String name = params.get("name");
+        if (ip.isBlank()) {
+            sendJson(exchange, 400, "{\"error\":\"no address given\"}");
+            return;
+        }
+
+        // add() writes config.yml, so it belongs on the server thread. Empty means it worked;
+        // null means the server never got round to it.
+        String outcome = onMainThread(() -> {
+            String error = module.add(name, ip);
+            return error == null ? "" : error;
+        });
+
+        if (outcome == null) {
+            sendJson(exchange, 504, "{\"error\":\"the server did not save the list in time\"}");
+            return;
+        }
+        if (!outcome.isEmpty()) {
+            sendJson(exchange, 400, "{\"error\":" + WebStats.jsonStr(outcome) + "}");
+            return;
+        }
+        log.log("Added competitor " + ip + " from the dashboard by " + remoteHost(exchange));
+        sendJson(exchange, 200, "{\"ok\":true,\"competitors\":" + competitorsJson()
+                + ",\"log\":" + logJson() + "}");
+    }
+
+    /** {@code POST /api/competitors/remove?id=host:port} */
+    private void competitorsRemoveRoute(HttpExchange exchange) throws IOException {
+        CompetitorsModule module = postToCompetitors(exchange);
+        if (module == null) return;
+
+        String id = query(exchange).getOrDefault("id", "");
+        String outcome = onMainThread(() -> {
+            String error = module.remove(id);
+            return error == null ? "" : error;
+        });
+
+        if (outcome == null) {
+            sendJson(exchange, 504, "{\"error\":\"the server did not save the list in time\"}");
+            return;
+        }
+        if (!outcome.isEmpty()) {
+            sendJson(exchange, 400, "{\"error\":" + WebStats.jsonStr(outcome) + "}");
+            return;
+        }
+        log.log("Removed competitor " + id + " from the dashboard by " + remoteHost(exchange));
+        sendJson(exchange, 200, "{\"ok\":true,\"competitors\":" + competitorsJson()
+                + ",\"log\":" + logJson() + "}");
+    }
+
+    /**
+     * {@code POST /api/competitors/refresh} — queues a ping sweep and answers with the board as
+     * it stands. The results land asynchronously; the browser's next poll picks them up.
+     */
+    private void competitorsRefreshRoute(HttpExchange exchange) throws IOException {
+        CompetitorsModule module = postToCompetitors(exchange);
+        if (module == null) return;
+
+        module.refresh();
+        sendJson(exchange, 200, "{\"ok\":true,\"competitors\":" + competitorsJson() + "}");
+    }
+
+    /**
+     * The running competitors module for a POST-only route, or null once this method has
+     * already answered the request — a wrong verb or a module that is switched off.
+     */
+    private CompetitorsModule postToCompetitors(HttpExchange exchange) throws IOException {
+        if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+            sendText(exchange, 405, "method not allowed");
+            return null;
+        }
+        CompetitorsModule module = competitors();
+        if (module == null) {
+            sendJson(exchange, 400, "{\"error\":\"the competitors module is not running\"}");
+        }
+        return module;
+    }
+
+    /** Query string as a map. Values arrive percent-encoded from the dashboard. */
+    private static Map<String, String> query(HttpExchange exchange) {
+        String raw = exchange.getRequestURI().getRawQuery();
+        Map<String, String> params = new LinkedHashMap<>();
+        if (raw == null || raw.isEmpty()) return params;
+
+        for (String pair : raw.split("&")) {
+            int equals = pair.indexOf('=');
+            if (equals <= 0) continue;
+            params.put(URLDecoder.decode(pair.substring(0, equals), StandardCharsets.UTF_8),
+                    URLDecoder.decode(pair.substring(equals + 1), StandardCharsets.UTF_8));
+        }
+        return params;
     }
 
     private void moduleToggleRoute(HttpExchange exchange, String path) throws IOException {

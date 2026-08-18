@@ -40,6 +40,8 @@
   <symbol id="i-server" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="7" rx="2"/><rect x="2" y="14" width="20" height="7" rx="2"/><path d="M6 6.5h.01M6 17.5h.01"/></symbol>
   <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 2v6h-6M3 22v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L21 8M21 15a9 9 0 0 1-14.9 3.4L3 16"/></symbol>
   <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
   <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></symbol>
 </defs></svg>
 
@@ -65,6 +67,9 @@
       <button class="nav-item" data-tab="chatgames">
         <svg class="ico"><use href="#i-chat"></use></svg><span>Chat games</span>
         <span class="nav-dot live" id="cgDot" hidden></span></button>
+      <button class="nav-item" data-tab="competitors">
+        <svg class="ico"><use href="#i-target"></use></svg><span>Competitors</span>
+        <span class="nav-dot warn" id="rivalDot" hidden></span></button>
       <button class="nav-item" data-tab="config">
         <svg class="ico"><use href="#i-file"></use></svg><span>Config</span>
         <span class="nav-dot warn" id="cfgDot" hidden></span></button>
@@ -317,6 +322,95 @@
             <thead><tr><th>Time</th><th>Event</th><th>Type</th><th>Detail</th></tr></thead>
             <tbody id="cgBody"><tr class="empty"><td colspan="4">No rounds yet.</td></tr></tbody>
           </table>
+        </div>
+      </section>
+
+      <!-- ─────────────────────── COMPETITORS ──────────────────── -->
+      <section id="tab-competitors" class="tab-content">
+
+        <div class="empty-state" id="rivalOffline" hidden>
+          <svg class="ico big"><use href="#i-target"></use></svg>
+          <h2>The competitors module is off</h2>
+          <p class="muted small">Turn <code>competitors</code> on from the Modules tab to start
+            tracking rival servers. Their addresses live in
+            <code>MODULES.competitors.servers</code>, and this tab writes them there for you.</p>
+        </div>
+
+        <div id="rivalPanel">
+          <div class="sec-bar">
+            <p class="muted">Every address here is pinged with the same handshake a Minecraft
+              client uses, so the counts are the ones their own players see. The board is ranked
+              live against this server.</p>
+            <button class="btn btn-ghost btn-sm" id="btnRivalRefresh">
+              <svg class="ico"><use href="#i-refresh"></use></svg><span>Check now</span></button>
+          </div>
+
+          <div class="alert" id="rivalAlert" hidden>
+            <svg class="ico" id="rivalAlertIcon"><use href="#i-alert"></use></svg>
+            <div>
+              <b id="rivalAlertTitle"></b>
+              <span id="rivalAlertText"></span>
+            </div>
+          </div>
+
+          <div class="grid">
+            <article class="card stat">
+              <div class="stat-head">
+                <span class="stat-label"><svg class="ico"><use href="#i-trophy"></use></svg>Your position</span>
+                <span class="pill ghost" id="rivalRankPill">--</span>
+              </div>
+              <div class="stat-value" id="rivalRank">--</div>
+              <div class="stat-sub" id="rivalRankSub">among the servers that answered</div>
+            </article>
+
+            <article class="card stat">
+              <div class="stat-head">
+                <span class="stat-label"><svg class="ico"><use href="#i-users"></use></svg>Your players</span>
+                <span class="pill ghost" id="rivalGapPill">--</span>
+              </div>
+              <div class="stat-value" id="rivalOnline">--</div>
+              <div class="stat-sub" id="rivalGapSub">&nbsp;</div>
+            </article>
+
+            <article class="card stat">
+              <div class="stat-head">
+                <span class="stat-label"><svg class="ico"><use href="#i-server"></use></svg>Leader</span>
+                <span class="pill ghost" id="rivalLeaderPill">--</span>
+              </div>
+              <div class="stat-value small" id="rivalLeader">--</div>
+              <div class="stat-sub" id="rivalTracked">no servers tracked yet</div>
+            </article>
+          </div>
+
+          <h2 class="sec-title"><svg class="ico"><use href="#i-plus"></use></svg>Add a rival
+            <span class="sec-note">host, or host:port when they run off 25565</span></h2>
+          <form class="rival-form" id="rivalForm" autocomplete="off">
+            <label class="field">
+              <svg class="ico"><use href="#i-book"></use></svg>
+              <input id="rivalName" type="text" maxlength="40" placeholder="Name (optional)">
+            </label>
+            <label class="field">
+              <svg class="ico"><use href="#i-server"></use></svg>
+              <input id="rivalIp" type="text" required spellcheck="false"
+                     placeholder="play.rival.it — or mc.rival.it:25566">
+            </label>
+            <button class="btn btn-primary" type="submit" id="btnRivalAdd">
+              <svg class="ico"><use href="#i-plus"></use></svg>Add</button>
+          </form>
+
+          <h2 class="sec-title"><svg class="ico"><use href="#i-list"></use></svg>Leaderboard
+            <span class="sec-note" id="rivalChecked">&nbsp;</span></h2>
+          <div class="table-wrap">
+            <table class="rival-table">
+              <thead><tr>
+                <th>#</th><th>Server</th><th>Players</th><th>vs you</th>
+                <th>MOTD</th><th>Ping</th><th></th>
+              </tr></thead>
+              <tbody id="rivalBody">
+                <tr class="empty"><td colspan="7">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 

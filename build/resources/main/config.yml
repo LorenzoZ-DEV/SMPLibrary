@@ -91,6 +91,23 @@
       # che il plugin lo registrasse: e' un minimo, non un valore fisso. Il modulo lo
       # alza da solo (e lo salva nel database) appena qualcuno lo supera.
       record: 45
+    competitors:
+      # Sezione "Concorrenza" della dashboard: pinga gli IP dei server rivali con lo stesso
+      # handshake che usa il client Minecraft, li mette in classifica insieme al tuo server e
+      # avvisa quando uno di loro ti supera come player online.
+      enabled: true
+      check-every: 2m        # ogni quanto vengono ripingati (minimo 30s)
+      timeout-ms: 3000       # attesa massima per ogni server prima di darlo per offline
+      your-name: "Il mio server"   # come compare il tuo server in classifica
+      # I rivali si aggiungono e si tolgono dalla dashboard, che riscrive questa lista.
+      # Puoi anche compilarla a mano: 'ip' accetta host o host:porta (senza porta viene
+      # seguito il record SRV, esattamente come farebbe un giocatore).
+      servers: []
+      # servers:
+      #   - name: "Server rivale"
+      #     ip: "play.rivale.it"
+      #   - name: "Altro rivale"
+      #     ip: "mc.altro.it:25566"
     amethyst-tool:
       enabled: true
       durability-uses: 500

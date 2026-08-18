@@ -538,6 +538,68 @@ input[type="search"]::-webkit-search-cancel-button { filter: invert(.6); }
   background: var(--green-soft); color: var(--green); font-size: 13px;
 }
 
+/* ── competitors ─────────────────────────────────────────────────────── */
+/* The banner that answers the tab's whole question before anything is read. */
+.alert {
+  display: flex; align-items: flex-start; gap: 11px;
+  padding: 12px 15px; margin-bottom: 16px;
+  border: 1px solid var(--line); border-left-width: 3px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 13px; line-height: 1.5;
+}
+.alert .ico { font-size: 17px; margin-top: 1px; flex: none; }
+.alert b { font-weight: 650; }
+.alert span { color: var(--text-2); }
+.alert.warn { border-left-color: var(--yellow); background: linear-gradient(90deg, var(--yellow-soft), transparent 60%); }
+.alert.warn .ico, .alert.warn b { color: var(--yellow); }
+.alert.ok { border-left-color: var(--green); background: linear-gradient(90deg, var(--green-soft), transparent 60%); }
+.alert.ok .ico, .alert.ok b { color: var(--green); }
+
+.rival-form { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.rival-form .field:first-of-type { flex: 1 1 200px; }
+.rival-form .field:last-of-type { flex: 2 1 300px; }
+.rival-form .field input { font-family: var(--mono); font-size: 12.5px; }
+
+.rival-table td { vertical-align: middle; }
+.rival-table .rank {
+  font-family: var(--mono); font-size: 13px; font-weight: 600;
+  color: var(--text-3); width: 46px;
+}
+.rival-name { display: flex; align-items: center; gap: 7px; font-weight: 550; }
+.rival-name .tag {
+  font-size: 9.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--accent); background: var(--accent-soft);
+  padding: 1px 6px; border-radius: 20px;
+}
+.rival-addr { font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+.rival-table .players {
+  font-family: var(--mono); font-size: 15px; font-weight: 600;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.rival-table .players .of { font-size: 11.5px; font-weight: 400; color: var(--text-3); }
+.rival-table .ping, .rival-table .gap {
+  font-family: var(--mono); font-size: 12.5px; white-space: nowrap;
+}
+.rival-table .motd { max-width: 34ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rival-table .row-action { width: 46px; text-align: right; }
+
+/* Green when we are above them, red when they are above us — the sign, not the size. */
+.delta { font-weight: 600; }
+.delta.up { color: var(--red); }
+.delta.down { color: var(--green); }
+.delta.level { color: var(--text-3); }
+
+.rival-row.is-you td { background: #58a6ff0f; }
+.rival-row.is-you .rank { color: var(--accent); }
+.rival-row.is-you td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.rival-row.is-ahead td:first-child { box-shadow: inset 3px 0 0 var(--yellow); }
+.rival-row.is-down td { color: var(--text-3); }
+.rival-row.is-down .rival-name { color: var(--text-2); font-weight: 400; }
+
+.icon-btn.tiny { width: 28px; height: 28px; font-size: 13px; }
+.icon-btn.tiny:hover { color: var(--red); border-color: #f8514959; }
+
 /* ── tables ──────────────────────────────────────────────────────────── */
 .table-wrap {
   border: 1px solid var(--line); border-radius: var(--radius);
@@ -702,6 +764,8 @@ tr.empty td { text-align: center; color: var(--text-3); padding: 26px; }
   .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
   .stat-value { font-size: 22px; }
   .chart-stats { gap: 18px; }
+  /* The MOTD is the one column worth dropping: everything else is the comparison itself. */
+  .rival-table .motd, .rival-table th:nth-child(5) { display: none; }
   .toasts { left: 12px; right: 12px; bottom: 12px; align-items: stretch; }
   .toast { max-width: none; }
 }

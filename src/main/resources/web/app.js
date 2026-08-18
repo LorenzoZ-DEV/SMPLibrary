@@ -11,6 +11,7 @@
     performance: ['Performance', 'Real-time metrics from spark'],
     modules:     ['Modules', 'Turn features on and off in place'],
     chatgames:   ['Chat games', 'Rounds, answers and history'],
+    competitors: ['Competitors', 'Rival servers, ranked against yours'],
     config:      ['Configuration', "Edit the plugin's YAML files"],
     log:         ['Action log', 'Everything this dashboard changed']
   };
@@ -31,6 +32,7 @@
     $('#pageTitle').textContent = PAGES[name][0];
     $('#pageSub').textContent = PAGES[name][1];
     if (name === 'log') $('#logDot').hidden = true;
+    if (name === 'competitors') $('#rivalDot').hidden = true;
     // The chart measures its container, which is unmeasurable while the tab is hidden.
     if (name === 'overview') requestAnimationFrame(renderChart);
     location.hash = name;
@@ -855,6 +857,214 @@
       });
   });
 
+  /* ── competitors ───────────────────────────────────────────────────────
+     A rival's player count is only worth showing next to ours, so the server
+     sends one already-ranked board with our own row inside it and this only
+     paints it. The verdict — who is ahead, by how much — is never recomputed
+     here, or the banner and the table could disagree.                       */
+  let rivalBoard = null;
+  let rivalSignature = '';
+  let rivalBusy = false;
+
+  function fmtAgo(ts) {
+    if (num(ts) === null) return 'never';
+    const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
+    if (s < 60) return s + 's ago';
+    if (s < 3600) return Math.floor(s / 60) + 'm ago';
+    return Math.floor(s / 3600) + 'h ago';
+  }
+
+  function fetchCompetitors() {
+    api('/api/competitors').then(applyCompetitors).catch(() => { /* tab keeps its last board */ });
+  }
+
+  function applyCompetitors(data) {
+    if (!data) return;
+    rivalBoard = data;
+    renderCompetitors();
+  }
+
+  function renderCompetitors() {
+    const d = rivalBoard || {};
+    $('#rivalOffline').hidden = !!d.enabled;
+    $('#rivalPanel').hidden = !d.enabled;
+    if (!d.enabled) { $('#rivalDot').hidden = true; return; }
+
+    const board = Array.isArray(d.board) ? d.board : [];
+    const you = d.you || {};
+    const ahead = d.ahead || 0;
+    const ranked = d.ranked || 0;
+    const behindLeader = num(d.leaderOnline) !== null ? d.leaderOnline - (you.online || 0) : null;
+
+    // ── the three headline cards ──
+    $('#rivalRank').textContent = d.rank ? '#' + d.rank : '--';
+    $('#rivalRankPill').textContent = ranked ? 'of ' + ranked : '--';
+    $('#rivalRankPill').className = 'pill ' + (ahead ? 'warn' : ranked > 1 ? 'good' : 'ghost');
+    $('#rivalRankSub').textContent = d.tracked
+      ? d.tracked + (d.tracked === 1 ? ' rival tracked' : ' rivals tracked')
+      : 'no rivals yet — add one below';
+
+    $('#rivalOnline').textContent = (you.online != null ? you.online : '--')
+      + '/' + (you.max != null ? you.max : '--');
+    $('#rivalGapPill').textContent = behindLeader === null ? '--'
+      : behindLeader > 0 ? '-' + behindLeader : 'top';
+    $('#rivalGapPill').className = 'pill ' + (behindLeader === null ? 'ghost'
+      : behindLeader > 0 ? 'bad' : 'good');
+    $('#rivalGapSub').textContent = behindLeader === null ? 'nothing to compare against yet'
+      : behindLeader > 0 ? behindLeader + ' behind the leader'
+      : 'nobody tracked is above you';
+
+    $('#rivalLeader').textContent = d.leader || '--';
+    $('#rivalLeaderPill').textContent = num(d.leaderOnline) !== null ? d.leaderOnline + ' on' : '--';
+    $('#rivalLeaderPill').className = 'pill ' + (d.leader && ahead ? 'warn' : 'ghost');
+
+    const checked = board.filter(r => !r.self && num(r.checkedAt) !== null).map(r => r.checkedAt);
+    $('#rivalChecked').textContent = checked.length
+      ? 'last checked ' + fmtAgo(Math.max(...checked)) + ' · every '
+        + Math.round((d.checkEvery || 0) / 1000) + 's'
+      : 'not checked yet';
+    const answering = Math.max(0, ranked - (d.rank ? 1 : 0));
+    $('#rivalTracked').textContent = d.tracked
+      ? answering + ' of ' + d.tracked + ' rivals answering'
+      : 'no servers tracked yet';
+
+    // ── the warning the whole tab exists for ──
+    const alert = $('#rivalAlert');
+    if (ahead > 0) {
+      alert.hidden = false;
+      alert.className = 'alert warn';
+      $('#rivalAlertTitle').textContent = ahead === 1
+        ? '1 rival is ahead of you.' : ahead + ' rivals are ahead of you.';
+      $('#rivalAlertText').textContent = d.leader
+        ? ' ' + d.leader + ' has ' + d.leaderOnline + ' players online, '
+          + behindLeader + ' more than your ' + (you.online || 0) + '.'
+        : '';
+    } else if (ranked > 1) {
+      alert.hidden = false;
+      alert.className = 'alert ok';
+      $('#rivalAlertTitle').textContent = 'You are on top.';
+      $('#rivalAlertText').textContent = ' No rival that answered is above your player count.';
+    } else {
+      alert.hidden = true;
+    }
+    $('use', $('#rivalAlertIcon')).setAttribute('href', ahead > 0 ? '#i-alert' : '#i-check');
+    $('#rivalDot').hidden = ahead === 0 || activeTab === 'competitors';
+
+    // ── the board ──
+    const signature = board.map(r =>
+      [r.id, r.rank, r.online, r.max, r.ping, r.reachable, r.error, r.motd].join('~')).join('|');
+    if (signature === rivalSignature) return;
+    rivalSignature = signature;
+
+    const body = $('#rivalBody');
+    if (board.length < 2) {
+      body.innerHTML = '<tr class="empty"><td colspan="7">'
+        + 'No rivals yet. Add the address of a server you want to keep an eye on.</td></tr>';
+      return;
+    }
+
+    body.innerHTML = board.map(row => {
+      // Three states, not two: up, down, and up-but-not-telling — a server is free to hide
+      // its player count, and calling that "offline" would be a lie about someone else's box.
+      const down = !row.reachable;
+      const hidden = row.reachable && row.online == null;
+      const cls = (row.self ? ' is-you' : '') + (down || hidden ? ' is-down' : '')
+        + (num(row.gap) !== null && row.gap > 0 ? ' is-ahead' : '');
+
+      const players = down ? '--'
+        : hidden ? '<span class="muted">hidden</span>'
+        : row.online + (num(row.max) !== null && row.max >= 0 ? '<span class="of">/' + row.max + '</span>' : '');
+
+      const gap = row.self ? '<span class="muted">you</span>'
+        : num(row.gap) === null ? '<span class="muted">--</span>'
+        : row.gap > 0 ? '<span class="delta up">+' + row.gap + '</span>'
+        : row.gap < 0 ? '<span class="delta down">' + row.gap + '</span>'
+        : '<span class="delta level">=</span>';
+
+      // A rival added a moment ago has no reading yet — that is "checking", not "offline".
+      const waiting = row.checkedAt == null;
+      const ping = row.self ? '<span class="muted">--</span>'
+        : waiting ? '<span class="status status-warn">checking</span>'
+        : down ? '<span class="status status-off" title="' + esc(row.error || '') + '">offline</span>'
+        : esc(row.ping) + ' ms';
+
+      const action = row.self ? ''
+        : '<button class="icon-btn tiny" data-rival="' + esc(row.id) + '" title="Stop tracking '
+          + esc(row.name) + '"><svg class="ico"><use href="#i-trash"></use></svg></button>';
+
+      return '<tr class="rival-row' + cls + '">'
+        + '<td class="rank">' + (row.rank ? '#' + row.rank : '--') + '</td>'
+        + '<td><div class="rival-name">' + esc(row.name)
+          + (row.self ? '<span class="tag">you</span>' : '') + '</div>'
+          + '<div class="rival-addr">' + esc(row.address) + '</div></td>'
+        + '<td class="players">' + players + '</td>'
+        + '<td class="gap">' + gap + '</td>'
+        + '<td class="detail motd">' + esc(down ? (row.error || '') : (row.motd || '')) + '</td>'
+        + '<td class="ping">' + ping + '</td>'
+        + '<td class="row-action">' + action + '</td>'
+        + '</tr>';
+    }).join('');
+  }
+
+  $('#rivalForm').addEventListener('submit', event => {
+    event.preventDefault();
+    if (rivalBusy) return;
+
+    const ip = $('#rivalIp').value.trim();
+    if (!ip) return;
+    const name = $('#rivalName').value.trim();
+
+    rivalBusy = true;
+    $('#btnRivalAdd').disabled = true;
+    api('/api/competitors/add?ip=' + encodeURIComponent(ip)
+        + (name ? '&name=' + encodeURIComponent(name) : ''), { method: 'POST' })
+      .then(data => {
+        $('#rivalIp').value = '';
+        $('#rivalName').value = '';
+        applyCompetitors(data.competitors);
+        if (data.log) renderLog(data.log);
+        toast('Now tracking ' + (name || ip), 'ok');
+        // The first ping is queued, not done: pick the result up shortly.
+        setTimeout(fetchCompetitors, 4000);
+      })
+      .catch(e => toast('Could not add it: ' + e.message, 'err'))
+      .finally(() => { rivalBusy = false; $('#btnRivalAdd').disabled = false; });
+  });
+
+  $('#rivalBody').addEventListener('click', event => {
+    const btn = event.target.closest('[data-rival]');
+    if (!btn || rivalBusy) return;
+
+    const id = btn.dataset.rival;
+    if (!confirm('Stop tracking ' + id + '?')) return;
+
+    rivalBusy = true;
+    btn.disabled = true;
+    api('/api/competitors/remove?id=' + encodeURIComponent(id), { method: 'POST' })
+      .then(data => {
+        applyCompetitors(data.competitors);
+        if (data.log) renderLog(data.log);
+        toast('Removed ' + id, 'ok');
+      })
+      .catch(e => toast('Could not remove it: ' + e.message, 'err'))
+      // The row is usually replaced by then; re-enabling matters for the failure path, where
+      // this very button is still on screen.
+      .finally(() => { rivalBusy = false; btn.disabled = false; });
+  });
+
+  $('#btnRivalRefresh').addEventListener('click', () => {
+    const btn = $('#btnRivalRefresh');
+    btn.disabled = true;
+    api('/api/competitors/refresh', { method: 'POST' })
+      .then(data => {
+        applyCompetitors(data.competitors);
+        // Pings run off the server thread, so the fresh numbers arrive after this response.
+        setTimeout(fetchCompetitors, 4000);
+      })
+      .catch(e => toast('Check failed: ' + e.message, 'err'))
+      .finally(() => setTimeout(() => { btn.disabled = false; }, 1500));
+  });
+
   /* ── config editor ─────────────────────────────────────────────────── */
   const editor = $('#configEditor');
   const gutter = $('#gutter');
@@ -1086,6 +1296,10 @@
   // The history is a separate, heavier payload than the 1s snapshot — poll it slowly.
   fetchPlayerHistory();
   setInterval(fetchPlayerHistory, 60000);
+
+  // The board only moves when the module re-pings, which is minutes apart by default.
+  fetchCompetitors();
+  setInterval(fetchCompetitors, 30000);
 
   connect();
 })();

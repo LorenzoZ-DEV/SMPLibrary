@@ -75,7 +75,20 @@ public final class StorageManager implements Manager {
         hc.setMinimumIdle(1);
     }
 
+    /**
+     * A pooled connection.
+     *
+     * <p>The explicit check is worth its two lines: when {@link #enable()} throws — a missing
+     * JDBC driver is the usual reason — {@code dataSource} stays null and every caller used to
+     * get a bare NullPointerException, which modules then logged as "(null)". Callers catch
+     * SQLException already, so they now log the actual cause.
+     */
     public Connection connection() throws SQLException {
+        if (dataSource == null) {
+            throw new SQLException("storage pool is not available — check the 'Failed enabling storage' "
+                    + "line at start-up (a missing JDBC driver for database.type in storage.yml is the "
+                    + "usual cause)");
+        }
         return dataSource.getConnection();
     }
 

@@ -34,7 +34,7 @@ public final class SettingsModule extends AbstractModule implements Listener {
         configLoader.load();
 
         this.store = new SettingsStateStore(plugin, storage);
-        boolean persistent = store.initialize();
+        store.initialize();
 
         registerCommand();
         listen(this);
@@ -44,8 +44,7 @@ public final class SettingsModule extends AbstractModule implements Listener {
             store.whenLoaded(online.getUniqueId(), () -> {});
         }
 
-        C.info("Settings module enabled (Dialog API)"
-                + (persistent ? " — toggle persistenti." : " — toggle solo in memoria."));
+        C.info("Settings module enabled (Dialog API) — toggle salvati su " + store.backend() + ".");
     }
 
     private void registerCommand() {

@@ -6,6 +6,7 @@ import dev.lorenzzz.smplibrary.modules.Module;
 import dev.lorenzzz.smplibrary.modules.adaptive.AdaptiveToolModule;
 import dev.lorenzzz.smplibrary.modules.amethyst.AmethystToolModule;
 import dev.lorenzzz.smplibrary.modules.chatgames.ChatGamesModule;
+import dev.lorenzzz.smplibrary.modules.competitors.CompetitorsModule;
 import dev.lorenzzz.smplibrary.modules.firstjoin.FirstJoinModule;
 import dev.lorenzzz.smplibrary.modules.keyall.KeyAllModule;
 import dev.lorenzzz.smplibrary.modules.pay.PayModule;
@@ -66,6 +67,7 @@ public final class ModuleManager implements Manager {
         register(new PayModule(plugin));
         register(new PlaytimeModule(plugin));
         register(new PlayerStatsModule(plugin));
+        register(new CompetitorsModule(plugin));
         register(new SettingsModule(plugin));
         register(new WebModule(plugin));
 

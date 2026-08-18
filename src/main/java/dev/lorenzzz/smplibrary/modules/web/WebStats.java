@@ -238,7 +238,8 @@ public final class WebStats {
         return Math.round(value * 100.0) / 100.0;
     }
 
-    static String jsonStr(String value) {
+    /** The plugin's one JSON string encoder — also used by modules that build their own payloads. */
+    public static String jsonStr(String value) {
         if (value == null) return "null";
         StringBuilder out = new StringBuilder(value.length() + 2).append('"');
         for (int i = 0; i < value.length(); i++) {
