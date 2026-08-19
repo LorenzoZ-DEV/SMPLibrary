@@ -80,3 +80,23 @@ first-join:
     &d&lBENTORNATO
     &fBentornato sul server, &d%player%&f!
   returning-actionbar: '&d&lBENTORNATO &r&8➟ &fBentornato, &d%player%&f!'
+# Messaggi della procedura /bugreport (alias /segnalabug). Ogni passo ne usa uno:
+# dialog -> libro -> link in chat -> conferma in GUI.
+bugreport:
+  already-running: '&eHai gia'' una segnalazione aperta. Finiscila o scrivi &fannulla&e in chat.'
+  title-empty: '&cIl titolo non puo'' essere vuoto. Riapri con &f/bugreport&c.'
+  write-book: |-
+    &r
+    &d&lSEGNALAZIONE &8» &f%title%
+    &fTi ho messo in mano un libro: &dscrivi cosa succede&f, passo per passo.
+    &7Quando hai finito chiudi il libro con &fFatto&7 (non serve firmarlo).
+  body-empty: '&cIl libro e'' vuoto: scrivi almeno una riga prima di chiuderlo.'
+  ask-media: |-
+    &r
+    &d&lSEGNALAZIONE &8» &fUltimo passo
+    &fIncolla in chat il link a uno &dscreenshot o video&f (Medal, Gyazo, Imgur...).
+    &7Scrivi &fsalta &7se non ne hai, oppure &fannulla &7per lasciar perdere.
+  bad-media: '&cLink non valido. Sono accettati solo link http(s) di: &f%hosts%&c. Scrivi &fsalta &cper saltare.'
+  sent: '&a✔ &fSegnalazione inviata! Codice: &a#%id%&f. Grazie: lo staff la vede sulla dashboard.'
+  cancelled: '&7Segnalazione annullata. Niente e'' stato salvato.'
+  timeout: '&7Segnalazione scaduta per inattivita''. Riapri con &f/bugreport&7.'

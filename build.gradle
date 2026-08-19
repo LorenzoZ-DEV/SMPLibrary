@@ -9,7 +9,7 @@ def getBuildVersion() {
     try {
         def hash = 'git rev-parse --short HEAD'.execute().text.trim()
         def count = 'git rev-list --count HEAD'.execute().text.trim()
-        if (hash && count) return "1.121.${count}-${hash}"
+        if (hash && count) return "1.12.${count}-${hash}"
     } catch (Exception ignored) {}
     return "1.0-" + new Date().format('yyyyMMdd-HHmmss')
 }
@@ -81,6 +81,20 @@ dependencies {
     implementation 'com.zaxxer:HikariCP:5.1.0'                         // connection pool
     implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'     // C.java color cache
     implementation 'net.j4c0b3y:MenuAPI-core:1.5.5'                    // MenuAPI
+    // Anthropic SDK, for the debug module's AI diagnosis. It drags in OkHttp + Jackson, which
+    // is why both are relocated below: a server running another plugin with its own Jackson
+    // must not be able to break ours, or the other way round.
+    implementation('com.anthropic:anthropic-java:2.34.0') {
+        // The SDK ships the machinery for features this plugin does not use, and each one is
+        // megabytes in the shaded jar: JSON-schema generation (structured outputs), Swagger
+        // annotations, and webhook signature verification. Dropping them keeps the plugin a
+        // sane download. If a future feature here needs structured outputs or webhooks, put
+        // the matching exclusion back.
+        exclude group: 'com.github.victools'
+        exclude group: 'com.fasterxml', module: 'classmate'
+        exclude group: 'io.swagger.core.v3'
+        exclude group: 'com.standardwebhooks'
+    }
 }
 
 def targetJavaVersion = 21
@@ -117,10 +131,18 @@ shadowJar {
     relocate 'com.zaxxer.hikari', 'dev.lorenzzz.smplibrary.lib.hikari'
     relocate 'com.github.benmanes.caffeine', 'dev.lorenzzz.smplibrary.lib.caffeine'
     relocate 'net.j4c0b3y', 'dev.lorenzzz.smplibrary.lib.menuapi'
+    relocate 'com.anthropic', 'dev.lorenzzz.smplibrary.lib.anthropic'
+    relocate 'okhttp3', 'dev.lorenzzz.smplibrary.lib.okhttp3'
+    relocate 'okio', 'dev.lorenzzz.smplibrary.lib.okio'
+    relocate 'com.fasterxml.jackson', 'dev.lorenzzz.smplibrary.lib.jackson'
     minimize {
         exclude(dependency('co.aikar:acf-paper:.*'))
         exclude(dependency('com.github.ben-manes.caffeine:caffeine:.*'))
         exclude(dependency('net.j4c0b3y:MenuAPI-core:.*'))
+        // The SDK and Jackson resolve types reflectively; minimize cannot see those edges and
+        // strips classes that are only reached at runtime.
+        exclude(dependency('com.anthropic:anthropic-java:.*'))
+        exclude(dependency('com.fasterxml.jackson.*:.*'))
     }
 }
 

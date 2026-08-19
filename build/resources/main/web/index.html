@@ -73,6 +73,12 @@
       <button class="nav-item" data-tab="config">
         <svg class="ico"><use href="#i-file"></use></svg><span>Config</span>
         <span class="nav-dot warn" id="cfgDot" hidden></span></button>
+      <button class="nav-item" data-tab="antipearl">
+        <svg class="ico"><use href="#i-target"></use></svg><span>Anti-glitch</span>
+        <span class="nav-count" id="pearlCount"></span></button>
+      <button class="nav-item" data-tab="debug">
+        <svg class="ico"><use href="#i-alert"></use></svg><span>Debug</span>
+        <span class="nav-count" id="debugCount"></span></button>
       <button class="nav-item" data-tab="log">
         <svg class="ico"><use href="#i-list"></use></svg><span>Action log</span>
         <span class="nav-dot" id="logDot" hidden></span></button>
@@ -437,6 +443,129 @@
                     autocapitalize="off" wrap="off" placeholder="Select a file above…"></textarea>
         </div>
         <div id="configResult" class="result" hidden></div>
+      </section>
+
+      <!-- ────────────────────── ANTI-PEARL GLITCH ─────────────── -->
+      <section id="tab-antipearl" class="tab-content">
+
+        <div class="empty-state" id="pearlOffline" hidden>
+          <svg class="ico big"><use href="#i-target"></use></svg>
+          <h2>Il modulo anti-glitch e' spento</h2>
+          <p class="muted small">Accendi <code>antipearlglitch</code> dalla tab Modules.
+            Le impostazioni vivono in <code>MODULES.antipearlglitch</code>.</p>
+        </div>
+
+        <div id="pearlPanel">
+          <div class="sec-bar">
+            <p class="muted">Ogni perla che sta per far atterrare un player dentro un blocco
+              viene corretta: il punto d'arrivo si sposta, e se non c'e' spazio la perla viene
+              annullata. Chi resta incastrato il tick dopo viene estratto.</p>
+          </div>
+
+          <div class="grid">
+            <article class="card stat">
+              <div class="stat-head">
+                <span class="stat-label"><svg class="ico"><use href="#i-check"></use></svg>Interventi</span>
+                <span class="pill ghost" id="pearlWatchPill">--</span>
+              </div>
+              <div class="stat-value" id="pearlTotal">--</div>
+              <div class="stat-sub" id="pearlBreakdown">&nbsp;</div>
+            </article>
+
+            <article class="card stat">
+              <div class="stat-head">
+                <span class="stat-label"><svg class="ico"><use href="#i-clock"></use></svg>Finestra</span>
+              </div>
+              <div class="stat-value" id="pearlWindow">--</div>
+              <div class="stat-sub">dopo la perla il player resta sorvegliato</div>
+            </article>
+
+            <article class="card stat">
+              <div class="stat-head">
+                <span class="stat-label"><svg class="ico"><use href="#i-search"></use></svg>Ricerca</span>
+                <span class="pill ghost" id="pearlBypassPill">--</span>
+              </div>
+              <div class="stat-value" id="pearlDistance">--</div>
+              <div class="stat-sub">blocchi cercati in avanti prima di annullare</div>
+            </article>
+          </div>
+
+          <h2 class="sec-title"><svg class="ico"><use href="#i-list"></use></svg>Ultimi interventi
+            <span class="sec-note">i piu' recenti in cima</span></h2>
+          <div class="table-wrap">
+            <table class="rival-table">
+              <thead><tr>
+                <th>Quando</th><th>Player</th><th>Mondo</th><th>Coordinate</th><th>Azione</th>
+              </tr></thead>
+              <tbody id="pearlBody">
+                <tr class="empty"><td colspan="5">Nessun intervento ancora.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────────────────────── DEBUG ────────────────────── -->
+      <section id="tab-debug" class="tab-content">
+        <div class="cards" id="debugStats">
+          <article class="card stat">
+            <div class="stat-head"><span class="stat-label">Errori (firme)</span>
+              <span class="pill" id="dbgErrPill">--</span></div>
+            <div class="stat-value" id="dbgErrSignatures">--</div>
+            <div class="stat-sub"><span id="dbgErrTotal">-- occorrenze</span></div>
+          </article>
+          <article class="card stat">
+            <div class="stat-head"><span class="stat-label">Segnalazioni aperte</span></div>
+            <div class="stat-value" id="dbgReportsOpen">--</div>
+            <div class="stat-sub"><span id="dbgReportsTotal">-- in totale</span></div>
+          </article>
+          <article class="card stat">
+            <div class="stat-head"><span class="stat-label">Analisi AI</span>
+              <span class="pill ghost" id="dbgAiPill">--</span></div>
+            <div class="stat-value" id="dbgAiModel" style="font-size:18px">--</div>
+            <div class="stat-sub"><span id="dbgAiKey">chiave --</span></div>
+          </article>
+        </div>
+
+        <article class="card">
+          <div class="sec-bar">
+            <h2 class="card-title">Analisi della causa</h2>
+            <div class="editor-actions">
+              <label class="field" style="min-width:min(46vw,360px)">
+                <svg class="ico"><use href="#i-search"></use></svg>
+                <input id="dbgQuestion" type="text" autocomplete="off"
+                       placeholder="Che problema stai vedendo? (es. le canne non crescono)">
+              </label>
+              <button class="btn btn-primary btn-sm" id="btnAnalyze">
+                <svg class="ico"><use href="#i-zap"></use></svg><span>Analizza</span></button>
+            </div>
+          </div>
+          <p class="muted" id="dbgAnalysisMeta">Nessuna analisi ancora eseguita.</p>
+          <div class="analysis" id="dbgAnalysis" hidden></div>
+        </article>
+
+        <article class="card">
+          <div class="sec-bar">
+            <h2 class="card-title">Errori catturati</h2>
+            <button class="btn btn-ghost btn-sm" id="btnClearErrors">
+              <svg class="ico"><use href="#i-trash"></use></svg><span>Azzera</span></button>
+          </div>
+          <p class="muted">Gli stacktrace del plugin finiscono qui invece che in console.
+            Clicca una riga per aprire lo stack completo.</p>
+          <div class="errlist" id="dbgErrors">
+            <div class="log-empty">Nessun errore registrato.</div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="sec-bar">
+            <h2 class="card-title">Segnalazioni dei player</h2>
+            <span class="muted">Inviate in gioco con <code>/bugreport</code></span>
+          </div>
+          <div class="reportlist" id="dbgReports">
+            <div class="log-empty">Nessuna segnalazione.</div>
+          </div>
+        </article>
       </section>
 
       <!-- ──────────────────────────── LOG ─────────────────────── -->

@@ -5,8 +5,10 @@ import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.Module;
 import dev.lorenzzz.smplibrary.modules.adaptive.AdaptiveToolModule;
 import dev.lorenzzz.smplibrary.modules.amethyst.AmethystToolModule;
+import dev.lorenzzz.smplibrary.modules.antipearl.AntiPearlGlitchModule;
 import dev.lorenzzz.smplibrary.modules.chatgames.ChatGamesModule;
 import dev.lorenzzz.smplibrary.modules.competitors.CompetitorsModule;
+import dev.lorenzzz.smplibrary.modules.debug.DebugModule;
 import dev.lorenzzz.smplibrary.modules.firstjoin.FirstJoinModule;
 import dev.lorenzzz.smplibrary.modules.keyall.KeyAllModule;
 import dev.lorenzzz.smplibrary.modules.pay.PayModule;
@@ -62,6 +64,7 @@ public final class ModuleManager implements Manager {
         register(new AmethystToolModule(plugin));
         register(new AdaptiveToolModule(plugin));
         register(new TrivellaModule(plugin));
+        register(new AntiPearlGlitchModule(plugin));
         register(new FirstJoinModule(plugin));
         register(new ShopModule(plugin));
         register(new PayModule(plugin));
@@ -69,6 +72,7 @@ public final class ModuleManager implements Manager {
         register(new PlayerStatsModule(plugin));
         register(new CompetitorsModule(plugin));
         register(new SettingsModule(plugin));
+        register(new DebugModule(plugin));
         register(new WebModule(plugin));
 
         ensureConfig();

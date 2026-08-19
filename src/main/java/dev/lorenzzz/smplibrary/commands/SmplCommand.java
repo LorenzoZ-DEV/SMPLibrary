@@ -18,6 +18,8 @@ import dev.lorenzzz.smplibrary.modules.adaptive.AdaptiveToolModule;
 import dev.lorenzzz.smplibrary.modules.amethyst.AmethystToolModule;
 import dev.lorenzzz.smplibrary.modules.chatgames.ChatGameType;
 import dev.lorenzzz.smplibrary.modules.chatgames.ChatGamesModule;
+import dev.lorenzzz.smplibrary.modules.debug.DebugModule;
+import dev.lorenzzz.smplibrary.modules.debug.ErrorStore;
 import dev.lorenzzz.smplibrary.modules.trivella.TrivellaModule;
 import dev.lorenzzz.smplibrary.modules.web.WebModule;
 import net.kyori.adventure.text.Component;
@@ -49,6 +51,14 @@ public final class SmplCommand extends BaseCommand {
             "&8» &f/smplibrary modules &7- lista moduli e stato (enabled/disabled)",
             "&8» &f/smplibrary webedit &7- genera link temporaneo (5 min) per la web dashboard",
             "&8» &f/smplibrary chatgames start &7- avvia subito un round di chat games",
+            "",
+            "&d&lDebug &7(sezione Debug della dashboard):",
+            "&8» &f/smplibrary debug &7- errori catturati e segnalazioni aperte",
+            "&8» &f/smplibrary debug analyze [domanda] &7- analisi AI della causa",
+            "&8» &f/smplibrary debug result &7- rileggi l'ultima analisi",
+            "&8» &f/smplibrary debug clear &7- azzera gli errori catturati",
+            "&8» &f/smplibrary debug notify &7- silenzia/riattiva le tue notifiche",
+            "&8» &f/bugreport &7&o(alias: /segnalabug)&7- i player segnalano un bug",
             "",
             "&d&lStrumenti custom:",
             "&8» &f/smplibrary amethyst give <tool> [player]",
@@ -142,6 +152,97 @@ public final class SmplCommand extends BaseCommand {
         } catch (Exception e) {
             return "localhost";
         }
+    }
+
+    // ------------------------------------------------------------------ debug
+
+    @Subcommand("debug")
+    public void onDebug(CommandSender sender) {
+        DebugModule debug = debugModule(sender);
+        if (debug == null) return;
+
+        C.send(sender, "&d&lDebug &8» &7errori catturati: &f" + debug.errors().size()
+                + " &7(occorrenze totali: &f" + debug.errors().totalOccurrences() + "&7)");
+        C.send(sender, "&7Segnalazioni aperte: &f" + debug.reports().openCount()
+                + "&7/&f" + debug.reports().size());
+        C.send(sender, "&7AI: " + (debug.aiConfigured() ? "&aconfigurata" : "&cnon configurata")
+                + (debug.analysing() ? " &e(analisi in corso)" : ""));
+
+        int shown = 0;
+        for (ErrorStore.Entry entry : debug.errors().recent()) {
+            if (shown++ >= 5) break;
+            C.send(sender, "&8» &c" + entry.headline() + " &8x" + entry.count());
+        }
+        C.send(sender, "&7Usa &f/smpl debug analyze [domanda] &7per l'analisi AI, "
+                + "&f/smpl debug clear&7, &f/smpl debug notify&7.");
+    }
+
+    @Subcommand("debug analyze")
+    @CommandCompletion("@nothing")
+    public void onDebugAnalyze(CommandSender sender, @Optional String question) {
+        DebugModule debug = debugModule(sender);
+        if (debug == null) return;
+
+        if (!debug.aiConfigured()) {
+            C.send(sender, "&cNessuna API key: imposta la variabile d'ambiente ANTHROPIC_API_KEY "
+                    + "oppure MODULES.debug.ai.api-key in config.yml.");
+            return;
+        }
+        if (!debug.analyze(question, sender.getName())) {
+            C.send(sender, "&eUn'analisi e' gia' in corso. Attendi che finisca.");
+            return;
+        }
+        C.send(sender, "&7Analisi avviata. Il risultato arriva nella sezione &fDebug &7della "
+                + "dashboard, e ti avviso in chat quando e' pronta.");
+    }
+
+    @Subcommand("debug result")
+    public void onDebugResult(CommandSender sender) {
+        DebugModule debug = debugModule(sender);
+        if (debug == null) return;
+
+        DebugModule.Analysis analysis = debug.lastAnalysis();
+        if (analysis == null) {
+            C.send(sender, "&7Nessuna analisi ancora eseguita.");
+            return;
+        }
+        if (!analysis.ok()) {
+            C.send(sender, "&cUltima analisi fallita: &7" + analysis.error());
+            return;
+        }
+        C.send(sender, "&d&lAnalisi del &f" + analysis.formattedAt()
+                + " &8(&7richiesta da " + analysis.requester() + "&8)");
+        for (String line : analysis.text().split("\\R")) {
+            C.send(sender, line.startsWith("#") ? "&d&l" + line.replace("#", "").trim() : "&7" + line);
+        }
+    }
+
+    @Subcommand("debug clear")
+    public void onDebugClear(CommandSender sender) {
+        DebugModule debug = debugModule(sender);
+        if (debug == null) return;
+        debug.clearErrors();
+        C.send(sender, "&aErrori catturati azzerati.");
+    }
+
+    @Subcommand("debug notify")
+    public void onDebugNotify(CommandSender sender) {
+        DebugModule debug = debugModule(sender);
+        if (debug == null) return;
+        if (!(sender instanceof Player player)) {
+            C.send(sender, "&cSolo un player puo' cambiare le proprie notifiche.");
+            return;
+        }
+        boolean on = debug.toggleNotifications(player.getUniqueId());
+        C.send(sender, on ? "&aNotifiche di debug attivate." : "&7Notifiche di debug silenziate.");
+    }
+
+    private DebugModule debugModule(CommandSender sender) {
+        DebugModule debug = modules().module("debug", DebugModule.class);
+        if (debug == null) {
+            C.send(sender, "&cIl modulo debug non e' in esecuzione (MODULES.debug.enabled).");
+        }
+        return debug;
     }
 
     @Subcommand("chatgames start")

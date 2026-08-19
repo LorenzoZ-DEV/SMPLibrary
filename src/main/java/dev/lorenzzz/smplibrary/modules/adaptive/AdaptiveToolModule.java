@@ -4,6 +4,7 @@ import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.AbstractModule;
 import dev.lorenzzz.smplibrary.modules.ToolMeta;
+import dev.lorenzzz.smplibrary.modules.UseBatcher;
 import dev.lorenzzz.smplibrary.util.SoundCue;
 import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
 import org.bukkit.Color;
@@ -22,6 +23,8 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockDamageEvent;
+import org.bukkit.event.player.PlayerItemHeldEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -32,6 +35,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * One morphing tool. The key timing — ported from a known-good reference: morph on
@@ -79,6 +83,10 @@ public final class AdaptiveToolModule extends AbstractModule implements Listener
     private final NamespacedKey toolKey;
     private final NamespacedKey formKey;
 
+    // Mining breaks come in far faster than once a second, and every write to the held stack
+    // costs the client its block-breaking progress. See UseBatcher.
+    private final UseBatcher uses = new UseBatcher(1000L);
+
     // --- config cache, rebuilt on every enable ---
     private final Map<String, Form> forms = new LinkedHashMap<>();
     private boolean enabled;
@@ -108,6 +116,7 @@ public final class AdaptiveToolModule extends AbstractModule implements Listener
     @Override
     protected void onShutdown() {
         forms.clear();
+        uses.clear();
         enabled = false;
     }
 
@@ -308,7 +317,21 @@ public final class AdaptiveToolModule extends AbstractModule implements Listener
         if (!enabled || player.getGameMode() == GameMode.CREATIVE) return;
 
         ItemStack tool = heldAdaptive(player);
-        if (tool != null) spendUse(player, tool);
+        if (tool != null) spendUse(player, tool, player.getInventory().getHeldItemSlot(), false);
+    }
+
+    /**
+     * Uses booked while mining belong to the stack that earned them, so they are written out
+     * before that stack can leave the hand.
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onHeldChange(PlayerItemHeldEvent event) {
+        flushBooked(event.getPlayer(), event.getPreviousSlot());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onQuit(PlayerQuitEvent event) {
+        flushBooked(event.getPlayer(), event.getPlayer().getInventory().getHeldItemSlot());
     }
 
     /** Morph to sword before the hit lands (sword damage attrs apply); spend a use only if it connects. */
@@ -322,9 +345,11 @@ public final class AdaptiveToolModule extends AbstractModule implements Listener
 
         morph(player, tool, SWORD);
         if (event.willAttack()) {
-            // The morph replaced the held stack — spend the use on the item now in hand.
+            // The morph replaced the held stack — spend the use on the item now in hand. Hits do
+            // not come in fast enough to be worth batching, and the item was just rewritten
+            // anyway, so this write goes through immediately together with anything booked.
             ItemStack held = heldAdaptive(player);
-            if (held != null) spendUse(player, held);
+            if (held != null) spendUse(player, held, player.getInventory().getHeldItemSlot(), true);
         }
     }
 
@@ -387,30 +412,62 @@ public final class AdaptiveToolModule extends AbstractModule implements Listener
         if (messages != null) messages.sendBoth(player, "adaptive-tool.morphed", Map.of("{form}", desired));
     }
 
-    private void spendUse(Player player, ItemStack item) {
+    /**
+     * Books one use against the tool in {@code slot} and writes the counter when the batcher
+     * lets it through — every write costs the miner their break progress, so breaks batch.
+     *
+     * @param immediate write now, taking any booked uses along (attacks, slot changes)
+     */
+    private void spendUse(Player player, ItemStack item, int slot, boolean immediate) {
+        UUID id = player.getUniqueId();
+        int written = item.getItemMeta().getPersistentDataContainer()
+                .getOrDefault(usesKey, PersistentDataType.INTEGER, 0);
+
+        int spent = immediate ? 1 + uses.drain(id) : uses.spend(id, written);
+        if (spent > 0) applyUses(player, item, slot, spent);
+    }
+
+    /** Writes out uses booked earlier, if the tool that earned them is still in {@code slot}. */
+    private void flushBooked(Player player, int slot) {
+        UUID id = player.getUniqueId();
+        if (uses.peek(id) == 0) return;
+
+        ItemStack item = player.getInventory().getItem(slot);
+        int booked = uses.drain(id);
+        // Not the tool any more: whatever was booked went with it rather than onto a stack that
+        // never earned it. A batch is worth a second of mining — nobody notices, nobody duplicates.
+        if (item == null || item.getType().isAir()) return;
+        if (!ToolMeta.hasTag(item.getItemMeta(), toolKey, TOOL_ID)) return;
+
+        applyUses(player, item, slot, booked);
+    }
+
+    /** Subtracts {@code spent} uses from the tool in {@code slot} and refreshes its lore. */
+    private void applyUses(Player player, ItemStack item, int slot, int spent) {
         ItemMeta meta = item.getItemMeta();
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
 
-        int uses = pdc.getOrDefault(usesKey, PersistentDataType.INTEGER, 0) - 1;
-        int max = pdc.getOrDefault(maxKey, PersistentDataType.INTEGER, uses + 1);
+        int remaining = pdc.getOrDefault(usesKey, PersistentDataType.INTEGER, 0) - spent;
+        int max = pdc.getOrDefault(maxKey, PersistentDataType.INTEGER, remaining + spent);
         String form = pdc.getOrDefault(formKey, PersistentDataType.STRING, defaultForm);
 
-        if (uses <= 0) {
-            shatter(player);
+        if (remaining <= 0) {
+            uses.forget(player.getUniqueId());
+            shatter(player, slot);
             return;
         }
 
-        pdc.set(usesKey, PersistentDataType.INTEGER, uses);
+        pdc.set(usesKey, PersistentDataType.INTEGER, remaining);
         meta.lore(ToolMeta.lore(loreFormat, Map.of(
-                "{uses}", String.valueOf(uses),
+                "{uses}", String.valueOf(remaining),
                 "{max}", String.valueOf(max),
                 "{form}", form)));
         item.setItemMeta(meta);
-        player.getInventory().setItemInMainHand(item);
+        player.getInventory().setItem(slot, item);
     }
 
-    private void shatter(Player player) {
-        player.getInventory().setItemInMainHand(null);
+    private void shatter(Player player, int slot) {
+        player.getInventory().setItem(slot, null);
         Location loc = player.getLocation().add(0, 1, 0);
         spawn(player.getWorld(), loc, SHATTER_PARTICLE);
         SHATTER_SOUND.play(player);

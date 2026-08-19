@@ -198,15 +198,36 @@
     trivella:
       enabled: true
       radius: 1                 # 1 = 3x3x3 cube around the broken block; capped at 3 in code
+      # Con true, scavare accovacciati rompe un blocco solo: e' l'unico modo di fare un
+      # tunnel 1x1 con la trivella in mano. Metti false per l'area sempre attiva.
+      disable-on-sneak: true
       material: NETHERITE_PICKAXE
       name: '&d&lTrivella'
       lore:
         - '&#d1e0e0Scava un cubo 3x3x3 attorno al blocco rotto.'
+        - '&#d1e0e0Accovacciati per scavare un blocco solo.'
         - '&#d1e0e0Illimitata — nessun consumo usi.'
       enchantments:
         EFFICIENCY: 7
         UNBREAKING: 3
         FORTUNE: 3
+
+    antipearlglitch:
+      # Impedisce che una perla ti faccia atterrare dentro un blocco. Due controlli:
+      # sul teletrasporto (se il punto d'arrivo e' occupato ti sposta, e se non c'e'
+      # posto annulla la perla) e sul tick dopo, se sei rimasto incastrato.
+      enabled: true
+      # I player con antipearlglitch.bypass non vengono toccati.
+      admin-bypass: true
+      # Per quanti ms dopo una perla il controllo "sei dentro un blocco" resta attivo.
+      # Piu' e' alto, piu' a lungo il modulo guarda le collisioni di quel player;
+      # troppo alto e inizia a intercettare acqua, scale e piante.
+      time-window-ms: 1000
+      # Quanti blocchi in avanti cercare un punto libero prima di annullare la perla.
+      search-distance: 3
+      # Avviso a chi ha antipearlglitch.notify. MiniMessage, {player} = chi ha tirato.
+      # Vuoto = nessun avviso.
+      staff-message: "<gray>[<red>Anti-Glitch<gray>] <white>{player} <gray>e' stato spostato da una perla dentro un blocco."
 
     settings:
       enabled: true
@@ -221,6 +242,65 @@
       # When true, first join also broadcasts first-join.broadcast to the whole server.
       # Default false: the welcome is sent only to the joining player ("a te stesso").
       broadcast-first-join: false
+
+    anti-pearl-glitch:
+      enabled: true
+      admin-bypass: false
+      time-window-ms: 50
+      staff-message: <#fa1b1b><bold>[APG]</bold> <gray>» <gray>Il player <white>{player}
+        <gray>ha tentato un Pearl Glitch ed è stato bloccato.
+
+    debug:
+      # Sezione "Debug" della dashboard: errori del plugin, segnalazioni dei player
+      # e analisi AI della causa. Visibile solo a chi ha il token della dashboard
+      # (e in gioco a chi ha smplibrary.admin).
+      enabled: true
+      # Con true gli errori del plugin NON finiscono piu' in console come stacktrace:
+      # vengono raccolti nella sezione Debug e in console resta una riga sola.
+      # Vengono intercettati solo gli errori che coinvolgono smp-library: quelli
+      # degli altri plugin restano dove sono.
+      quiet-console: true
+      # Avvisa in chat gli admin online quando arriva un errore nuovo, una
+      # segnalazione o il risultato di un'analisi. Ogni admin puo' silenziarsi
+      # con /smpl debug notify.
+      notify-admins: true
+      # Righe di logs/latest.log allegate all'analisi (50-2000).
+      log-lines: 300
+      # Quanto puo' restare aperta una segnalazione a meta' prima di scadere.
+      session-timeout-seconds: 300
+      # Categorie proposte nel dialog di /bugreport.
+      report-types:
+        - "blocchi"
+        - "redstone"
+        - "mob"
+        - "item"
+        - "comandi"
+        - "performance"
+        - "altro"
+      # Domini accettati per il link a screenshot/video. Un link fuori da questa
+      # lista viene rifiutato: il player puo' sempre scrivere "salta".
+      media-hosts:
+        - "medal.tv"
+        - "gyazo.com"
+        - "imgur.com"
+        - "youtube.com"
+        - "youtu.be"
+        - "streamable.com"
+      ai:
+        # Ordine di lettura della chiave: variabile d'ambiente ANTHROPIC_API_KEY,
+        # poi questo campo, poi la chiave compilata dentro il jar (AiDiagnostics).
+        # Compilata nel jar significa: leggibile da chiunque apra il jar, e per
+        # cambiarla serve ricompilare. Per sostituirla senza ricompilare basta
+        # riempire questo campo o la variabile d'ambiente: vincono su quella.
+        api-key: ""
+        model: "claude-opus-5"
+        # low | medium | high | xhigh | max — piu' alto = piu' accurato e piu' caro.
+        effort: "high"
+        max-tokens: 16000
+        # L'analisi e' a pagamento: di default parte solo quando la chiedi tu
+        # (bottone nella dashboard o /smpl debug analyze).
+        auto-analyze: false
+        auto-cooldown-seconds: 1800
 
     web:
       enabled: true

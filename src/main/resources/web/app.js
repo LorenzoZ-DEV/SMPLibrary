@@ -13,6 +13,8 @@
     chatgames:   ['Chat games', 'Rounds, answers and history'],
     competitors: ['Competitors', 'Rival servers, ranked against yours'],
     config:      ['Configuration', "Edit the plugin's YAML files"],
+    antipearl:   ['Anti-glitch', 'Perle corrette prima che ti incastrino in un blocco'],
+    debug:       ['Debug', 'Errori, segnalazioni e analisi della causa'],
     log:         ['Action log', 'Everything this dashboard changed']
   };
 
@@ -32,6 +34,7 @@
     $('#pageTitle').textContent = PAGES[name][0];
     $('#pageSub').textContent = PAGES[name][1];
     if (name === 'log') $('#logDot').hidden = true;
+    if (name === 'debug') $('#debugCount').classList.remove('alert');
     if (name === 'competitors') $('#rivalDot').hidden = true;
     // The chart measures its container, which is unmeasurable while the tab is hidden.
     if (name === 'overview') requestAnimationFrame(renderChart);
@@ -1225,6 +1228,228 @@
     }).join('');
   }
 
+  /* ── anti-pearl glitch ─────────────────────────────────────────────── */
+  let lastPearlTotal = null;
+
+  function renderAntiPearl(data) {
+    if (!data) return;
+
+    $('#pearlOffline').hidden = !!data.running;
+    $('#pearlPanel').hidden = !data.running;
+    if (!data.running) {
+      $('#pearlCount').textContent = '';
+      return;
+    }
+
+    $('#pearlTotal').textContent = data.total;
+    $('#pearlBreakdown').textContent = data.moved + ' spostati · ' + data.cancelled
+      + ' annullati · ' + data.pushed + ' estratti';
+    $('#pearlWindow').textContent = data.timeWindowMs + ' ms';
+    $('#pearlDistance').textContent = data.searchDistance;
+    $('#pearlWatchPill').textContent = data.watching
+      ? data.watching + ' in volo' : 'nessuna perla in volo';
+    $('#pearlBypassPill').textContent = data.adminBypass ? 'bypass admin on' : 'bypass admin off';
+    $('#pearlBypassPill').className = 'pill ' + (data.adminBypass ? 'ghost' : 'good');
+
+    $('#pearlCount').textContent = data.total || '';
+
+    // Same idea as the debug badge: a correction is worth a heads-up if you're on another tab.
+    if (lastPearlTotal !== null && data.total > lastPearlTotal && activeTab !== 'antipearl') {
+      toast('Anti-glitch: perla corretta');
+    }
+    lastPearlTotal = data.total;
+
+    const body = $('#pearlBody');
+    if (!data.events || !data.events.length) {
+      body.innerHTML = '<tr class="empty"><td colspan="5">Nessun intervento ancora.</td></tr>';
+      return;
+    }
+    body.innerHTML = data.events.map(e => `
+      <tr>
+        <td class="mono">${esc(e.at)}</td>
+        <td>${esc(e.player)}</td>
+        <td>${esc(e.world)}</td>
+        <td class="mono">${e.x}, ${e.y}, ${e.z}</td>
+        <td>${esc(e.action)}</td>
+      </tr>`).join('');
+  }
+
+  /* ── debug ─────────────────────────────────────────────────────────── */
+  let debugData = null;
+  let lastErrorTotal = null;
+
+  function renderDebug(data) {
+    if (!data) return;
+    debugData = data;
+
+    const summary = data.summary || {};
+    const ai = data.ai || {};
+
+    $('#dbgErrSignatures').textContent = summary.errorSignatures ?? 0;
+    $('#dbgErrTotal').textContent = (summary.errorTotal ?? 0) + ' occorrenze';
+    $('#dbgErrPill').textContent = summary.errorSignatures ? 'da vedere' : 'pulito';
+    $('#dbgErrPill').className = 'pill ' + (summary.errorSignatures ? 'bad' : 'good');
+    $('#dbgReportsOpen').textContent = summary.reportsOpen ?? 0;
+    $('#dbgReportsTotal').textContent = (summary.reportsTotal ?? 0) + ' in totale';
+
+    $('#dbgAiModel').textContent = ai.model || '--';
+    $('#dbgAiKey').textContent = 'chiave: ' + (ai.keySource || 'assente');
+    $('#dbgAiPill').textContent = data.analysing ? 'in corso…' : (ai.configured ? 'pronta' : 'assente');
+    $('#dbgAiPill').className = 'pill ' + (ai.configured ? (data.analysing ? 'warn' : 'good') : 'bad');
+    $('#btnAnalyze').disabled = !ai.configured || !!data.analysing;
+
+    // The sidebar badge is the "something happened" signal the notification promises.
+    const badge = $('#debugCount');
+    const openIssues = (summary.errorSignatures || 0) + (summary.reportsOpen || 0);
+    badge.textContent = openIssues || '';
+    if (lastErrorTotal !== null && (summary.errorTotal || 0) > lastErrorTotal && activeTab !== 'debug') {
+      badge.classList.add('alert');
+      toast('Nuovo errore catturato nel plugin', 'err');
+    }
+    lastErrorTotal = summary.errorTotal || 0;
+
+    renderAnalysis(data);
+    renderErrors(data.errors || []);
+    renderReports(data.reports || []);
+  }
+
+  function renderAnalysis(data) {
+    const meta = $('#dbgAnalysisMeta');
+    const box = $('#dbgAnalysis');
+    const analysis = data.analysis;
+
+    if (data.analysing) {
+      meta.textContent = 'Analisi in corso… il risultato compare qui appena pronto.';
+    } else if (!analysis) {
+      meta.textContent = data.ai && data.ai.configured
+        ? 'Nessuna analisi ancora eseguita.'
+        : 'Nessuna API key configurata: imposta ANTHROPIC_API_KEY o MODULES.debug.ai.api-key.';
+    } else if (analysis.ok) {
+      meta.textContent = analysis.at + ' · richiesta da ' + analysis.requester
+        + ' · ' + analysis.inputTokens + ' token in / ' + analysis.outputTokens + ' out'
+        + ' · ' + (analysis.millis / 1000).toFixed(1) + 's';
+    } else {
+      meta.textContent = 'Ultima analisi fallita: ' + analysis.error;
+    }
+
+    if (!analysis || !analysis.ok) {
+      box.hidden = true;
+      box.innerHTML = '';
+      return;
+    }
+    box.hidden = false;
+    box.innerHTML = markdown(analysis.text);
+  }
+
+  /**
+   * Just enough markdown for the shape the model is asked to produce: headings, bullets,
+   * bold and inline code. Everything is escaped first, so the model's output can never
+   * inject markup into the page.
+   */
+  function markdown(text) {
+    return esc(text).split(/\r?\n/).reduce((html, line) => {
+      const inline = s => s
+        .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>');
+      const trimmed = line.trim();
+
+      if (/^#{1,6}\s/.test(trimmed)) {
+        return html + '<h4>' + inline(trimmed.replace(/^#{1,6}\s*/, '')) + '</h4>';
+      }
+      if (/^[-*]\s/.test(trimmed)) {
+        return html + '<div class="md-li">' + inline(trimmed.replace(/^[-*]\s*/, '')) + '</div>';
+      }
+      if (/^\d+\.\s/.test(trimmed)) {
+        return html + '<div class="md-li">' + inline(trimmed) + '</div>';
+      }
+      if (!trimmed) return html + '<div class="md-gap"></div>';
+      return html + '<p>' + inline(trimmed) + '</p>';
+    }, '');
+  }
+
+  function renderErrors(errors) {
+    const container = $('#dbgErrors');
+    if (!errors.length) {
+      container.innerHTML = '<div class="log-empty">Nessun errore registrato.</div>';
+      return;
+    }
+    container.innerHTML = errors.map(err => `
+      <details class="errcard">
+        <summary>
+          <span class="errtype">${esc(err.type)}</span>
+          <span class="errmsg">${esc(err.message || '(nessun messaggio)')}</span>
+          <span class="errmeta">x${err.count} · ${esc(err.last)} · ${esc(err.source)}</span>
+        </summary>
+        <pre class="errstack">${esc(err.stack)}</pre>
+      </details>`).join('');
+  }
+
+  function renderReports(reports) {
+    const container = $('#dbgReports');
+    if (!reports.length) {
+      container.innerHTML = '<div class="log-empty">Nessuna segnalazione.</div>';
+      return;
+    }
+    container.innerHTML = reports.map(r => `
+      <article class="repcard ${r.status === 'closed' ? 'closed' : ''}" data-id="${esc(r.id)}">
+        <div class="rephead">
+          <span class="reptype">${esc(r.type)}</span>
+          <span class="reptitle">${esc(r.title)}</span>
+          <span class="repmeta">${esc(r.author)} · ${esc(r.date)} · #${esc(r.id)}</span>
+        </div>
+        <p class="repbody">${esc(r.body)}</p>
+        ${r.media ? `<a class="repmedia" href="${esc(r.media)}" target="_blank"
+             rel="noopener noreferrer">${esc(r.media)}</a>` : ''}
+        ${r.context ? `<p class="repctx">${esc(r.context)}</p>` : ''}
+        <div class="repactions">
+          <button class="btn btn-ghost btn-sm" data-act="analyze">Analizza con l'AI</button>
+          <button class="btn btn-ghost btn-sm" data-act="status">
+            ${r.status === 'closed' ? 'Riapri' : 'Segna risolta'}</button>
+          <button class="btn btn-ghost btn-sm" data-act="delete">Elimina</button>
+        </div>
+      </article>`).join('');
+  }
+
+  $('#btnAnalyze').addEventListener('click', () => {
+    const question = $('#dbgQuestion').value.trim();
+    $('#btnAnalyze').disabled = true;
+    api('/api/debug/analyze' + (question ? '?q=' + encodeURIComponent(question) : ''),
+      { method: 'POST' })
+      .then(data => { renderDebug(data.debug); toast('Analisi avviata'); })
+      .catch(e => { toast(e.message, 'err'); $('#btnAnalyze').disabled = false; });
+  });
+
+  $('#btnClearErrors').addEventListener('click', () => {
+    api('/api/debug/errors/clear', { method: 'POST' })
+      .then(data => { renderDebug(data.debug); toast('Errori azzerati'); })
+      .catch(e => toast(e.message, 'err'));
+  });
+
+  $('#dbgReports').addEventListener('click', event => {
+    const button = event.target.closest('button[data-act]');
+    if (!button) return;
+    const card = button.closest('.repcard');
+    const id = card && card.dataset.id;
+    if (!id) return;
+
+    const act = button.dataset.act;
+    if (act === 'delete' && !confirm('Eliminare la segnalazione #' + id + '?')) return;
+
+    const closed = card.classList.contains('closed');
+    const url = act === 'analyze' ? '/api/debug/analyze?report=' + encodeURIComponent(id)
+      : act === 'status' ? '/api/debug/report/status?id=' + encodeURIComponent(id)
+          + '&value=' + (closed ? 'open' : 'closed')
+      : '/api/debug/report/delete?id=' + encodeURIComponent(id);
+
+    button.disabled = true;
+    api(url, { method: 'POST' })
+      .then(data => {
+        renderDebug(data.debug);
+        toast(act === 'analyze' ? 'Analisi avviata su #' + id : 'Segnalazione aggiornata');
+      })
+      .catch(e => { toast(e.message, 'err'); button.disabled = false; });
+  });
+
   /* ── live stream ───────────────────────────────────────────────────── */
   let lastSnapshot = null;
   let stream = null;
@@ -1272,6 +1497,14 @@
       } catch (ignored) { /* partial frame */ }
     });
 
+    stream.addEventListener('antipearl', event => {
+      try { renderAntiPearl(JSON.parse(event.data)); } catch (ignored) { /* partial frame */ }
+    });
+
+    stream.addEventListener('debug', event => {
+      try { renderDebug(JSON.parse(event.data)); } catch (ignored) { /* partial frame */ }
+    });
+
     stream.onerror = () => {
       setConnection('offline');
       stream.close();
@@ -1292,6 +1525,8 @@
   loadScopes();
   api('/api/stats').then(applySnapshot).catch(() => {});
   api('/api/log').then(renderLog).catch(() => {});
+  api('/api/debug').then(renderDebug).catch(() => {});
+  api('/api/antipearl').then(renderAntiPearl).catch(() => {});
 
   // The history is a separate, heavier payload than the 1s snapshot — poll it slowly.
   fetchPlayerHistory();

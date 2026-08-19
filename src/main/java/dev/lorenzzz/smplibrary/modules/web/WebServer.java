@@ -6,7 +6,10 @@ import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.chatgames.ChatGameType;
 import dev.lorenzzz.smplibrary.modules.chatgames.ChatGamesModule;
+import dev.lorenzzz.smplibrary.modules.antipearl.AntiPearlGlitchModule;
 import dev.lorenzzz.smplibrary.modules.competitors.CompetitorsModule;
+import dev.lorenzzz.smplibrary.modules.debug.BugReport;
+import dev.lorenzzz.smplibrary.modules.debug.DebugModule;
 import org.bukkit.Bukkit;
 
 import java.io.IOException;
@@ -65,6 +68,8 @@ public final class WebServer {
     private ExecutorService executor;
     private ScheduledExecutorService broadcaster;
     private volatile long lastLogVersion = -1L;
+    private volatile long lastDebugVersion = -1L;
+    private volatile long lastPearlVersion = -1L;
     private String boundHost;
     private int boundPort;
 
@@ -179,6 +184,12 @@ public final class WebServer {
             case "/api/competitors/remove" -> competitorsRemoveRoute(exchange);
             case "/api/competitors/refresh" -> competitorsRefreshRoute(exchange);
             case "/api/chatgames/start" -> chatGamesStartRoute(exchange);
+            case "/api/antipearl" -> sendJson(exchange, 200, antiPearlJson());
+            case "/api/debug" -> sendJson(exchange, 200, debugJson());
+            case "/api/debug/analyze" -> debugAnalyzeRoute(exchange);
+            case "/api/debug/errors/clear" -> debugClearErrorsRoute(exchange);
+            case "/api/debug/report/status" -> debugReportStatusRoute(exchange);
+            case "/api/debug/report/delete" -> debugReportDeleteRoute(exchange);
             case "/api/stream" -> {
                 return sse(exchange);
             }
@@ -259,6 +270,117 @@ public final class WebServer {
         log.log("Started a " + started.name() + " chat game from the dashboard by " + remoteHost(exchange));
         sendJson(exchange, 200, "{\"ok\":true,\"type\":" + WebStats.jsonStr(started.name())
                 + ",\"log\":" + logJson() + "}");
+    }
+
+    // ------------------------------------------------------------ anti-pearl
+
+    private AntiPearlGlitchModule antiPearl() {
+        return plugin.modules() == null
+                ? null : plugin.modules().module("antipearlglitch", AntiPearlGlitchModule.class);
+    }
+
+    private String antiPearlJson() {
+        AntiPearlGlitchModule module = antiPearl();
+        return module == null
+                ? "{\"running\":false,\"total\":0,\"moved\":0,\"cancelled\":0,\"pushed\":0,"
+                        + "\"adminBypass\":false,\"timeWindowMs\":0,\"searchDistance\":0,"
+                        + "\"staffMessage\":\"\",\"watching\":0,\"events\":[]}"
+                : module.json();
+    }
+
+    // ----------------------------------------------------------------- debug
+
+    private DebugModule debug() {
+        return plugin.modules() == null
+                ? null : plugin.modules().module("debug", DebugModule.class);
+    }
+
+    private String debugJson() {
+        DebugModule module = debug();
+        return module == null
+                ? "{\"running\":false,\"errors\":[],\"reports\":[],\"analysis\":null,\"analysing\":false,"
+                        + "\"ai\":{\"configured\":false,\"model\":\"\",\"keySource\":\"assente\",\"autoAnalyze\":false},"
+                        + "\"summary\":{\"errorSignatures\":0,\"errorTotal\":0,\"sources\":\"\","
+                        + "\"reportsOpen\":0,\"reportsTotal\":0}}"
+                : "{\"running\":true," + module.json().substring(1);
+    }
+
+    /**
+     * {@code POST /api/debug/analyze?q=…} or {@code ?report=<id>} — starts one AI diagnosis.
+     * The call itself runs on the module's worker; this answers as soon as it is queued, and the
+     * dashboard picks the result up from the stream.
+     */
+    private void debugAnalyzeRoute(HttpExchange exchange) throws IOException {
+        DebugModule module = postToDebug(exchange);
+        if (module == null) return;
+
+        if (!module.aiConfigured()) {
+            sendJson(exchange, 400, "{\"error\":\"nessuna API key: imposta ANTHROPIC_API_KEY "
+                    + "oppure MODULES.debug.ai.api-key\"}");
+            return;
+        }
+
+        Map<String, String> params = query(exchange);
+        String reportId = params.get("report");
+        boolean started = reportId != null && !reportId.isBlank()
+                ? module.analyzeReport(reportId, "dashboard " + remoteHost(exchange))
+                : module.analyze(params.get("q"), "dashboard " + remoteHost(exchange));
+
+        if (!started) {
+            sendJson(exchange, 409, "{\"error\":\"un'analisi e' gia' in corso, oppure la "
+                    + "segnalazione non esiste\"}");
+            return;
+        }
+        log.log("AI analysis started from the dashboard by " + remoteHost(exchange));
+        sendJson(exchange, 200, "{\"ok\":true,\"debug\":" + debugJson() + "}");
+    }
+
+    private void debugClearErrorsRoute(HttpExchange exchange) throws IOException {
+        DebugModule module = postToDebug(exchange);
+        if (module == null) return;
+
+        module.clearErrors();
+        log.log("Cleared the captured errors from the dashboard by " + remoteHost(exchange));
+        sendJson(exchange, 200, "{\"ok\":true,\"debug\":" + debugJson() + "}");
+    }
+
+    /** {@code POST /api/debug/report/status?id=…&value=open|closed} */
+    private void debugReportStatusRoute(HttpExchange exchange) throws IOException {
+        DebugModule module = postToDebug(exchange);
+        if (module == null) return;
+
+        Map<String, String> params = query(exchange);
+        String value = BugReport.CLOSED.equals(params.get("value")) ? BugReport.CLOSED : BugReport.OPEN;
+        if (module.setReportStatus(params.getOrDefault("id", ""), value) == null) {
+            sendJson(exchange, 404, "{\"error\":\"segnalazione non trovata\"}");
+            return;
+        }
+        sendJson(exchange, 200, "{\"ok\":true,\"debug\":" + debugJson() + "}");
+    }
+
+    private void debugReportDeleteRoute(HttpExchange exchange) throws IOException {
+        DebugModule module = postToDebug(exchange);
+        if (module == null) return;
+
+        if (!module.deleteReport(query(exchange).getOrDefault("id", ""))) {
+            sendJson(exchange, 404, "{\"error\":\"segnalazione non trovata\"}");
+            return;
+        }
+        log.log("Deleted a bug report from the dashboard by " + remoteHost(exchange));
+        sendJson(exchange, 200, "{\"ok\":true,\"debug\":" + debugJson() + "}");
+    }
+
+    /** The running debug module for a POST-only route, or null once this method has answered. */
+    private DebugModule postToDebug(HttpExchange exchange) throws IOException {
+        if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+            sendText(exchange, 405, "method not allowed");
+            return null;
+        }
+        DebugModule module = debug();
+        if (module == null) {
+            sendJson(exchange, 400, "{\"error\":\"il modulo debug non e' in esecuzione\"}");
+        }
+        return module;
     }
 
     // ----------------------------------------------------------- competitors
@@ -462,6 +584,8 @@ public final class WebServer {
         // that a failure here is still an ordinary 500 and never leaves a half-owned exchange.
         byte[] snapshot = frame("data: " + stats.snapshot() + "\n\n");
         byte[] logFrame = frame("event: log\ndata: " + logJson() + "\n\n");
+        byte[] debugFrame = frame("event: debug\ndata: " + debugJson() + "\n\n");
+        byte[] pearlFrame = frame("event: antipearl\ndata: " + antiPearlJson() + "\n\n");
 
         var headers = exchange.getResponseHeaders();
         headers.set("Content-Type", "text/event-stream; charset=utf-8");
@@ -475,6 +599,8 @@ public final class WebServer {
         client.start();
         client.send(snapshot);
         client.send(logFrame);
+        client.send(debugFrame);
+        client.send(pearlFrame);
         return true;
     }
 
@@ -498,9 +624,30 @@ public final class WebServer {
                 logFrame = frame("event: log\ndata: " + logJson() + "\n\n");
             }
 
+            // Same treatment for the debug tab: it only moves when something actually failed or
+            // a report came in, and its payload is the biggest of the three.
+            byte[] debugFrame = null;
+            DebugModule module = debug();
+            long debugVersion = module == null ? 0 : module.version();
+            if (debugVersion != lastDebugVersion) {
+                lastDebugVersion = debugVersion;
+                debugFrame = frame("event: debug\ndata: " + debugJson() + "\n\n");
+            }
+
+            // Anti-pearl only moves when a pearl is actually corrected, which is rare.
+            byte[] pearlFrame = null;
+            AntiPearlGlitchModule pearl = antiPearl();
+            long pearlVersion = pearl == null ? 0 : pearl.version();
+            if (pearlVersion != lastPearlVersion) {
+                lastPearlVersion = pearlVersion;
+                pearlFrame = frame("event: antipearl\ndata: " + antiPearlJson() + "\n\n");
+            }
+
             for (SseClient client : clients) {
                 client.send(snapshot);
                 if (logFrame != null) client.send(logFrame);
+                if (debugFrame != null) client.send(debugFrame);
+                if (pearlFrame != null) client.send(pearlFrame);
             }
         } catch (Exception e) {
             // scheduleAtFixedRate drops the task on the first throw, and the dashboard would go

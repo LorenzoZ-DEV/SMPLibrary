@@ -1,5 +1,5 @@
 name: smp-library
-version: '1.121.14-3453b07'
+version: '1.12.15-ee69cbf'
 main: dev.lorenzzz.smplibrary.Smp_library
 api-version: '1.21'
 softdepend:
@@ -16,6 +16,7 @@ permissions:
       smplibrary.admin: true
       smplibrary.menu.use: true
       smplibrary.pay.use: true
+      smplibrary.bugreport.use: true
   smplibrary.admin:
     description: Access to admin log chat broadcast and dashboard actions
     default: op
@@ -25,6 +26,15 @@ permissions:
   smplibrary.pay.use:
     description: Transfer pistacchi to other players with /pay
     default: true
+  smplibrary.bugreport.use:
+    description: File a bug report with /bugreport
+    default: true
+  antipearlglitch.bypass:
+    description: Ender pearls are never corrected for this player
+    default: false
+  antipearlglitch.notify:
+    description: Receive the anti-pearl-glitch staff alerts
+    default: op
 commands:
   pistacchi:
     aliases: [pshop]
@@ -35,3 +45,6 @@ commands:
   pistacchiopay:
     aliases: [pistacchipay, pagapers]
     permission: smplibrary.pay.use
+  bugreport:
+    aliases: [segnalabug]
+    permission: smplibrary.bugreport.use

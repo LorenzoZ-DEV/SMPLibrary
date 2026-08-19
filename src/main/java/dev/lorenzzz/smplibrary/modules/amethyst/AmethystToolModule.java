@@ -4,6 +4,7 @@ import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.AbstractModule;
 import dev.lorenzzz.smplibrary.modules.ToolMeta;
+import dev.lorenzzz.smplibrary.modules.UseBatcher;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -16,12 +17,15 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause;
+import org.bukkit.event.player.PlayerItemHeldEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Tools-list with custom durability tracked as "uses". Per {@code MODULES.amethyst-tool}: a
@@ -38,6 +42,10 @@ public final class AmethystToolModule extends AbstractModule implements Listener
     private final NamespacedKey maxKey;
     private final NamespacedKey toolKey;
 
+    // Breaks are batched before they reach the item: rewriting the held stack resets the client's
+    // block-breaking progress, which on a fast pickaxe stalls mining outright. See UseBatcher.
+    private final UseBatcher uses = new UseBatcher(1000L);
+
     public AmethystToolModule(Smp_library plugin) {
         super(plugin);
         this.usesKey = new NamespacedKey(plugin, "amethyst_uses");
@@ -50,6 +58,11 @@ public final class AmethystToolModule extends AbstractModule implements Listener
     @Override
     public void onEnable() {
         listen(this);
+    }
+
+    @Override
+    protected void onShutdown() {
+        uses.clear();
     }
 
     /** Build a fresh amethyst tool, or {@code null} if the tool key / material is unknown. */
@@ -89,7 +102,18 @@ public final class AmethystToolModule extends AbstractModule implements Listener
         ItemStack item = player.getInventory().getItemInMainHand();
         if (!ToolMeta.hasTag(item, toolKey)) return;
         if (isSword(item)) return; // sword counts on attack, not break
-        useOnce(player, item);
+        useOnce(player, item, player.getInventory().getHeldItemSlot(), false);
+    }
+
+    /** Uses booked while mining belong to that stack — write them before it leaves the hand. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onHeldChange(PlayerItemHeldEvent event) {
+        flushBooked(event.getPlayer(), event.getPreviousSlot());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onQuit(PlayerQuitEvent event) {
+        flushBooked(event.getPlayer(), event.getPlayer().getInventory().getHeldItemSlot());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -100,23 +124,54 @@ public final class AmethystToolModule extends AbstractModule implements Listener
         ItemStack item = player.getInventory().getItemInMainHand();
         if (!ToolMeta.hasTag(item, toolKey)) return;
         if (!isSword(item)) return; // only the sword decrements on hit
-        useOnce(player, item);
+        useOnce(player, item, player.getInventory().getHeldItemSlot(), true);
     }
 
     private static boolean isSword(ItemStack item) {
         return item.getType().name().endsWith(SWORD_SUFFIX);
     }
 
-    private void useOnce(Player player, ItemStack item) {
+    /**
+     * Books one use against the tool in {@code slot}, writing it onto the item when the batcher
+     * lets it through.
+     *
+     * @param immediate write now, taking any booked uses along (hits, slot changes)
+     */
+    private void useOnce(Player player, ItemStack item, int slot, boolean immediate) {
+        UUID id = player.getUniqueId();
+        Integer written = item.getItemMeta().getPersistentDataContainer().get(usesKey, PersistentDataType.INTEGER);
+        if (written == null) return;
+
+        int spent = immediate ? 1 + uses.drain(id) : uses.spend(id, written);
+        if (spent > 0) applyUses(player, item, slot, spent);
+    }
+
+    /** Writes out uses booked earlier, if the tool that earned them is still in {@code slot}. */
+    private void flushBooked(Player player, int slot) {
+        UUID id = player.getUniqueId();
+        if (uses.peek(id) == 0) return;
+
+        ItemStack item = player.getInventory().getItem(slot);
+        int booked = uses.drain(id);
+        // Not the tool any more: the booked uses go with it rather than onto a stack that never
+        // earned them. A batch is worth a second of mining, well inside the durability budget.
+        if (!ToolMeta.hasTag(item, toolKey)) return;
+
+        applyUses(player, item, slot, booked);
+    }
+
+    /** Subtracts {@code spent} uses from the tool in {@code slot}; breaks it at zero. */
+    private void applyUses(Player player, ItemStack item, int slot, int spent) {
         ItemMeta meta = item.getItemMeta();
         var pdc = meta.getPersistentDataContainer();
 
-        Integer uses = pdc.get(usesKey, PersistentDataType.INTEGER);
-        if (uses == null) return;
+        Integer written = pdc.get(usesKey, PersistentDataType.INTEGER);
+        if (written == null) return;
 
-        int remaining = uses - 1;
+        int remaining = written - spent;
         if (remaining <= 0) {
-            player.getInventory().setItemInMainHand(null);
+            uses.forget(player.getUniqueId());
+            player.getInventory().setItem(slot, null);
             player.playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, 0.8f, 1f);
             if (messages != null) messages.sendBoth(player, "amethyst-tool.broken", Map.of());
             return;
@@ -130,7 +185,7 @@ public final class AmethystToolModule extends AbstractModule implements Listener
             meta.lore(ToolMeta.lore(tool.getStringList("lore"), Map.of("%uses%", String.valueOf(remaining))));
         }
         item.setItemMeta(meta);
-        player.getInventory().setItemInMainHand(item);
+        player.getInventory().setItem(slot, item);
     }
 
     private int maxUses() {
