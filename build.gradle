@@ -131,18 +131,41 @@ shadowJar {
     relocate 'com.zaxxer.hikari', 'dev.lorenzzz.smplibrary.lib.hikari'
     relocate 'com.github.benmanes.caffeine', 'dev.lorenzzz.smplibrary.lib.caffeine'
     relocate 'net.j4c0b3y', 'dev.lorenzzz.smplibrary.lib.menuapi'
-    relocate 'com.anthropic', 'dev.lorenzzz.smplibrary.lib.anthropic'
-    relocate 'okhttp3', 'dev.lorenzzz.smplibrary.lib.okhttp3'
-    relocate 'okio', 'dev.lorenzzz.smplibrary.lib.okio'
-    relocate 'com.fasterxml.jackson', 'dev.lorenzzz.smplibrary.lib.jackson'
+
+    /*
+     * The Anthropic SDK and everything it stands on (OkHttp, Okio, Jackson's Kotlin module) are
+     * Kotlin libraries, and Kotlin classes carry a @Metadata annotation holding their own type
+     * names as plain strings. Shadow rewrites bytecode references but not those strings, so a
+     * relocated build ends up with classes whose metadata still says `com.anthropic.core.*`.
+     * jackson-module-kotlin reads that metadata to resolve constructors and then looks the type
+     * up by name — Class.forName("com.anthropic.core.JsonField") — and gets a
+     * ClassNotFoundException, which is what killed every AI analysis.
+     *
+     * So these four stay un-relocated. Paper gives each plugin its own classloader, so another
+     * plugin shipping its own OkHttp or Jackson does not collide with ours.
+     */
+    /*
+     * Without this, artifacts that ship the same META-INF/services file overwrite each other:
+     * jackson-datatype-jdk8, jackson-datatype-jsr310 and jackson-module-kotlin all register
+     * themselves through com.fasterxml.jackson.databind.Module, and only the last one to be
+     * copied survived. Anything resolved through ServiceLoader — Jackson's modules, and
+     * kotlin-reflect's own built-ins loader — needs the files concatenated, not replaced.
+     */
+    mergeServiceFiles()
+
     minimize {
         exclude(dependency('co.aikar:acf-paper:.*'))
         exclude(dependency('com.github.ben-manes.caffeine:caffeine:.*'))
         exclude(dependency('net.j4c0b3y:MenuAPI-core:.*'))
         // The SDK and Jackson resolve types reflectively; minimize cannot see those edges and
-        // strips classes that are only reached at runtime.
-        exclude(dependency('com.anthropic:anthropic-java:.*'))
+        // strips classes that are only reached at runtime. The pattern has to match every
+        // artifact in the SDK's own group — `anthropic-java` alone left core and client-okhttp
+        // exposed to minimization.
+        exclude(dependency('com.anthropic:.*:.*'))
         exclude(dependency('com.fasterxml.jackson.*:.*'))
+        exclude(dependency('org.jetbrains.kotlin:.*:.*'))
+        exclude(dependency('com.squareup.okhttp3:.*:.*'))
+        exclude(dependency('com.squareup.okio:.*:.*'))
     }
 }
 

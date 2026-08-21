@@ -7,7 +7,9 @@ import dev.lorenzzz.smplibrary.modules.ToolMeta;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.TileState;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
@@ -31,6 +33,12 @@ import java.util.Map;
  * neighbor breaks from re-entering this listener. Admin give via {@code /smplibrary trivella give
  * [player]}.
  *
+ * <p>The cube is anchored {@code radius} blocks along the direction the player digs
+ * ({@code dig-forward}), not on the broken block. Centred on the block, the nearest layer is the
+ * air the player is standing or looking through, so {@code isProtected} drops it and a 3x3x3 takes
+ * out 3x3x2 of actual rock. Anchored forward all three layers land in material, which is what a
+ * drill is expected to do; {@code dig-forward: false} restores the centred cube.
+ *
  * <p>Each neighbor is put through a {@link BlockBreakEvent} of its own before it is touched, and
  * skipped when something cancels it. {@code breakNaturally} fires no event on its own, so without
  * this the tool dug straight through claims and WorldGuard regions — 26 blocks per swing that no
@@ -43,6 +51,9 @@ public final class TrivellaModule extends AbstractModule implements Listener {
 
     private static final String TOOL_ID = "trivella";
     private static final int MAX_RADIUS = 3;
+
+    /** Pitch past which the player is digging straight up/down instead of along a compass face. */
+    private static final float VERTICAL_PITCH = 45f;
 
     // ponytail: recursion guard — breakNaturally may fire events on some Paper builds; the
     // neighbors we clear must not re-enter the handler and fan out further.
@@ -102,17 +113,22 @@ public final class TrivellaModule extends AbstractModule implements Listener {
         int radius = cfg == null ? 1 : Math.clamp(cfg.getInt("radius", 1), 0, MAX_RADIUS);
         if (radius == 0) return;
 
-        breakCube(player, event.getBlock(), radius, tool);
+        boolean forward = cfg == null || cfg.getBoolean("dig-forward", true);
+        breakCube(player, event.getBlock(), radius, tool, forward);
     }
 
-    private void breakCube(Player player, Block center, int radius, ItemStack tool) {
+    private void breakCube(Player player, Block origin, int radius, ItemStack tool, boolean forward) {
+        // Pushed forward by exactly the radius, so the broken block sits on the near face of the
+        // cube and every layer behind it is still solid.
+        Block anchor = forward ? shift(origin, digFace(player), radius) : origin;
+
         INSIDE.set(true);
         try {
             for (int dx = -radius; dx <= radius; dx++) {
                 for (int dy = -radius; dy <= radius; dy++) {
                     for (int dz = -radius; dz <= radius; dz++) {
-                        if (dx == 0 && dy == 0 && dz == 0) continue; // centre handled by the event
-                        Block block = center.getRelative(dx, dy, dz);
+                        Block block = anchor.getRelative(dx, dy, dz);
+                        if (block.equals(origin)) continue; // centre handled by the event
                         if (isProtected(block)) continue;
                         breakOne(player, block, tool);
                     }
@@ -121,6 +137,24 @@ public final class TrivellaModule extends AbstractModule implements Listener {
         } finally {
             INSIDE.remove();
         }
+    }
+
+    /**
+     * The face the player is digging into. {@link Player#getFacing()} only ever answers with a
+     * compass direction, so a steep pitch is read as up/down first — otherwise mining the floor
+     * under your feet would push the cube sideways into whatever you happen to be facing.
+     */
+    private static BlockFace digFace(Player player) {
+        float pitch = player.getLocation().getPitch();
+        if (pitch >= VERTICAL_PITCH) return BlockFace.DOWN;
+        if (pitch <= -VERTICAL_PITCH) return BlockFace.UP;
+        return player.getFacing();
+    }
+
+    private static Block shift(Block block, BlockFace face, int distance) {
+        return block.getRelative(face.getModX() * distance,
+                face.getModY() * distance,
+                face.getModZ() * distance);
     }
 
     /**
@@ -139,6 +173,11 @@ public final class TrivellaModule extends AbstractModule implements Listener {
     }
 
     private static boolean isProtected(Block block) {
+        World world = block.getWorld();
+        // The forward anchor can push the cube under bedrock or past the build limit; those
+        // columns are not ours, and getState() out there is not worth the risk.
+        if (block.getY() < world.getMinHeight() || block.getY() >= world.getMaxHeight()) return true;
+
         return block.getType().isAir()
                 || block.isLiquid()
                 || block.getType() == Material.BEDROCK

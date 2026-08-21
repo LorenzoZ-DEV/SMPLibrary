@@ -1245,6 +1245,8 @@
     $('#pearlBreakdown').textContent = data.moved + ' spostati · ' + data.cancelled
       + ' annullati · ' + data.pushed + ' estratti';
     $('#pearlWindow').textContent = data.timeWindowMs + ' ms';
+    $('#pearlRules').textContent =
+      data.postLandingCheck ? 'ricontrollo atterraggio on' : 'ricontrollo off';
     $('#pearlDistance').textContent = data.searchDistance;
     $('#pearlWatchPill').textContent = data.watching
       ? data.watching + ' in volo' : 'nessuna perla in volo';
