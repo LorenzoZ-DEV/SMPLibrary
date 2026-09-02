@@ -24,12 +24,27 @@ public final class WebLog {
     private final Deque<String> entries = new ConcurrentLinkedDeque<>();
     private final AtomicLong version = new AtomicLong();
 
+    /** An action somebody performed: logged, echoed to console, and pushed to admins in chat. */
     public void log(String message) {
+        append(message, true);
+    }
+
+    /**
+     * Same entry, without the chat ping. For things the server records on its own and often —
+     * shop purchases are the case this exists for: worth an audit line on the dashboard and in
+     * latest.log, not worth a chat message to every admin on every sale.
+     */
+    public void record(String message) {
+        append(message, false);
+    }
+
+    private void append(String message, boolean pingAdmins) {
         entries.addFirst("[LOG] " + LocalTime.now().format(FMT) + " " + message);
         while (entries.size() > MAX) entries.removeLast();
         version.incrementAndGet();
 
         Bukkit.getConsoleSender().sendMessage("§9[smplibrary] §7[LOG] §f" + message);
+        if (!pingAdmins) return;
 
         if (Bukkit.isPrimaryThread()) {
             broadcastToAdmins(message);

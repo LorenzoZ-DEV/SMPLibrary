@@ -61,13 +61,25 @@ repositories {
         url 'https://repo.lucko.me/'                                    // spark-api (flat layout)
         content { includeGroupByRegex 'me\\.lucko.*' }
     }
+    maven {
+        url 'https://jitpack.io'                                        // VaultAPI, published nowhere else
+        content { includeGroupByRegex 'com[.]github[.]MilkBowl.*' }
+    }
 }
 
 dependencies {
     // Provided by the server at runtime:
     compileOnly 'io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT'
     compileOnly 'me.clip:placeholderapi:2.11.6'
-    compileOnly 'fr.maxlego08.essentials:zessentials-api:1.0.2.6'     // zEssentials API
+    // zEssentials API. The plain artifact of this version is a pom with no jar attached, so
+    // the classes only exist under the 'all' classifier — without it the import compiles to
+    // nothing and every reference fails. compileOnly: the server provides zEssentials, and
+    // TpAutoBridge is the only class that touches these types.
+    compileOnly 'fr.maxlego08.essentials:zessentials-api:1.0.2.6:all'
+    // Vault, for the anti-dupe watcher's cache-side balance reads. Soft dependency: the only
+    // class naming these types is VaultBalanceSource, and a host without Vault passes its own
+    // BalanceSource lambda instead.
+    compileOnly 'com.github.MilkBowl:VaultAPI:1.7.1'
     // spark, for the live performance panel. Soft dependency: every reference to these
     // classes is confined to SparkBridge, which only loads when the plugin is installed.
     compileOnly 'me.lucko:spark-api:0.1-SNAPSHOT'
@@ -81,6 +93,19 @@ dependencies {
     implementation 'com.zaxxer:HikariCP:5.1.0'                         // connection pool
     implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'     // C.java color cache
     implementation 'net.j4c0b3y:MenuAPI-core:1.5.5'                    // MenuAPI
+    /*
+     * SQLite driver, shipped rather than borrowed. StorageManager has always assumed the server
+     * runtime provides org.sqlite.JDBC; where it does not, the pool fails to start and every
+     * module falls back to files. The anti-dupe probe has nothing to fall back to — reading
+     * zEssentials' database.db *is* the feature — so the driver comes along.
+     *
+     * Deliberately NOT relocated, unlike the other shaded libs. A JDBC driver is resolved by
+     * class name (Class.forName, DriverManager, META-INF/services) and none of those follow a
+     * package rename: a relocated driver is a driver nobody can find. Paper gives each plugin
+     * its own class loader — the same reason the Anthropic SDK below stays put — so a server
+     * carrying its own copy does not collide with ours.
+     */
+    implementation 'org.xerial:sqlite-jdbc:3.46.1.3'
     // Anthropic SDK, for the debug module's AI diagnosis. It drags in OkHttp + Jackson, which
     // is why both are relocated below: a server running another plugin with its own Jackson
     // must not be able to break ours, or the other way round.
@@ -151,12 +176,40 @@ shadowJar {
      * copied survived. Anything resolved through ServiceLoader — Jackson's modules, and
      * kotlin-reflect's own built-ins loader — needs the files concatenated, not replaced.
      */
+    /*
+     * sqlite-jdbc ships a native library for two dozen platform/architecture pairs, 24 MB of
+     * them, and a Minecraft server runs on exactly one. Keeping the four that can plausibly
+     * host this plugin — x86_64 and arm64 Linux, musl x86_64 for Alpine containers, Windows
+     * x86_64 for local testing — takes about twenty megabytes back off the jar.
+     *
+     * Anywhere else the driver loads but cannot find its native library, which surfaces as
+     * SqliteBalanceProbe#unusableReason and switches the anti-dupe module to its cache-only
+     * checks. That is the module degrading, not the plugin breaking. Drop the matching line
+     * if the server ever moves to one of these.
+     */
+    exclude 'org/sqlite/native/Mac/**'
+    exclude 'org/sqlite/native/FreeBSD/**'
+    exclude 'org/sqlite/native/Linux-Android/**'
+    exclude 'org/sqlite/native/Linux/x86/**'
+    exclude 'org/sqlite/native/Linux/arm/**'
+    exclude 'org/sqlite/native/Linux/armv6/**'
+    exclude 'org/sqlite/native/Linux/armv7/**'
+    exclude 'org/sqlite/native/Linux/ppc64/**'
+    exclude 'org/sqlite/native/Linux/riscv64/**'
+    exclude 'org/sqlite/native/Linux-Musl/x86/**'
+    exclude 'org/sqlite/native/Linux-Musl/aarch64/**'
+    exclude 'org/sqlite/native/Windows/x86/**'
+    exclude 'org/sqlite/native/Windows/armv7/**'
+    exclude 'org/sqlite/native/Windows/aarch64/**'
+
     mergeServiceFiles()
 
     minimize {
         exclude(dependency('co.aikar:acf-paper:.*'))
         exclude(dependency('com.github.ben-manes.caffeine:caffeine:.*'))
         exclude(dependency('net.j4c0b3y:MenuAPI-core:.*'))
+        // Loaded by name and never referenced: minimize sees no edge to it and would strip it.
+        exclude(dependency('org.xerial:sqlite-jdbc:.*'))
         // The SDK and Jackson resolve types reflectively; minimize cannot see those edges and
         // strips classes that are only reached at runtime. The pattern has to match every
         // artifact in the SDK's own group — `anthropic-java` alone left core and client-okhttp

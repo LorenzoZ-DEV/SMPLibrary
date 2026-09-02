@@ -1,9 +1,27 @@
 ####################################################
-#   GUI IMPOSTAZIONI PLAYER - ZMENU
+#   GUI IMPOSTAZIONI PLAYER
 ####################################################
+# Inventario vero e proprio (prima era un Dialog di Paper).
+#
+# Ogni voce accetta:
+#   slot            posizione nell'inventario (0 = primo slot in alto a sinistra)
+#   toggle          true  = interruttore ON/OFF, lo stato viene salvato per player
+#                   false = pulsante che esegue e basta (es. "apri un'altra GUI")
+#   default         stato di partenza dell'interruttore per chi non l'ha mai toccato
+#   commands        comandi eseguiti come il player ad ogni clic (%player% = il suo nome)
+#   close           chiude la GUI dopo il clic; vale solo per le voci con toggle: false,
+#                   un interruttore resta aperto per farti vedere il nuovo stato
+#   requires-module la voce compare solo se quel modulo di smp-library e' attivo
+#
+# Dentro name/lore puoi usare %state%: viene sostituito con le etichette qui sotto.
+# Se non lo usi, lo stato viene aggiunto in fondo alla lore da solo.
 
 size: 27
 name: "&#8b00ff&lIMPOSTAZIONI"
+
+status:
+  enabled: "&a&lATTIVO"
+  disabled: "&c&lDISATTIVO"
 
 fillItem:
   material: GRAY_STAINED_GLASS_PANE
@@ -24,7 +42,25 @@ items:
         - " &8» &aClicca per attivare/disattivare"
     commands:
       - "tptoggle"
-    close: true
+
+  # Slot 10 e non 11: gli 11..16 erano gia' occupati prima che TPAuto esistesse, e la
+  # voce viene aggiunta anche ai server che hanno gia' un settings.yml loro.
+  tpauto:
+    slot: 10
+    # Nessun comando: l'interruttore E' lo stato che legge il modulo tpauto.
+    item:
+      material: COMPASS
+      name: "&#8e44ad&lTPAUTO"
+      lore:
+        - ""
+        - " &7Accetta da solo le richieste di TPA"
+        - " &7che ricevi: chi ti manda /tpa viene"
+        - " &7teletrasportato senza che tu faccia nulla."
+        - ""
+        - " &8» &aClicca per attivare/disattivare"
+    commands: []
+    default: false
+    requires-module: tpauto
 
   msg_toggle:
     slot: 12
@@ -39,7 +75,6 @@ items:
         - " &8» &aClicca per attivare/disattivare"
     commands:
       - "togglemsg"
-    close: true
 
   sb_toggle:
     slot: 13
@@ -53,7 +88,6 @@ items:
         - " &8» &aClicca per attivare/disattivare"
     commands:
       - "sb"
-    close: true
 
   chat_toggle:
     slot: 14
@@ -67,7 +101,6 @@ items:
         - " &8» &aClicca per attivare/disattivare"
     commands:
       - "togglechat"
-    close: true
 
   pay_toggle:
     slot: 15
@@ -82,7 +115,6 @@ items:
         - " &8» &aClicca per attivare/disattivare"
     commands:
       - "paytoggle"
-    close: true
 
   mention_toggle:
     slot: 16
@@ -97,10 +129,10 @@ items:
         - " &8» &aClicca per attivare/disattivare"
     commands:
       - "togglementions"
-    close: true
 
   ah_options:
     slot: 22
+    toggle: false
     item:
       material: EMERALD
       name: "&#1abc9c&lOPZIONI ASTE"

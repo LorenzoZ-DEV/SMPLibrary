@@ -1,5 +1,5 @@
 name: smp-library
-version: '1.12.15-ee69cbf'
+version: '1.12.17-12e29e6'
 main: dev.lorenzzz.smplibrary.Smp_library
 api-version: '1.21'
 softdepend:
@@ -17,6 +17,7 @@ permissions:
       smplibrary.menu.use: true
       smplibrary.pay.use: true
       smplibrary.bugreport.use: true
+      smplibrary.tpauto.use: true
   smplibrary.admin:
     description: Access to admin log chat broadcast and dashboard actions
     default: op
@@ -29,6 +30,12 @@ permissions:
   smplibrary.bugreport.use:
     description: File a bug report with /bugreport
     default: true
+  smplibrary.tpauto.use:
+    description: Toggle TPAuto, which accepts incoming teleport requests for you
+    default: true
+  smplibrary.dialogguard.bypass:
+    description: Never get a guarded dialog re-opened after a relog
+    default: false
   antipearlglitch.bypass:
     description: Ender pearls are never corrected for this player
     default: false
@@ -48,3 +55,8 @@ commands:
   bugreport:
     aliases: [segnalabug]
     permission: smplibrary.bugreport.use
+  tpauto:
+    description: Accetta automaticamente le richieste di teleport ricevute
+    usage: "/tpauto [on|off]"
+    aliases: [autotp, tpautomatico]
+    permission: smplibrary.tpauto.use

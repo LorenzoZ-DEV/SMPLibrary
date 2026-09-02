@@ -26,6 +26,8 @@ public final class ManagerService implements Manager {
     private StorageManager storage;
     private EconomyManager economy;
     private CommandManager commands;
+    private DialogGuard dialogGuard;
+    private ToggleManager toggles;
     private ModuleManager modules;
 
     private MenuHandler menuHandler;
@@ -39,12 +41,19 @@ public final class ManagerService implements Manager {
 
     @Override
     public void enable() {
-        // order matters: config -> messages -> storage -> economy -> commands -> modules
+        // order matters: config -> messages -> storage -> economy -> commands -> dialogs
+        //                 -> toggles -> modules
         config = register(new ConfigManager(plugin));
         messages = register(new MessagesManager(plugin));
         storage = register(new StorageManager(plugin));
         economy = register(new EconomyManager(plugin));
         commands = register(new CommandManager(plugin));
+        // Before modules: a module arms the guard from its own onEnable path, and the guard's
+        // join listener has to be live before the first player can walk into a guarded dialog.
+        dialogGuard = register(new DialogGuard(plugin));
+        // Before modules too: settings renders the stored toggles and tpauto reads them, so
+        // the store has to be up (and preloading joins) before either can ask it anything.
+        toggles = register(new ToggleManager(plugin, storage));
         modules = register(new ModuleManager(plugin));
 
         for (Manager manager : managers.values()) {
@@ -104,5 +113,7 @@ public final class ManagerService implements Manager {
     public StorageManager storage() { return storage; }
     public EconomyManager economy() { return economy; }
     public CommandManager commands() { return commands; }
+    public DialogGuard dialogGuard() { return dialogGuard; }
+    public ToggleManager toggles() { return toggles; }
     public ModuleManager modules() { return modules; }
 }

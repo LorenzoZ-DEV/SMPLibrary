@@ -84,7 +84,8 @@ first-join:
 # dialog -> libro -> link in chat -> conferma in GUI.
 bugreport:
   already-running: '&eHai gia'' una segnalazione aperta. Finiscila o scrivi &fannulla&e in chat.'
-  title-empty: '&cIl titolo non puo'' essere vuoto. Riapri con &f/bugreport&c.'
+  title-empty: '&cIl titolo non puo'' essere vuoto: riprova.'
+  dialog-cancelled: '&7Segnalazione annullata. Riaprila con &f/bugreport&7 quando vuoi.'
   write-book: |-
     &r
     &d&lSEGNALAZIONE &8» &f%title%
@@ -100,3 +101,17 @@ bugreport:
   sent: '&a✔ &fSegnalazione inviata! Codice: &a#%id%&f. Grazie: lo staff la vede sulla dashboard.'
   cancelled: '&7Segnalazione annullata. Niente e'' stato salvato.'
   timeout: '&7Segnalazione scaduta per inattivita''. Riapri con &f/bugreport&7.'
+# Guardia dei dialog: chi esce da un dialog bloccante col pulsante di pericolo del
+# client se lo ritrova aperto al rientro. %attempt% = numero di riaperture.
+dialog-guard:
+  reopened: '&e⚠ &fDisconnettersi non chiude questa finestra: rispondi o premi &fAnnulla&f. &7(tentativo %attempt%)'
+  gave-up: '&7Ok, lascio perdere: la finestra non verra'' piu'' riaperta. Riapri il comando quando vuoi.'
+
+tpauto:
+  # TPAuto: accetta da solo le richieste di teleport che ricevi.
+  enabled: '&d» &fTPAuto &aattivo&f: le richieste di teleport verranno accettate automaticamente.'
+  disabled: '&d» &fTPAuto &cdisattivato&f: dovrai accettare le richieste a mano.'
+  # %player% = chi aveva mandato la richiesta.
+  accepted: '&d» &fTPAuto: richiesta di &d%player% &faccettata automaticamente.'
+  # Mostrato quando zEssentials non e' disponibile: il toggle si salva lo stesso.
+  unavailable: '&cTPAuto e'' salvato, ma zEssentials non e'' attivo: nessuna richiesta da accettare.'

@@ -197,14 +197,18 @@
 
     trivella:
       enabled: true
-      radius: 1                 # 1 = 3x3x3 cube around the broken block; capped at 3 in code
+      radius: 1                 # 1 = cubo 3x3x3, 2 = 5x5x5; limitato a 3 nel codice
+      # Con true il cubo parte dal blocco rotto e va avanti nella direzione in cui scavi,
+      # cosi' tutti e 3 gli strati finiscono nel materiale. Con false il cubo e' centrato
+      # sul blocco: lo strato davanti e' gia' aria e in pratica scavi 3x3x2.
+      dig-forward: true
       # Con true, scavare accovacciati rompe un blocco solo: e' l'unico modo di fare un
       # tunnel 1x1 con la trivella in mano. Metti false per l'area sempre attiva.
       disable-on-sneak: true
       material: NETHERITE_PICKAXE
       name: '&d&lTrivella'
       lore:
-        - '&#d1e0e0Scava un cubo 3x3x3 attorno al blocco rotto.'
+        - '&#d1e0e0Scava un cubo 3x3x3 nella direzione in cui punti.'
         - '&#d1e0e0Accovacciati per scavare un blocco solo.'
         - '&#d1e0e0Illimitata — nessun consumo usi.'
       enchantments:
@@ -225,12 +229,44 @@
       time-window-ms: 1000
       # Quanti blocchi in avanti cercare un punto libero prima di annullare la perla.
       search-distance: 3
+      # Ricontrolla dove il player e' finito davvero 1 e 5 tick dopo la perla, e lo
+      # estrae se la sua hitbox e' dentro un blocco. Guarda il risultato invece della
+      # causa, quindi prende anche le strade che il controllo sulla destinazione non
+      # vede. Lascialo acceso: e' due controlli per perla, non per tick.
+      post-landing-check: true
       # Avviso a chi ha antipearlglitch.notify. MiniMessage, {player} = chi ha tirato.
       # Vuoto = nessun avviso.
       staff-message: "<gray>[<red>Anti-Glitch<gray>] <white>{player} <gray>e' stato spostato da una perla dentro un blocco."
 
     settings:
       enabled: true
+      # Suono del clic su un interruttore della GUI /settings.
+      sound:
+        type: ui.button.click
+        volume: 0.6
+        pitch: 1.4
+        enabled: true
+
+    tpauto:
+      # TPAuto: con l'interruttore acceso, ogni richiesta di teleport che ricevi viene
+      # accettata al posto tuo tramite l'API di zEssentials (stesso delay, stessi
+      # controlli e stessi messaggi di /tpaccept). Si accende da /settings o con /tpauto.
+      enabled: true
+      # Ogni quanti tick vengono raccolte le richieste in sospeso. Il giro tocca solo i
+      # player che hanno TPAuto acceso; 10 tick = mezzo secondo.
+      check-every-ticks: 10
+      # Con true vengono accettate anche le richieste /tpahere, quelle in cui e' l'altro a
+      # chiamarti da lui: accettandole ti sposti tu. Mettilo a false se vuoi che TPAuto
+      # significhi solo "gli altri possono venire da me".
+      accept-teleport-here: true
+      # Dopo uno di questi comandi il controllo parte subito, senza aspettare il giro:
+      # e' quello che rende il teletrasporto immediato invece che "entro mezzo secondo".
+      request-commands:
+        - tpa
+        - tpask
+        - tpahere
+        - tpaqui
+        - call
 
     firstjoin:
       enabled: true
@@ -307,6 +343,24 @@
       host: "0.0.0.0"
       port: 8080
       # token: "auto-generated-if-empty"
+
+  # Guardia dei dialog (Dialog API di Paper).
+  #
+  # Il pulsante col simbolo di pericolo nella schermata di un dialog e' l'uscita di
+  # sicurezza del client: apre il "disconnetti" e NON si puo' togliere lato server.
+  # Questa sezione non lo blocca, blocca il motivo per cui viene usato: chi esce da un
+  # dialog bloccante se lo ritrova aperto appena rientra, quindi il relog non serve a nulla.
+  # Il permesso smplibrary.dialogguard.bypass esclude un player dalla riapertura.
+  DIALOG-GUARD:
+    enabled: true
+    # Ritardo prima di rimostrare il dialog al login: il client sta ancora finendo di
+    # entrare e un dialog inviato subito viene scartato. 20 tick = 1 secondo.
+    reopen-delay-ticks: 20
+    # Quante volte lo stesso dialog puo' tornare. Valvola di sicurezza: senza, un client
+    # che non riesce a renderizzarlo terrebbe il player fuori dal server per sempre.
+    max-reopens: 5
+    # Dopo quanto un dialog rimasto senza risposta smette di essere riproposto.
+    expire-seconds: 600
 
   # Aikar Commands (ACF) registration block. The CommandManager reads this
   # and registers the matching command classes. Aliases & permission live here

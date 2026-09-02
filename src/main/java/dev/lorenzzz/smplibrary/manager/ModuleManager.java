@@ -16,6 +16,7 @@ import dev.lorenzzz.smplibrary.modules.playerstats.PlayerStatsModule;
 import dev.lorenzzz.smplibrary.modules.playtime.PlaytimeModule;
 import dev.lorenzzz.smplibrary.modules.settings.SettingsModule;
 import dev.lorenzzz.smplibrary.modules.shop.ShopModule;
+import dev.lorenzzz.smplibrary.modules.tpauto.TpAutoModule;
 import dev.lorenzzz.smplibrary.modules.trivella.TrivellaModule;
 import dev.lorenzzz.smplibrary.modules.web.WebModule;
 import org.bukkit.configuration.ConfigurationSection;
@@ -72,6 +73,7 @@ public final class ModuleManager implements Manager {
         register(new PlayerStatsModule(plugin));
         register(new CompetitorsModule(plugin));
         register(new SettingsModule(plugin));
+        register(new TpAutoModule(plugin));
         register(new DebugModule(plugin));
         register(new WebModule(plugin));
 

@@ -2,10 +2,12 @@ package dev.lorenzzz.smplibrary.modules;
 
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.manager.CommandManager;
+import dev.lorenzzz.smplibrary.manager.DialogGuard;
 import dev.lorenzzz.smplibrary.manager.EconomyManager;
 import dev.lorenzzz.smplibrary.manager.ManagerService;
 import dev.lorenzzz.smplibrary.manager.MessagesManager;
 import dev.lorenzzz.smplibrary.manager.StorageManager;
+import dev.lorenzzz.smplibrary.manager.ToggleManager;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.event.HandlerList;
@@ -52,6 +54,16 @@ public abstract class AbstractModule implements Module {
 
     protected EconomyManager economy() {
         return managers == null ? null : managers.economy();
+    }
+
+    /** The plugin-wide per-player toggle store; {@code null} only before {@link #bind}. */
+    protected ToggleManager toggles() {
+        return managers == null ? null : managers.toggles();
+    }
+
+    /** The plugin-wide dialog guard; {@code null} only before {@link #bind}. */
+    protected DialogGuard dialogGuard() {
+        return managers == null ? null : managers.dialogGuard();
     }
 
     /** This module's {@code MODULES.<id>} section, or {@code null} when unconfigured. */

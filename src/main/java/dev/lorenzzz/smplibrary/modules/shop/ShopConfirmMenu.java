@@ -216,6 +216,9 @@ public class ShopConfirmMenu extends Menu {
                 .replace("<amount>", String.valueOf(quantity))
                 .replace("<item>", resolveItemName()));
         module.playSound(player, config.confirmPurchaseSound());
+        // Logged after the commands ran and the money is gone, so the dashboard only ever
+        // shows purchases that actually went through.
+        module.logPurchase(player, resolveItemName(), quantity, totalCost, category);
 
         if (config.keepOpenAfterPurchase()) {
             module.openCategory(player, category);

@@ -2,25 +2,33 @@ package dev.lorenzzz.smplibrary.modules.settings;
 
 import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
+import dev.lorenzzz.smplibrary.manager.ModuleManager;
+import dev.lorenzzz.smplibrary.manager.ToggleManager;
 import dev.lorenzzz.smplibrary.modules.AbstractModule;
+import dev.lorenzzz.smplibrary.util.SoundCue;
+import net.j4c0b3y.api.menu.MenuHandler;
 import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
+
+import java.util.List;
 
 /**
- * /settings: mostra un Dialog (Paper Dialog API) costruito da inventories/settings.yml.
- * Sostituisce la vecchia implementazione MenuAPI con la nuova Dialog API di Paper 1.21.7+.
+ * /settings: an inventory GUI built from {@code inventories/settings.yml}.
+ *
+ * <p>The ON/OFF state of every switch lives in the shared {@link ToggleManager}, not in this
+ * module, precisely so other features can read it: {@code tpauto} is one of them, and its
+ * button here and its own {@code /tpauto} command flip the very same stored boolean.
  */
-public final class SettingsModule extends AbstractModule implements Listener {
+public final class SettingsModule extends AbstractModule {
 
     private static final String COMMAND = "settings";
 
+    private static final SoundCue DEFAULT_CLICK = SoundCue.of("ui.button.click", 0.6f, 1.4f);
+
+    private MenuHandler menuHandler;
     private SettingsConfigLoader configLoader;
-    private SettingsStateStore store;
+    private SoundCue clickSound = DEFAULT_CLICK;
 
     public SettingsModule(Smp_library plugin) {
         super(plugin);
@@ -30,21 +38,19 @@ public final class SettingsModule extends AbstractModule implements Listener {
 
     @Override
     public void onEnable() {
+        this.menuHandler = managers.menuHandler();
         this.configLoader = new SettingsConfigLoader(plugin);
         configLoader.load();
 
-        this.store = new SettingsStateStore(plugin, storage);
-        store.initialize();
+        this.clickSound = config() == null
+                ? DEFAULT_CLICK
+                : SoundCue.from(config().getConfigurationSection("sound"), DEFAULT_CLICK);
 
         registerCommand();
-        listen(this);
 
-        // Su /reload i giocatori sono gia' online: nessun join in arrivo per loro.
-        for (Player online : Bukkit.getOnlinePlayers()) {
-            store.whenLoaded(online.getUniqueId(), () -> {});
-        }
-
-        C.info("Settings module enabled (Dialog API) — toggle salvati su " + store.backend() + ".");
+        SettingsConfig cfg = configLoader.get();
+        C.info("Settings module enabled (GUI) — " + (cfg == null ? 0 : cfg.items().size())
+                + " voci, toggle salvati su " + (toggles() == null ? "?" : toggles().backend()) + ".");
     }
 
     private void registerCommand() {
@@ -55,7 +61,7 @@ public final class SettingsModule extends AbstractModule implements Listener {
         }
         command.setExecutor((sender, cmd, label, args) -> {
             if (sender instanceof Player player) {
-                openDialog(player);
+                open(player);
             } else {
                 C.send(sender, "&cOnly players.");
             }
@@ -63,28 +69,63 @@ public final class SettingsModule extends AbstractModule implements Listener {
         });
     }
 
-    public void openDialog(Player player) {
+    /** Opens the GUI, waiting if needed for the player's stored toggles to be read. */
+    public void open(Player player) {
         SettingsConfig cfg = configLoader == null ? null : configLoader.get();
-        if (cfg == null || store == null) return;
-        new SettingsDialog(plugin, cfg, store).show(player);
+        ToggleManager toggles = toggles();
+        if (cfg == null || toggles == null) {
+            C.send(player, "&cLe impostazioni non sono disponibili in questo momento.");
+            return;
+        }
+        toggles.whenLoaded(player.getUniqueId(), () -> {
+            if (player.isOnline()) new SettingsMenu(cfg, player, menuHandler, this).open();
+        });
     }
 
-    /** Reads the stored toggles ahead of the first /settings so the dialog opens instantly. */
-    @EventHandler
-    public void onJoin(PlayerJoinEvent event) {
-        if (store != null) store.whenLoaded(event.getPlayer().getUniqueId(), () -> {});
+    // ------------------------------------------------------------- menu hooks
+
+    /** Current state of one switch; the entry's own default applies until the player flips it. */
+    public boolean isOn(Player player, String key, SettingsItemConfig item) {
+        ToggleManager toggles = toggles();
+        return toggles != null && toggles.get(player.getUniqueId(), key, item.defaultState());
     }
 
-    /** Drops the cached ON/OFF states when a player leaves; the database keeps them. */
-    @EventHandler
-    public void onQuit(PlayerQuitEvent event) {
-        if (store != null) store.unload(event.getPlayer().getUniqueId());
+    /** Flips a switch, stores it, then runs whatever commands the entry carries. */
+    public void toggle(Player player, String key, SettingsItemConfig item) {
+        ToggleManager toggles = toggles();
+        if (toggles == null) return;
+
+        boolean enabled = !toggles.get(player.getUniqueId(), key, item.defaultState());
+        toggles.set(player.getUniqueId(), key, enabled);
+        clickSound.play(player);
+        runCommands(player, key, item.commands());
+    }
+
+    /** False for an entry whose {@code requires-module} is not running — it is then not drawn. */
+    public boolean isAvailable(SettingsItemConfig item) {
+        String required = item.requiresModule();
+        if (required == null) return true;
+        ModuleManager modules = managers == null ? null : managers.modules();
+        return modules != null && modules.isRunning(required);
+    }
+
+    /** Runs an entry's commands as the player. One that throws must not break the menu. */
+    public void runCommands(Player player, String key, List<String> commands) {
+        if (commands == null || commands.isEmpty()) return;
+        String name = player.getName();
+        for (String command : commands) {
+            if (command == null || command.isBlank()) continue;
+            try {
+                Bukkit.dispatchCommand(player, command.replace("%player%", name));
+            } catch (Exception e) {
+                C.warning("settings: '" + key + "' — comando '" + command + "' fallito: " + e.getMessage());
+            }
+        }
     }
 
     @Override
     protected void onShutdown() {
-        if (store != null) store.clear();
-        store = null;
         configLoader = null;
+        menuHandler = null;
     }
 }

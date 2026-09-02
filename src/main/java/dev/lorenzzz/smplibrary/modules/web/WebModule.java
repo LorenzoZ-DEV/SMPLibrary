@@ -19,6 +19,7 @@ public final class WebModule extends AbstractModule {
 
     private WebServer server;
     private WebAuth auth;
+    private WebLog log;
     private SparkHook spark;
     private String boundHost;
     private int boundPort = -1;
@@ -47,7 +48,7 @@ public final class WebModule extends AbstractModule {
 
         auth = new WebAuth(cfg.getString("token", null));
         spark = new SparkHook();
-        WebLog log = new WebLog();
+        log = new WebLog();
         server = new WebServer(plugin, auth,
                 new WebStats(plugin, System.currentTimeMillis(), spark),
                 new ConfigEditor(plugin, log), log);
@@ -67,8 +68,18 @@ public final class WebModule extends AbstractModule {
         } catch (Exception e) {
             C.warning("Failed to start web dashboard: " + e.getMessage());
             server = null;
+            log = null;
             boundPort = -1;
         }
+    }
+
+    /**
+     * The dashboard's live log, for modules that want their events on the site's log panel
+     * (the shop does, for purchases). {@code null} whenever the dashboard is not serving —
+     * callers must treat "no dashboard" as "nothing to log to", not as an error.
+     */
+    public WebLog log() {
+        return log;
     }
 
     /**
@@ -122,6 +133,7 @@ public final class WebModule extends AbstractModule {
             server = null;
         }
         auth = null;
+        log = null;
         if (spark != null) {
             spark.detach();
             spark = null;
