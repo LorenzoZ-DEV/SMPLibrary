@@ -216,6 +216,33 @@
         UNBREAKING: 3
         FORTUNE: 3
 
+    lootguard:
+      # Il loot per terra non viene piu' distrutto dalle esplosioni di crystal e anchor.
+      #
+      # In vanilla un'esplosione danneggia gli item entity, e un item ha cosi' poca vita che
+      # un colpo solo lo cancella: in un fight a crystal la roba di chi muore sparisce prima
+      # che qualcuno possa raccoglierla. Qui quel danno viene annullato e basta: l'esplosione
+      # avviene lo stesso, fa male ai player, rompe i blocchi e sparacchia in giro gli item —
+      # solo che gli item sopravvivono. Lava, fuoco, cactus, void e despawn restano invariati.
+      enabled: true
+      # Da quali esplosioni proteggere. Solo queste: TNT e creeper continuano a comportarsi
+      # come si aspetta il server.
+      #
+      # BAD_RESPAWN_POINT e' il tipo di danno dietro le anchor: serve perche' l'anchor si
+      # consuma esplodendo, quindi quando il colpo arriva quel blocco e' gia' aria e col solo
+      # nome RESPAWN_ANCHOR non lo riconosceresti sempre. Copre anche i letti che esplodono
+      # nel Nether e nell'End — stessa meccanica, stesso uso in un fight. Toglilo se vuoi
+      # proteggere solo le anchor.
+      #
+      # Puoi aggiungerne altre con lo stesso nome che hanno in gioco: TNT, CREEPER, WITHER...
+      sources:
+        - END_CRYSTAL
+        - RESPAWN_ANCHOR
+        - BAD_RESPAWN_POINT
+      # Con true anche le sfere di esperienza sopravvivono all'esplosione: e' la stessa
+      # perdita, i livelli di chi muore altrimenti evaporano insieme al loot.
+      protect-experience: true
+
     antipearlglitch:
       # Impedisce che una perla ti faccia atterrare dentro un blocco. Due controlli:
       # sul teletrasporto (se il punto d'arrivo e' occupato ti sposta, e se non c'e'
@@ -249,24 +276,27 @@
 
     tpauto:
       # TPAuto: con l'interruttore acceso, ogni richiesta di teleport che ricevi viene
-      # accettata al posto tuo tramite l'API di zEssentials (stesso delay, stessi
-      # controlli e stessi messaggi di /tpaccept). Si accende da /settings o con /tpauto.
+      # accettata al posto tuo tramite l'API di HuskHomes (stesso warmup, stessi controlli
+      # e stessi messaggi di /tpaccept). Si accende da /settings o con /tpauto.
+      #
+      # Le richieste vengono prese al volo dall'evento di HuskHomes, quindi il teletrasporto
+      # parte nello stesso istante in cui l'altro scrive /tpa: non c'e' nessuna attesa.
       enabled: true
-      # Ogni quanti tick vengono raccolte le richieste in sospeso. Il giro tocca solo i
-      # player che hanno TPAuto acceso; 10 tick = mezzo secondo.
-      check-every-ticks: 10
-      # Con true vengono accettate anche le richieste /tpahere, quelle in cui e' l'altro a
-      # chiamarti da lui: accettandole ti sposti tu. Mettilo a false se vuoi che TPAuto
-      # significhi solo "gli altri possono venire da me".
-      accept-teleport-here: true
-      # Dopo uno di questi comandi il controllo parte subito, senza aspettare il giro:
-      # e' quello che rende il teletrasporto immediato invece che "entro mezzo secondo".
-      request-commands:
-        - tpa
-        - tpask
-        - tpahere
-        - tpaqui
-        - call
+      # Rete di sicurezza dietro l'evento: ogni quanti tick vengono ricontrollate le
+      # richieste rimaste in sospeso (per esempio quelle arrivate PRIMA che accendessi
+      # TPAuto). Il giro tocca solo i player che hanno l'interruttore acceso.
+      check-every-ticks: 20
+      # NOTA: TPAuto accetta solo le /tpa, mai le /tpahere, e non e' configurabile.
+      # Le due vanno in direzioni opposte: accettare una /tpa porta l'altro da te,
+      # accettare una /tpahere sposta TE da lui. L'interruttore vuol dire "gli altri
+      # possono venire da me", quindi un si' automatico non puo' teletrasportare chi
+      # l'ha acceso. Se avevi 'accept-teleport-here' in questo file ora e' ignorato.
+
+    gui:
+      # Le schermate /homegui e /warpgui, disegnate sui dati di HuskHomes.
+      # Tutto l'aspetto (titoli, layout, materiali, testi, suoni) sta in
+      # inventories/gui.yml, modificabile anche dalla dashboard web.
+      enabled: true
 
     firstjoin:
       enabled: true
@@ -323,20 +353,94 @@
         - "youtu.be"
         - "streamable.com"
       ai:
-        # Ordine di lettura della chiave: variabile d'ambiente ANTHROPIC_API_KEY,
-        # poi questo campo, poi la chiave compilata dentro il jar (AiDiagnostics).
-        # Compilata nel jar significa: leggibile da chiunque apra il jar, e per
-        # cambiarla serve ricompilare. Per sostituirla senza ricompilare basta
-        # riempire questo campo o la variabile d'ambiente: vincono su quella.
+        # Provider default: DeepSeek (https://platform.deepseek.com/api_keys),
+        # gateway OpenAI-compatible. La chiave si crea su platform.deepseek.com.
+        #
+        # Ordine di lettura della chiave: variabile d'ambiente DEEPSEEK_API_KEY
+        # (OPENCODE_API_KEY resta come fallback per compatibilita'), poi questo campo.
+        # Per DeepSeek non c'e' nessuna chiave compilata nel jar: va messa qui
+        # o nella variabile d'ambiente, altrimenti l'analisi risponde 401.
         api-key: ""
-        model: "claude-opus-5"
-        # low | medium | high | xhigh | max — piu' alto = piu' accurato e piu' caro.
-        effort: "high"
+        # Qualsiasi endpoint "chat completions" in stile OpenAI va bene: il
+        # plugin non ha niente di specifico per DeepSeek. Vuoto = DeepSeek (default).
+        # Per cambiare provider bastano queste tre righe, senza ricompilare:
+        #
+        #   OpenCode Zen
+        #     endpoint: "https://opencode.ai/zen/v1/chat/completions"
+        #     model: "muse-spark-1.3-contributor-free"   chiave: opencode.ai/auth
+        #
+        #   Gemini (free tier ampio, context 1M — consigliato come alternativa)
+        #     endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+        #     model: "gemini-2.5-flash"          chiave: aistudio.google.com/api-keys
+        #
+        #   Cerebras
+        #     endpoint: "https://api.cerebras.ai/v1/chat/completions"
+        #
+        #   OpenRouter (un'unica chiave, molti modelli con suffisso :free)
+        #     endpoint: "https://openrouter.ai/api/v1/chat/completions"
+        #
+        #   Ollama in locale (gratis, nessuna chiave, ma consuma RAM del server)
+        #     endpoint: "http://localhost:11434/v1/chat/completions"
+        #
+        # ATTENZIONE alla context window: le evidenze arrivano a ~180.000
+        # caratteri (~50k token), quindi un modello da 32k non le regge e i
+        # provider con tetti giornalieri bassi si esauriscono in poche analisi.
+        endpoint: "https://api.deepseek.com/chat/completions"
+        # deepseek-v4-flash = economico, deepseek-v4-pro = piu' capace.
+        # I vecchi deepseek-chat / deepseek-reasoner sono ritirati dal 24/07/2026 (404).
+        model: "deepseek-v4-flash"
         max-tokens: 16000
-        # L'analisi e' a pagamento: di default parte solo quando la chiedi tu
-        # (bottone nella dashboard o /smpl debug analyze).
+        # Anche sul modello gratuito ogni analisi consuma quota: di default parte
+        # solo quando la chiedi tu (bottone nella dashboard o /smpl debug analyze).
         auto-analyze: false
         auto-cooldown-seconds: 1800
+
+    dupewatch:
+      # Anti-dupe economia: confronta di continuo il saldo in RAM con quello scritto
+      # davvero nel database di zEssentials, misura quanto ci mette a persistersi e
+      # segnala le divergenze. Rileva e basta: non blocca niente e non punisce nessuno.
+      #
+      # Database, prefisso tabelle ed elenco economie NON si configurano qui: vengono
+      # letti da plugins/zEssentials (config.yml + modules/economy/config.yml), cosi'
+      # restano allineati quando li cambi di la'.
+      enabled: true
+      # zessentials = legge tutte le economie (consigliato)
+      # vault       = legge solo quella con vault: true, le altre restano non controllate
+      balance-source: zessentials
+      # Vuoto = tutte quelle dichiarate da zEssentials. Riempilo solo per guardarne meno.
+      economies: []
+      # Differenza sotto la quale due saldi sono considerati uguali.
+      tolerance: 0.01
+      # Aumento oltre il quale un saldo cresciuto senza trasferimenti osservati viene segnalato.
+      unexplained-gain-threshold: 1000000
+      # Oltre questi secondi dal quit il flush e' "lento" (StorageLagA)...
+      expected-flush-seconds: 5
+      # ...e oltre questi non e' mai arrivato (MoneyDupeA).
+      flush-timeout-seconds: 30
+      # Quanto aspettare prima di verificare i due lati di un /pay. DEVE essere piu' lungo
+      # del menu di conferma di zEssentials, altrimenti misuri un pagamento non ancora fatto.
+      pay-verify-seconds: 20
+      # Ogni quanto ricontrollare i saldi degli online, e quanto dopo il join.
+      audit-interval-seconds: 30
+      join-verify-seconds: 3
+      # Quante anomalie tiene in memoria il pannello web.
+      history: 100
+      # Comando di trasferimento -> economia che muove. Serve per capire quale saldo guardare.
+      pay-commands:
+        pay: money
+        epay: money
+        pistacchiopay: coins
+        pistacchipay: coins
+        pagapers: coins
+      notify:
+        # Chi vede gli avvisi in chat.
+        permission: smplibrary.antidupe.notify
+        # Secondi minimi fra due avvisi identici. Il VL continua a salire lo stesso.
+        cooldown-seconds: 30
+        # Ogni quanti minuti i violation level vengono dimezzati.
+        decay-minutes: 30
+        # Con true ogni anomalia finisce anche in console: e' la traccia che sopravvive al riavvio.
+        console: true
 
     web:
       enabled: true

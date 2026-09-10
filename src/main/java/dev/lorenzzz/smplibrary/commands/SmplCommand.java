@@ -56,6 +56,9 @@ public final class SmplCommand extends BaseCommand {
             "&8» &f/smplibrary debug &7- errori catturati e segnalazioni aperte",
             "&8» &f/smplibrary debug analyze [domanda] &7- analisi AI della causa",
             "&8» &f/smplibrary debug result &7- rileggi l'ultima analisi",
+            "&8» &f/smplibrary debug fix &7- piano fix AI per l'ultima analisi (preview)",
+            "&8» &f/smplibrary debug fix confirm &7- applica fix + broadcast + restart se serve",
+            "&8» &f/smplibrary debug fix regen &7- rigenera il piano fix",
             "&8» &f/smplibrary debug clear &7- azzera gli errori catturati",
             "&8» &f/smplibrary debug notify &7- silenzia/riattiva le tue notifiche",
             "&8» &f/bugreport &7&o(alias: /segnalabug)&7- i player segnalano un bug",
@@ -70,6 +73,10 @@ public final class SmplCommand extends BaseCommand {
             "&d&lAltri comandi (separati):",
             "&8» &f/keyall &7&o(alias: /keys)&7- distribuisce chiavi a tutti i player online",
             "&8» &f/pay <player> <amount> &7&o(alias: /pistacchipay, /pagapers)&7- trasferisci pistacchi",
+            "&8» &f/homegui &7&o(alias: /homesgui)&7- GUI delle home &7(dati di HuskHomes)",
+            "&8» &f/warpgui &7&o(alias: /warpsgui)&7- GUI dei warp &7(dati di HuskHomes)",
+            "&8» &f/tpauto [on|off] &7- accetta da solo le richieste di teleport",
+            "&7    &f/tpauto status &7- diagnostica: interruttore, hook HuskHomes, richieste",
             "",
             "&7Permessi:",
             "&8» &fsmplibrary.admin &7- accesso ai comandi admin",
@@ -184,7 +191,7 @@ public final class SmplCommand extends BaseCommand {
         if (debug == null) return;
 
         if (!debug.aiConfigured()) {
-            C.send(sender, "&cNessuna API key: imposta la variabile d'ambiente ANTHROPIC_API_KEY "
+            C.send(sender, "&cNessuna API key: imposta la variabile d'ambiente DEEPSEEK_API_KEY "
                     + "oppure MODULES.debug.ai.api-key in config.yml.");
             return;
         }
@@ -214,6 +221,112 @@ public final class SmplCommand extends BaseCommand {
                 + " &8(&7richiesta da " + analysis.requester() + "&8)");
         for (String line : analysis.text().split("\\R")) {
             C.send(sender, line.startsWith("#") ? "&d&l" + line.replace("#", "").trim() : "&7" + line);
+        }
+    }
+
+    @Subcommand("debug fix")
+    @CommandCompletion("confirm regen")
+    public void onDebugFix(CommandSender sender, @Optional String arg) {
+        DebugModule debug = debugModule(sender);
+        if (debug == null) return;
+
+        // --- confirm: applica piano AI se corrente, altrimenti fallback locale mob ---
+        if (arg != null && arg.equalsIgnoreCase("confirm")) {
+            DebugModule.Analysis analysis = debug.lastAnalysis();
+            String topic = dev.lorenzzz.smplibrary.modules.debug.BugFixer.topicFrom(
+                    analysis == null ? "" : analysis.question());
+            dev.lorenzzz.smplibrary.modules.debug.BugFixer.Result result;
+            if (debug.fixPlanCurrent()) {
+                result = dev.lorenzzz.smplibrary.modules.debug.BugFixer.applyPlan(
+                        plugin(), debug.fixPlan(), topic);
+            } else {
+                result = dev.lorenzzz.smplibrary.modules.debug.BugFixer.apply(plugin(), topic);
+            }
+            C.send(sender, "&5&lSMPCORE BUG FIXXER &8» &7fix live: &f" + result.appliedLive()
+                    + " &7file: &f" + result.appliedFile()
+                    + (result.backups().isEmpty() ? "" : " &8(backup: " + String.join(", ", result.backups()) + "&8)"));
+            if (result.restartScheduled()) {
+                C.send(sender, "&5&lSMPCORE BUG FIXXER: &fRiavvio per sistemare il bug su &d" + topic);
+            } else if (result.appliedLive() == 0 && result.appliedFile() == 0) {
+                C.send(sender, "&aNessun fix automatico da applicare. Vedi i passi manuali sotto.");
+            } else {
+                C.send(sender, "&aFix applicato live, nessun restart necessario.");
+            }
+            for (String manual : result.manualLeft()) {
+                C.send(sender, "&e" + manual);
+            }
+            return;
+        }
+
+        // --- regen: forza un nuovo piano AI per l'ultima analisi ---
+        if (arg != null && arg.equalsIgnoreCase("regen")) {
+            if (debug.requestFixPlan(sender.getName())) {
+                C.send(sender, "&7Nuovo piano fix in generazione, riprova tra qualche secondo.");
+            } else if (debug.planningFix()) {
+                C.send(sender, "&ePiano fix gia' in generazione, attendi.");
+            } else {
+                C.send(sender, "&cServe prima un'analisi valida: &f/smpl debug analyze [problema]");
+            }
+            return;
+        }
+
+        // --- preview: piano AI se corrente, altrimenti controlli locali immediati ---
+        java.util.List<dev.lorenzzz.smplibrary.modules.debug.BugFixer.Fix> local =
+                dev.lorenzzz.smplibrary.modules.debug.BugFixer.preview(plugin());
+        long localAuto = local.stream().filter(f -> !f.manual()).count();
+
+        if (!debug.aiConfigured()) {
+            showFixes(sender, local, "controlli locali (AI non configurata)");
+            return;
+        }
+        DebugModule.Analysis analysis = debug.lastAnalysis();
+        if (analysis == null || !analysis.ok()) {
+            showFixes(sender, local, "controlli locali");
+            C.send(sender, "&7Per un piano sul tuo problema: &f/smpl debug analyze [problema] &7poi &f/smpl debug fix&7.");
+            return;
+        }
+        if (debug.planningFix()) {
+            showFixes(sender, local, "controlli locali");
+            C.send(sender, "&ePiano fix AI in generazione, riprova tra qualche secondo.");
+            return;
+        }
+        if (!debug.fixPlanCurrent()) {
+            if (debug.requestFixPlan(sender.getName())) {
+                showFixes(sender, local, "controlli locali");
+                C.send(sender, "&7Piano fix AI in generazione dall'ultima analisi, riprova tra qualche secondo.");
+            } else {
+                showFixes(sender, local, "controlli locali");
+                if (!debug.fixPlanError().isEmpty()) {
+                    C.send(sender, "&cPiano fix fallito: &7" + debug.fixPlanError());
+                }
+            }
+            return;
+        }
+
+        java.util.List<dev.lorenzzz.smplibrary.modules.debug.BugFixer.Fix> plan =
+                dev.lorenzzz.smplibrary.modules.debug.BugFixer.previewPlan(debug.fixPlan());
+        showFixes(sender, plan, "piano AI per: "
+                + dev.lorenzzz.smplibrary.modules.debug.BugFixer.topicFrom(analysis.question()));
+    }
+
+    private static void showFixes(CommandSender sender,
+            java.util.List<dev.lorenzzz.smplibrary.modules.debug.BugFixer.Fix> fixes, String title) {
+        long auto = fixes.stream().filter(f -> !f.manual()).count();
+        if (auto == 0) {
+            C.send(sender, "&aNessun fix automatico (" + title + ").");
+        } else {
+            C.send(sender, "&5&lSMPCORE BUG FIXXER &8» &7anteprima " + title + " (" + auto + " auto + "
+                    + (fixes.size() - auto) + " manuali):");
+            for (dev.lorenzzz.smplibrary.modules.debug.BugFixer.Fix fix : fixes) {
+                if (!fix.manual()) {
+                    C.send(sender, "&d[auto] &f" + fix.description());
+                }
+            }
+            C.send(sender, "&7Applica con &f/smpl debug fix confirm &7— backup .bak, "
+                    + "restart (10s + broadcast) solo se un file lo richiede.");
+        }
+        for (dev.lorenzzz.smplibrary.modules.debug.BugFixer.Fix fix : fixes) {
+            if (fix.manual()) C.send(sender, "&e" + fix.description());
         }
     }
 

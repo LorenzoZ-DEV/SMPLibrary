@@ -108,10 +108,10 @@ dialog-guard:
   gave-up: '&7Ok, lascio perdere: la finestra non verra'' piu'' riaperta. Riapri il comando quando vuoi.'
 
 tpauto:
-  # TPAuto: accetta da solo le richieste di teleport che ricevi.
-  enabled: '&d» &fTPAuto &aattivo&f: le richieste di teleport verranno accettate automaticamente.'
+  # TPAuto: accetta da solo le /tpa che ricevi. Le /tpahere no, quelle sposterebbero te.
+  enabled: '&d» &fTPAuto &aattivo&f: le &f/tpa &fche ricevi verranno accettate automaticamente.'
   disabled: '&d» &fTPAuto &cdisattivato&f: dovrai accettare le richieste a mano.'
   # %player% = chi aveva mandato la richiesta.
   accepted: '&d» &fTPAuto: richiesta di &d%player% &faccettata automaticamente.'
-  # Mostrato quando zEssentials non e' disponibile: il toggle si salva lo stesso.
-  unavailable: '&cTPAuto e'' salvato, ma zEssentials non e'' attivo: nessuna richiesta da accettare.'
+  # Mostrato quando HuskHomes non e' disponibile: il toggle si salva lo stesso.
+  unavailable: '&cTPAuto e'' salvato, ma HuskHomes non e'' attivo: nessuna richiesta da accettare.'

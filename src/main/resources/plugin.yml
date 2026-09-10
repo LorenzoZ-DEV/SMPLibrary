@@ -5,6 +5,7 @@ api-version: '1.21'
 softdepend:
   - PlaceholderAPI
   - zEssentials
+  - HuskHomes
   - spark
 author:
   Lorenzzzzzz
@@ -18,6 +19,8 @@ permissions:
       smplibrary.pay.use: true
       smplibrary.bugreport.use: true
       smplibrary.tpauto.use: true
+      smplibrary.gui.homes: true
+      smplibrary.gui.warps: true
   smplibrary.admin:
     description: Access to admin log chat broadcast and dashboard actions
     default: op
@@ -33,6 +36,15 @@ permissions:
   smplibrary.tpauto.use:
     description: Toggle TPAuto, which accepts incoming teleport requests for you
     default: true
+  smplibrary.gui.homes:
+    description: Open the homes GUI
+    default: true
+  smplibrary.gui.warps:
+    description: Open the warps GUI
+    default: true
+  smplibrary.antidupe.notify:
+    description: Receive the anti-dupe alerts in chat
+    default: op
   smplibrary.dialogguard.bypass:
     description: Never get a guarded dialog re-opened after a relog
     default: false
@@ -60,3 +72,16 @@ commands:
     usage: "/tpauto [on|off]"
     aliases: [autotp, tpautomatico]
     permission: smplibrary.tpauto.use
+  # Non si chiamano /homes e /warps perche' quei due sono di HuskHomes: registrarli qui
+  # significherebbe litigarseli col plugin che possiede i dati. La GUI si prende comunque
+  # quei comandi, ma per intercettazione — vedi 'intercept' in inventories/gui.yml.
+  homegui:
+    description: Apre la GUI delle tue home (HuskHomes)
+    usage: "/homegui"
+    aliases: [homesgui, guihome, guihomes, casegui]
+    permission: smplibrary.gui.homes
+  warpgui:
+    description: Apre la GUI dei warp (HuskHomes)
+    usage: "/warpgui"
+    aliases: [warpsgui, guiwarp, guiwarps]
+    permission: smplibrary.gui.warps

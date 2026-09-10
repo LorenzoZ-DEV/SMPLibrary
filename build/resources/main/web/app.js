@@ -1,4 +1,4 @@
-/* SMP Library dashboard client. Vanilla JS, no build step — served straight from the jar. */
+/* Venrix panel client. Vanilla JS, no build step — served straight from the jar. */
 (function () {
   'use strict';
 
@@ -14,6 +14,7 @@
     competitors: ['Competitors', 'Rival servers, ranked against yours'],
     config:      ['Configuration', "Edit the plugin's YAML files"],
     antipearl:   ['Anti-glitch', 'Perle corrette prima che ti incastrino in un blocco'],
+    dupewatch:   ['Anti-dupe', 'Saldi in RAM contro quelli scritti sul database'],
     debug:       ['Debug', 'Errori, segnalazioni e analisi della causa'],
     log:         ['Action log', 'Everything this dashboard changed']
   };
@@ -35,6 +36,7 @@
     $('#pageSub').textContent = PAGES[name][1];
     if (name === 'log') $('#logDot').hidden = true;
     if (name === 'debug') $('#debugCount').classList.remove('alert');
+    if (name === 'dupewatch') $('#dupeCount').classList.remove('alert');
     if (name === 'competitors') $('#rivalDot').hidden = true;
     // The chart measures its container, which is unmeasurable while the tab is hidden.
     if (name === 'overview') requestAnimationFrame(renderChart);
@@ -1276,6 +1278,93 @@
       </tr>`).join('');
   }
 
+  /* ── anti-dupe ─────────────────────────────────────────────────────── */
+  let lastDupeTotal = null;
+
+  function renderDupe(data) {
+    if (!data) return;
+
+    $('#dupeOffline').hidden = !!data.running;
+    $('#dupePanel').hidden = !data.running;
+    if (!data.running) {
+      $('#dupeCount').textContent = '';
+      return;
+    }
+
+    const counts = data.counts || {};
+    const critical = data.critical || 0;
+
+    $('#dupeTotal').textContent = data.total || 0;
+    $('#dupeBreakdown').textContent = Object.keys(counts).length
+      ? Object.entries(counts).map(([code, n]) => code + ' ×' + n).join(' · ')
+      : 'nessuna anomalia nella finestra osservata';
+
+    $('#dupeStatePill').textContent = critical ? critical + ' critiche' : 'pulito';
+    $('#dupeStatePill').className = 'pill ' + (critical ? 'bad' : 'good');
+
+    // The flush numbers are the point of the whole module: they say whether the economy is
+    // slow to persist or simply does not, which is the difference between a bug and an exploit.
+    const flush = data.flush || {};
+    $('#dupeFlushAvg').textContent = flush.samples ? (flush.avgMs / 1000).toFixed(2) + 's' : '--';
+    $('#dupeFlushRange').textContent = flush.samples
+      ? flush.samples + ' misurati · min ' + (flush.minMs / 1000).toFixed(2)
+        + 's · max ' + (flush.maxMs / 1000).toFixed(2) + 's'
+      : 'nessun flush misurato';
+    $('#dupeFlushPill').textContent = flush.timeouts
+      ? flush.timeouts + ' mai arrivati' : (flush.samples ? 'ok' : 'in attesa');
+    $('#dupeFlushPill').className = 'pill ' + (flush.timeouts ? 'bad' : (flush.samples ? 'good' : 'ghost'));
+
+    const economies = data.economies || [];
+    $('#dupeEconomies').textContent = economies.length;
+    $('#dupeSource').textContent = (economies.join(', ') || '--') + ' — ' + (data.source || '--')
+      + ' via ' + (data.balanceSource || '--');
+    $('#dupeProbePill').textContent = data.probeAvailable ? 'database ok' : 'database irraggiungibile';
+    $('#dupeProbePill').className = 'pill ' + (data.probeAvailable ? 'good' : 'bad');
+
+    $('#dupeCount').textContent = data.total || '';
+    if (critical) $('#dupeCount').classList.add('alert');
+
+    const players = $('#dupePlayers');
+    players.innerHTML = (data.players && data.players.length)
+      ? data.players.map(p => `
+        <tr>
+          <td>${esc(p.player)}</td>
+          <td class="mono">${p.alerts}</td>
+          <td><span class="check-code ${esc(p.severity)}">${esc(p.check)}</span></td>
+          <td class="mono">${esc(p.vl)}</td>
+        </tr>`).join('')
+      : '<tr class="empty"><td colspan="4">Nessuna segnalazione.</td></tr>';
+
+    const body = $('#dupeBody');
+    if (!data.alerts || !data.alerts.length) {
+      body.innerHTML = '<tr class="empty"><td colspan="8">Nessuna anomalia rilevata.</td></tr>';
+    } else {
+      body.innerHTML = data.alerts.map(a => {
+        const delta = Number(a.delta);
+        const cls = delta > 0 ? 'delta-up' : (delta < 0 ? 'delta-down' : 'delta-flat');
+        const sign = delta > 0 ? '+' : '';
+        return `
+        <tr class="sev-row sev-${esc(a.severity)}">
+          <td class="mono">${esc(a.at)}</td>
+          <td><span class="check-code ${esc(a.severity)}">${esc(a.code)}</span></td>
+          <td>${a.system ? '<span class="muted">server</span>' : esc(a.player)}</td>
+          <td>${a.economy ? '<span class="eco-tag">' + esc(a.economy) + '</span>' : ''}</td>
+          <td class="mono">${esc(a.expected)}</td>
+          <td class="mono">${esc(a.actual)}</td>
+          <td class="mono ${cls}">${sign}${esc(a.delta)}</td>
+          <td class="dupe-detail">${esc(a.detail)}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    // Worth interrupting whatever you were looking at: money is the one thing you cannot undo
+    // quietly. Only the criticals do it, and only when you are somewhere else.
+    if (lastDupeTotal !== null && data.total > lastDupeTotal && critical && activeTab !== 'dupewatch') {
+      toast('Anti-dupe: anomalia critica');
+    }
+    lastDupeTotal = data.total;
+  }
+
   /* ── debug ─────────────────────────────────────────────────────────── */
   let debugData = null;
   let lastErrorTotal = null;
@@ -1325,7 +1414,7 @@
     } else if (!analysis) {
       meta.textContent = data.ai && data.ai.configured
         ? 'Nessuna analisi ancora eseguita.'
-        : 'Nessuna API key configurata: imposta ANTHROPIC_API_KEY o MODULES.debug.ai.api-key.';
+        : 'Nessuna API key configurata: imposta DEEPSEEK_API_KEY o MODULES.debug.ai.api-key.';
     } else if (analysis.ok) {
       meta.textContent = analysis.at + ' · richiesta da ' + analysis.requester
         + ' · ' + analysis.inputTokens + ' token in / ' + analysis.outputTokens + ' out'
@@ -1499,6 +1588,10 @@
       } catch (ignored) { /* partial frame */ }
     });
 
+    stream.addEventListener('dupewatch', event => {
+      try { renderDupe(JSON.parse(event.data)); } catch (e) { /* keep the stream alive */ }
+    });
+
     stream.addEventListener('antipearl', event => {
       try { renderAntiPearl(JSON.parse(event.data)); } catch (ignored) { /* partial frame */ }
     });
@@ -1529,6 +1622,7 @@
   api('/api/log').then(renderLog).catch(() => {});
   api('/api/debug').then(renderDebug).catch(() => {});
   api('/api/antipearl').then(renderAntiPearl).catch(() => {});
+  api('/api/dupewatch').then(renderDupe).catch(() => {});
 
   // The history is a separate, heavier payload than the 1s snapshot — poll it slowly.
   fetchPlayerHistory();

@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SMP Library Dashboard</title>
+  <title>Venrix Panel</title>
   <link rel="stylesheet" href="/style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text y='19' font-size='20'>%F0%9F%93%9A</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='6' fill='%238b00ff'/><path d='M6 7l6 11 6-11' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>">
 </head>
 <body>
 
@@ -43,6 +43,9 @@
   <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/></symbol>
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
   <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></symbol>
+  <symbol id="i-venrix" viewBox="0 0 24 24"><path d="M5 5.5 12 19l7-13.5"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9.5 12.2 11.4 14l3.6-3.8"/></symbol>
+  <symbol id="i-coins" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3.2"/><path d="M4 6v5c0 1.8 3.6 3.2 8 3.2s8-1.4 8-3.2V6"/><path d="M4 11v5c0 1.8 3.6 3.2 8 3.2s8-1.4 8-3.2v-5"/></symbol>
 </defs></svg>
 
 <div class="shell">
@@ -50,8 +53,8 @@
   <!-- ─────────────────────────── sidebar ─────────────────────────── -->
   <aside class="side" id="side">
     <div class="brand">
-      <span class="brand-mark"><svg class="ico"><use href="#i-book"></use></svg></span>
-      <span class="brand-text">SMP<b>Library</b></span>
+      <span class="brand-mark"><svg class="ico"><use href="#i-venrix"></use></svg></span>
+      <span class="brand-text">Venrix<b>Panel</b></span>
       <button class="side-close" id="sideClose" aria-label="Close menu">&times;</button>
     </div>
 
@@ -76,6 +79,9 @@
       <button class="nav-item" data-tab="antipearl">
         <svg class="ico"><use href="#i-target"></use></svg><span>Anti-glitch</span>
         <span class="nav-count" id="pearlCount"></span></button>
+      <button class="nav-item" data-tab="dupewatch">
+        <svg class="ico"><use href="#i-shield"></use></svg><span>Anti-dupe</span>
+        <span class="nav-count" id="dupeCount"></span></button>
       <button class="nav-item" data-tab="debug">
         <svg class="ico"><use href="#i-alert"></use></svg><span>Debug</span>
         <span class="nav-count" id="debugCount"></span></button>
@@ -499,6 +505,82 @@
               </tr></thead>
               <tbody id="pearlBody">
                 <tr class="empty"><td colspan="5">Nessun intervento ancora.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ────────────────────────── ANTI-DUPE ─────────────────── -->
+      <section id="tab-dupewatch" class="tab-content">
+
+        <div class="empty-state" id="dupeOffline" hidden>
+          <svg class="ico big"><use href="#i-shield"></use></svg>
+          <h2>L'anti-dupe e' spento</h2>
+          <p class="muted small">Accendilo da <code>MODULES.dupewatch</code> nella tab Config,
+            oppure dalla tab Modules.</p>
+        </div>
+
+        <div id="dupePanel">
+          <div class="sec-bar">
+            <p class="muted">Confronta di continuo il saldo in RAM con quello scritto davvero nel
+              database, su ogni economia. Rileva e segnala: non blocca transazioni, non tocca i
+              saldi e non punisce nessuno &mdash; un flush lento e un dupe si somigliano troppo
+              perche&#39; una macchina decida da sola.</p>
+          </div>
+
+          <div class="grid">
+            <article class="card stat">
+              <div class="stat-head">
+                <span class="stat-label"><svg class="ico"><use href="#i-alert"></use></svg>Anomalie</span>
+                <span class="pill ghost" id="dupeStatePill">--</span>
+              </div>
+              <div class="stat-value" id="dupeTotal">--</div>
+              <div class="stat-sub" id="dupeBreakdown">&nbsp;</div>
+            </article>
+
+            <article class="card stat">
+              <div class="stat-head">
+                <span class="stat-label"><svg class="ico"><use href="#i-clock"></use></svg>Latenza di scrittura</span>
+                <span class="pill ghost" id="dupeFlushPill">--</span>
+              </div>
+              <div class="stat-value" id="dupeFlushAvg">--</div>
+              <div class="stat-sub" id="dupeFlushRange">nessun flush misurato</div>
+            </article>
+
+            <article class="card stat">
+              <div class="stat-head">
+                <span class="stat-label"><svg class="ico"><use href="#i-coins"></use></svg>Economie</span>
+                <span class="pill ghost" id="dupeProbePill">--</span>
+              </div>
+              <div class="stat-value" id="dupeEconomies">--</div>
+              <div class="stat-sub ellipsis" id="dupeSource">--</div>
+            </article>
+          </div>
+
+          <h2 class="sec-title"><svg class="ico"><use href="#i-users"></use></svg>Chi guardare
+            <span class="sec-note">per numero di segnalazioni</span></h2>
+          <div class="table-wrap">
+            <table class="rival-table">
+              <thead><tr>
+                <th>Player</th><th>Segnalazioni</th><th>Check peggiore</th><th>VL</th>
+              </tr></thead>
+              <tbody id="dupePlayers">
+                <tr class="empty"><td colspan="4">Nessuna segnalazione.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h2 class="sec-title"><svg class="ico"><use href="#i-list"></use></svg>Ultime anomalie
+            <span class="sec-note">le piu&#39; recenti in cima</span></h2>
+          <div class="table-wrap">
+            <table class="rival-table">
+              <thead><tr>
+                <th>Quando</th><th>Check</th><th>Player</th><th>Economia</th>
+                <th>Atteso</th><th>Effettivo</th><th>Delta</th><th>Dettaglio</th>
+              </tr></thead>
+              <tbody id="dupeBody">
+                <tr class="empty"><td colspan="8">Nessuna anomalia rilevata.</td></tr>
               </tbody>
             </table>
           </div>

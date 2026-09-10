@@ -2,6 +2,7 @@ package dev.lorenzzz.smplibrary.modules.web;
 
 import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
+import dev.lorenzzz.smplibrary.modules.gui.GuiModule;
 import dev.lorenzzz.smplibrary.modules.shop.ShopModule;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -15,7 +16,7 @@ import java.util.Set;
 
 public final class ConfigEditor {
 
-    private static final Set<String> EDITABLE = Set.of("config", "messages", "shop");
+    private static final Set<String> EDITABLE = Set.of("config", "messages", "shop", "gui");
     private static final Set<String> READONLY = Set.of("storage");
 
     private final Smp_library plugin;
@@ -39,6 +40,7 @@ public final class ConfigEditor {
             case "config"   -> plugin.getDataFolder().toPath().resolve("config.yml");
             case "messages" -> plugin.getDataFolder().toPath().resolve("messages.yml");
             case "shop"     -> plugin.getDataFolder().toPath().resolve("inventories").resolve("shop.yml");
+            case "gui"      -> plugin.getDataFolder().toPath().resolve("inventories").resolve("gui.yml");
             case "storage"  -> plugin.getDataFolder().toPath().resolve("storage.yml");
             default         -> null;
         };
@@ -101,6 +103,12 @@ public final class ConfigEditor {
                         // Typed lookup: a shop module that isn't running has no loader to reload.
                         ShopModule shop = plugin.getManagers().modules().module("shop", ShopModule.class);
                         if (shop != null && shop.getConfigLoader() != null) shop.getConfigLoader().reload();
+                    }
+                }
+                case "gui" -> {
+                    if (plugin.getManagers() != null) {
+                        GuiModule gui = plugin.getManagers().modules().module("gui", GuiModule.class);
+                        if (gui != null) gui.reloadConfig();
                     }
                 }
             }

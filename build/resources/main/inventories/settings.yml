@@ -40,8 +40,12 @@ items:
         - " &7Attiva o disattiva i teletrasporti."
         - ""
         - " &8» &aClicca per attivare/disattivare"
+    # Le richieste di TPA sono di HuskHomes, e il suo interruttore e' /tpignore.
+    # ATTENZIONE: /tpignore acceso significa "richieste bloccate", quindi l'etichetta
+    # ATTIVO/DISATTIVO qui sopra racconta l'interruttore di questo menu, non quello di
+    # HuskHomes: restano allineati finche' nessuno usa /tpignore a mano.
     commands:
-      - "tptoggle"
+      - "tpignore"
 
   # Slot 10 e non 11: gli 11..16 erano gia' occupati prima che TPAuto esistesse, e la
   # voce viene aggiunta anche ai server che hanno gia' un settings.yml loro.
@@ -146,3 +150,40 @@ items:
     commands:
       - "ah options"
     close: true
+
+  # Le due schermate del modulo 'gui'. Spariscono da sole se quel modulo e' spento.
+  homes_gui:
+    slot: 20
+    toggle: false
+    item:
+      material: LIME_BED
+      name: "&#8b00ff&lLE TUE HOME"
+      glow: true
+      lore:
+        - ""
+        - " &7Apri la lista delle tue home"
+        - " &7e teletrasportati con un clic."
+        - ""
+        - " &8» &aClicca per aprire"
+    commands:
+      - "homegui"
+    close: true
+    requires-module: gui
+
+  warps_gui:
+    slot: 24
+    toggle: false
+    item:
+      material: ENDER_EYE
+      name: "&#00b3ff&lWARP"
+      glow: true
+      lore:
+        - ""
+        - " &7Apri la lista dei warp"
+        - " &7del server."
+        - ""
+        - " &8» &aClicca per aprire"
+    commands:
+      - "warpgui"
+    close: true
+    requires-module: gui

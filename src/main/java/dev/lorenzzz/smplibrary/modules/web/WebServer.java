@@ -7,6 +7,7 @@ import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.chatgames.ChatGameType;
 import dev.lorenzzz.smplibrary.modules.chatgames.ChatGamesModule;
 import dev.lorenzzz.smplibrary.modules.antipearl.AntiPearlGlitchModule;
+import dev.lorenzzz.smplibrary.modules.dupewatch.DupeWatchModule;
 import dev.lorenzzz.smplibrary.modules.competitors.CompetitorsModule;
 import dev.lorenzzz.smplibrary.modules.debug.BugReport;
 import dev.lorenzzz.smplibrary.modules.debug.DebugModule;
@@ -70,6 +71,7 @@ public final class WebServer {
     private volatile long lastLogVersion = -1L;
     private volatile long lastDebugVersion = -1L;
     private volatile long lastPearlVersion = -1L;
+    private volatile long lastDupeVersion = -1L;
     private String boundHost;
     private int boundPort;
 
@@ -185,6 +187,7 @@ public final class WebServer {
             case "/api/competitors/refresh" -> competitorsRefreshRoute(exchange);
             case "/api/chatgames/start" -> chatGamesStartRoute(exchange);
             case "/api/antipearl" -> sendJson(exchange, 200, antiPearlJson());
+            case "/api/dupewatch" -> sendJson(exchange, 200, dupeWatchJson());
             case "/api/debug" -> sendJson(exchange, 200, debugJson());
             case "/api/debug/analyze" -> debugAnalyzeRoute(exchange);
             case "/api/debug/errors/clear" -> debugClearErrorsRoute(exchange);
@@ -288,6 +291,23 @@ public final class WebServer {
                 : module.json();
     }
 
+    // -------------------------------------------------------------- anti-dupe
+
+    private DupeWatchModule dupeWatch() {
+        return plugin.modules() == null
+                ? null : plugin.modules().module("dupewatch", DupeWatchModule.class);
+    }
+
+    private String dupeWatchJson() {
+        DupeWatchModule module = dupeWatch();
+        return module == null
+                ? "{\"running\":false,\"source\":\"--\",\"balanceSource\":\"--\","
+                        + "\"probeAvailable\":false,\"economies\":[],\"total\":0,\"critical\":0,"
+                        + "\"counts\":{},\"flush\":{\"samples\":0,\"minMs\":0,\"avgMs\":0,"
+                        + "\"maxMs\":0,\"timeouts\":0},\"players\":[],\"alerts\":[]}"
+                : module.json();
+    }
+
     // ----------------------------------------------------------------- debug
 
     private DebugModule debug() {
@@ -315,7 +335,7 @@ public final class WebServer {
         if (module == null) return;
 
         if (!module.aiConfigured()) {
-            sendJson(exchange, 400, "{\"error\":\"nessuna API key: imposta ANTHROPIC_API_KEY "
+            sendJson(exchange, 400, "{\"error\":\"nessuna API key: imposta DEEPSEEK_API_KEY "
                     + "oppure MODULES.debug.ai.api-key\"}");
             return;
         }
@@ -586,6 +606,7 @@ public final class WebServer {
         byte[] logFrame = frame("event: log\ndata: " + logJson() + "\n\n");
         byte[] debugFrame = frame("event: debug\ndata: " + debugJson() + "\n\n");
         byte[] pearlFrame = frame("event: antipearl\ndata: " + antiPearlJson() + "\n\n");
+        byte[] dupeFrame = frame("event: dupewatch\ndata: " + dupeWatchJson() + "\n\n");
 
         var headers = exchange.getResponseHeaders();
         headers.set("Content-Type", "text/event-stream; charset=utf-8");
@@ -601,6 +622,7 @@ public final class WebServer {
         client.send(logFrame);
         client.send(debugFrame);
         client.send(pearlFrame);
+        client.send(dupeFrame);
         return true;
     }
 
@@ -643,11 +665,22 @@ public final class WebServer {
                 pearlFrame = frame("event: antipearl\ndata: " + antiPearlJson() + "\n\n");
             }
 
+            // Anti-dupe moves only when an anomaly is found, which on a healthy server is
+            // never — so the panel is fed the same way, off its own version counter.
+            byte[] dupeFrame = null;
+            DupeWatchModule dupe = dupeWatch();
+            long dupeVersion = dupe == null ? 0 : dupe.version();
+            if (dupeVersion != lastDupeVersion) {
+                lastDupeVersion = dupeVersion;
+                dupeFrame = frame("event: dupewatch\ndata: " + dupeWatchJson() + "\n\n");
+            }
+
             for (SseClient client : clients) {
                 client.send(snapshot);
                 if (logFrame != null) client.send(logFrame);
                 if (debugFrame != null) client.send(debugFrame);
                 if (pearlFrame != null) client.send(pearlFrame);
+                if (dupeFrame != null) client.send(dupeFrame);
             }
         } catch (Exception e) {
             // scheduleAtFixedRate drops the task on the first throw, and the dashboard would go
@@ -746,38 +779,42 @@ public final class WebServer {
         return """
                 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
                 <meta name="viewport" content="width=device-width,initial-scale=1">
-                <title>SMP Library — Sign in</title><style>
-                :root{color-scheme:dark;--line:#222c3b;--accent:#58a6ff}
+                <title>Venrix Panel &mdash; Accedi</title><style>
+                :root{color-scheme:dark;--line:#33264a;--brand:#8b00ff;--accent:#b57bff}
                 *{box-sizing:border-box;margin:0}
-                body{min-height:100vh;display:grid;place-items:center;padding:20px;background:#0a0e15;color:#e7edf5;
+                body{min-height:100vh;display:grid;place-items:center;padding:20px;background:#140f1c;color:#f0eaf8;
                 font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;
-                background-image:radial-gradient(900px 500px at 20% -10%,#1b2a45 0,transparent 60%),
-                radial-gradient(700px 400px at 100% 10%,#1d2140 0,transparent 55%)}
-                form{background:#10151e;border:1px solid var(--line);border-radius:16px;padding:32px;
-                width:min(94vw,390px);box-shadow:0 12px 40px #0000008c}
-                .mark{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;font-size:19px;
-                background:linear-gradient(140deg,var(--accent),#7c8cff);margin-bottom:16px}
-                h1{font-size:17px;font-weight:650;letter-spacing:-.2px}
-                p{margin:6px 0 22px;color:#93a1b5;font-size:13px;line-height:1.55}
-                code{font-family:ui-monospace,monospace;color:#e7edf5;background:#1d2634;
+                background-image:radial-gradient(900px 520px at 20% -10%,#3a1163 0,transparent 62%),
+                radial-gradient(760px 430px at 100% 10%,#2a1247 0,transparent 58%)}
+                form{background:#1c1526;border:1px solid var(--line);border-radius:20px;padding:32px;
+                width:min(94vw,390px);box-shadow:0 16px 48px #00000094}
+                .mark{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;
+                background:linear-gradient(140deg,var(--brand),#e07bff);margin-bottom:16px;
+                box-shadow:0 6px 22px #8b00ff45}
+                .mark svg{width:22px;height:22px;fill:none;stroke:#fff;stroke-width:2.4;
+                stroke-linecap:round;stroke-linejoin:round}
+                h1{font-size:18px;font-weight:700;letter-spacing:-.3px}
+                h1 b{color:var(--accent);font-weight:700}
+                p{margin:6px 0 22px;color:#a99cbd;font-size:13px;line-height:1.55}
+                code{font-family:ui-monospace,monospace;color:#f0eaf8;background:#2e2240;
                 padding:1px 5px;border-radius:5px;font-size:12px}
                 label{display:block;font-size:11.5px;font-weight:600;letter-spacing:.05em;
-                text-transform:uppercase;color:#93a1b5;margin-bottom:6px}
-                input{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);
-                background:#080c12;color:#e7edf5;font-family:ui-monospace,monospace;font-size:13px;outline:none}
-                input:focus{border-color:var(--accent);box-shadow:0 0 0 3px #58a6ff1f}
-                button{width:100%;margin-top:14px;padding:11px;border:0;border-radius:8px;
-                background:linear-gradient(160deg,var(--accent),#4a86e8);
-                color:#06101f;font-weight:650;font-size:14px;cursor:pointer}
-                button:hover{filter:brightness(1.09)}
+                text-transform:uppercase;color:#a99cbd;margin-bottom:6px}
+                input{width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line);
+                background:#120d19;color:#f0eaf8;font-family:ui-monospace,monospace;font-size:13px;outline:none}
+                input:focus{border-color:var(--accent);box-shadow:0 0 0 3px #b57bff24}
+                button{width:100%;margin-top:14px;padding:11px;border:0;border-radius:9px;
+                background:linear-gradient(160deg,var(--brand),#a259ff);
+                color:#fff;font-weight:700;font-size:14px;cursor:pointer}
+                button:hover{filter:brightness(1.12)}
                 </style></head><body>
                 <form onsubmit="location.search='?token='+encodeURIComponent(this.t.value.trim());return false">
-                <div class="mark">&#128218;</div>
-                <h1>SMP Library Dashboard</h1>
-                <p>Paste the dashboard token, or open the link from <code>/smpl webedit</code> in game.</p>
-                <label for="t">Access token</label>
-                <input id="t" name="t" autofocus placeholder="paste it here" autocomplete="off" spellcheck="false">
-                <button type="submit">Sign in</button>
+                <div class="mark"><svg viewBox="0 0 24 24"><path d="M5 5.5 12 19l7-13.5"/></svg></div>
+                <h1>Venrix<b>Panel</b></h1>
+                <p>Incolla il token del pannello, o apri il link di <code>/smpl webedit</code> in gioco.</p>
+                <label for="t">Token di accesso</label>
+                <input id="t" name="t" autofocus placeholder="incollalo qui" autocomplete="off" spellcheck="false">
+                <button type="submit">Entra</button>
                 </form></body></html>
                 """;
     }

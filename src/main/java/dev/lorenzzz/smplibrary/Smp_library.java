@@ -1,5 +1,6 @@
 package dev.lorenzzz.smplibrary;
 
+import dev.lorenzzz.smplibrary.manager.ConfigUpdater;
 import dev.lorenzzz.smplibrary.manager.ManagerService;
 import dev.lorenzzz.smplibrary.manager.ModuleManager;
 import lombok.Getter;
@@ -24,6 +25,10 @@ public final class Smp_library extends JavaPlugin {
         saveDefaultConfig();
         saveResource("storage.yml", false);
         saveResource("messages.yml", false);
+
+        // saveDefaultConfig() only writes when the file is absent, so an existing install never
+        // sees options added by a later build. Merge them in before any module reads settings.
+        ConfigUpdater.update(this);
 
         C.info("&aEnabling smp-library...");
 

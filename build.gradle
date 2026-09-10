@@ -9,7 +9,7 @@ def getBuildVersion() {
     try {
         def hash = 'git rev-parse --short HEAD'.execute().text.trim()
         def count = 'git rev-list --count HEAD'.execute().text.trim()
-        if (hash && count) return "1.12.${count}-${hash}"
+        if (hash && count) return "1.13.${count}-${hash}"
     } catch (Exception ignored) {}
     return "1.0-" + new Date().format('yyyyMMdd-HHmmss')
 }
@@ -62,6 +62,10 @@ repositories {
         content { includeGroupByRegex 'me\\.lucko.*' }
     }
     maven {
+        url 'https://repo.william278.net/releases'                      // HuskHomes API
+        content { includeGroupByRegex 'net\\.william278.*' }
+    }
+    maven {
         url 'https://jitpack.io'                                        // VaultAPI, published nowhere else
         content { includeGroupByRegex 'com[.]github[.]MilkBowl.*' }
     }
@@ -76,6 +80,16 @@ dependencies {
     // nothing and every reference fails. compileOnly: the server provides zEssentials, and
     // TpAutoBridge is the only class that touches these types.
     compileOnly 'fr.maxlego08.essentials:zessentials-api:1.0.2.6:all'
+    /*
+     * HuskHomes, which owns homes, warps and teleport requests on this server. The bukkit
+     * artifact rather than -common: the API entry point (HuskHomesAPI#adaptUser) and the
+     * teleport-request events are platform classes, and -common carries neither.
+     *
+     * compileOnly, like every other hook here — HuskHomesHook, TpAutoBridge and
+     * TpAutoRequestListener are the only classes that name net.william278.*, and none of
+     * them is loaded before the plugin is confirmed present.
+     */
+    compileOnly 'net.william278.huskhomes:huskhomes-bukkit:4.11'
     // Vault, for the anti-dupe watcher's cache-side balance reads. Soft dependency: the only
     // class naming these types is VaultBalanceSource, and a host without Vault passes its own
     // BalanceSource lambda instead.
@@ -102,24 +116,30 @@ dependencies {
      * Deliberately NOT relocated, unlike the other shaded libs. A JDBC driver is resolved by
      * class name (Class.forName, DriverManager, META-INF/services) and none of those follow a
      * package rename: a relocated driver is a driver nobody can find. Paper gives each plugin
-     * its own class loader — the same reason the Anthropic SDK below stays put — so a server
-     * carrying its own copy does not collide with ours.
+     * its own class loader, so a server carrying its own copy does not collide with ours.
      */
     implementation 'org.xerial:sqlite-jdbc:3.46.1.3'
-    // Anthropic SDK, for the debug module's AI diagnosis. It drags in OkHttp + Jackson, which
-    // is why both are relocated below: a server running another plugin with its own Jackson
-    // must not be able to break ours, or the other way round.
-    implementation('com.anthropic:anthropic-java:2.34.0') {
-        // The SDK ships the machinery for features this plugin does not use, and each one is
-        // megabytes in the shaded jar: JSON-schema generation (structured outputs), Swagger
-        // annotations, and webhook signature verification. Dropping them keeps the plugin a
-        // sane download. If a future feature here needs structured outputs or webhooks, put
-        // the matching exclusion back.
-        exclude group: 'com.github.victools'
-        exclude group: 'com.fasterxml', module: 'classmate'
-        exclude group: 'io.swagger.core.v3'
-        exclude group: 'com.standardwebhooks'
+    /*
+     * MySQL driver, for the same reason and with the same caveat as the SQLite one above:
+     * zEssentials under `storage-type: HIKARICP` keeps the economy in MySQL, and the driver it
+     * uses lives in its own plugin class loader where we cannot reach it. Not relocated —
+     * drivers are resolved by class name — and never registered with DriverManager by us:
+     * HikariBalanceProbe instantiates it directly and hands it to Hikari as a DataSource.
+     *
+     * protobuf is only needed by the X DevAPI, which nothing here uses, and it is another two
+     * megabytes. A MariaDB server works through this driver too, and the probe will also pick
+     * up org.mariadb.jdbc.Driver if the server happens to provide one.
+     */
+    implementation('com.mysql:mysql-connector-j:8.4.0') {
+        exclude group: 'com.google.protobuf'
     }
+    /*
+     * The debug module's AI diagnosis has no SDK dependency: AiDiagnostics talks to OpenCode
+     * Zen's OpenAI-compatible endpoint with java.net.http.HttpClient and parses the reply with
+     * the Gson that paper-api already puts on the classpath. That is deliberate — the previous
+     * Anthropic SDK dragged in OkHttp, Okio, Jackson and kotlin-reflect, all of which had to be
+     * left un-relocated and shielded from `minimize` because they resolve types by name.
+     */
 }
 
 def targetJavaVersion = 21
@@ -158,23 +178,10 @@ shadowJar {
     relocate 'net.j4c0b3y', 'dev.lorenzzz.smplibrary.lib.menuapi'
 
     /*
-     * The Anthropic SDK and everything it stands on (OkHttp, Okio, Jackson's Kotlin module) are
-     * Kotlin libraries, and Kotlin classes carry a @Metadata annotation holding their own type
-     * names as plain strings. Shadow rewrites bytecode references but not those strings, so a
-     * relocated build ends up with classes whose metadata still says `com.anthropic.core.*`.
-     * jackson-module-kotlin reads that metadata to resolve constructors and then looks the type
-     * up by name — Class.forName("com.anthropic.core.JsonField") — and gets a
-     * ClassNotFoundException, which is what killed every AI analysis.
-     *
-     * So these four stay un-relocated. Paper gives each plugin its own classloader, so another
-     * plugin shipping its own OkHttp or Jackson does not collide with ours.
-     */
-    /*
-     * Without this, artifacts that ship the same META-INF/services file overwrite each other:
-     * jackson-datatype-jdk8, jackson-datatype-jsr310 and jackson-module-kotlin all register
-     * themselves through com.fasterxml.jackson.databind.Module, and only the last one to be
-     * copied survived. Anything resolved through ServiceLoader — Jackson's modules, and
-     * kotlin-reflect's own built-ins loader — needs the files concatenated, not replaced.
+     * Without this, artifacts that ship the same META-INF/services file overwrite each other
+     * and only the last one copied survives. Both JDBC drivers register themselves through
+     * java.sql.Driver, so anything resolved through ServiceLoader needs the files concatenated,
+     * not replaced.
      */
     /*
      * sqlite-jdbc ships a native library for two dozen platform/architecture pairs, 24 MB of
@@ -210,15 +217,7 @@ shadowJar {
         exclude(dependency('net.j4c0b3y:MenuAPI-core:.*'))
         // Loaded by name and never referenced: minimize sees no edge to it and would strip it.
         exclude(dependency('org.xerial:sqlite-jdbc:.*'))
-        // The SDK and Jackson resolve types reflectively; minimize cannot see those edges and
-        // strips classes that are only reached at runtime. The pattern has to match every
-        // artifact in the SDK's own group — `anthropic-java` alone left core and client-okhttp
-        // exposed to minimization.
-        exclude(dependency('com.anthropic:.*:.*'))
-        exclude(dependency('com.fasterxml.jackson.*:.*'))
-        exclude(dependency('org.jetbrains.kotlin:.*:.*'))
-        exclude(dependency('com.squareup.okhttp3:.*:.*'))
-        exclude(dependency('com.squareup.okio:.*:.*'))
+        exclude(dependency('com.mysql:mysql-connector-j:.*'))
     }
 }
 

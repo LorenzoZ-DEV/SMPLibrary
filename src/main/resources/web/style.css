@@ -1,5 +1,9 @@
-/* SMP Library dashboard — dark admin console.
-   Layout: fixed sidebar + scrolling main column, collapsing to a drawer on narrow screens. */
+/* Venrix panel — dark violet console.
+   Layout: fixed sidebar + scrolling main column, collapsing to a drawer on narrow screens.
+
+   The palette is the server's own: the same #8b00ff that titles the in-game menus, on a plum
+   ground rather than the blue-grey this used to be. Only the tokens below carry the identity —
+   every component reads them, so a future re-skin is this block and nothing else. */
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -7,44 +11,49 @@
   color-scheme: dark;
 
   /* surfaces, lightest last */
-  --bg:        #0a0e15;
-  --surface:   #10151e;
-  --surface-2: #161d29;
-  --surface-3: #1d2634;
-  --line:      #222c3b;
-  --line-soft: #1a2230;
+  --bg:        #140f1c;
+  --surface:   #1c1526;
+  --surface-2: #241b31;
+  --surface-3: #2e2240;
+  --line:      #33264a;
+  --line-soft: #261c36;
 
-  --text:  #e7edf5;
-  --text-2:#93a1b5;
-  --text-3:#64748b;
+  --text:  #f0eaf8;
+  --text-2:#a99cbd;
+  --text-3:#7a6d90;
 
-  --accent:      #58a6ff;
-  --accent-2:    #7c8cff;
-  --accent-ink:  #06101f;
-  --accent-soft: #58a6ff1f;
+  /* #8b00ff is the brand, but it is too dark to read as text on these surfaces, so the
+     accent is a lifted version of it and the raw brand hue stays for fills and glows. */
+  --brand:       #8b00ff;
+  --accent:      #b57bff;
+  --accent-2:    #e07bff;
+  --accent-ink:  #17081f;
+  --accent-soft: #b57bff24;
 
   /* Data-mark hue: a step darker than --accent so it clears 3:1 on the card surface. */
-  --chart:      #4493f8;
-  --chart-fill: #4493f81f;
+  --chart:      #a259ff;
+  --chart-fill: #a259ff26;
 
-  --green:  #3fb950;
-  --yellow: #d6a02a;
-  --red:    #f85149;
-  --purple: #bc8cff;
+  --green:  #46d17f;
+  --yellow: #e0a63a;
+  --red:    #ff5c72;
+  --purple: #d9a6ff;
 
-  --green-soft:  #3fb9501f;
-  --yellow-soft: #d6a02a1f;
-  --red-soft:    #f851491f;
+  --green-soft:  #46d17f1f;
+  --yellow-soft: #e0a63a1f;
+  --red-soft:    #ff5c721f;
 
-  --radius:    12px;
-  --radius-sm: 8px;
-  --radius-lg: 16px;
+  --radius:    14px;
+  --radius-sm: 9px;
+  --radius-lg: 20px;
 
   --mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
   --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
 
-  --shadow:    0 1px 2px #0006, 0 6px 20px #00000059;
-  --shadow-lg: 0 12px 40px #0000008c;
+  --shadow:    0 1px 2px #0000004d, 0 8px 24px #0000005e;
+  --shadow-lg: 0 16px 48px #00000094;
+  /* Brand glow, for the mark and the active nav item. */
+  --glow: 0 0 0 1px #8b00ff33, 0 6px 22px #8b00ff2e;
 
   --side-w: 232px;
   --ease: cubic-bezier(.4, 0, .2, 1);
@@ -66,8 +75,8 @@ body {
   min-height: 100vh;
   /* A very soft wash behind the whole console, so flat black never reads as "broken page". */
   background-image:
-    radial-gradient(900px 500px at 10% -10%, #1b2a45 0%, transparent 60%),
-    radial-gradient(700px 400px at 100% 0%, #1d2140 0%, transparent 55%);
+    radial-gradient(900px 520px at 8% -12%, #3a1163 0%, transparent 62%),
+    radial-gradient(760px 430px at 100% 0%, #2a1247 0%, transparent 58%);
   background-attachment: fixed;
 }
 
@@ -129,11 +138,12 @@ a { color: var(--accent); }
   width: 30px; height: 30px; flex: none;
   border-radius: 9px;
   font-size: 16px;
-  color: var(--accent-ink);
-  background: linear-gradient(140deg, var(--accent), var(--accent-2));
-  box-shadow: 0 2px 10px #58a6ff3d;
+  color: #fff;
+  background: linear-gradient(140deg, var(--brand), var(--accent-2));
+  box-shadow: var(--glow);
 }
-.brand-text { font-size: 15px; font-weight: 500; letter-spacing: -.2px; color: var(--text-2); }
+.brand-mark .ico { stroke-width: 2.4; }
+.brand-text { font-size: 15px; font-weight: 500; letter-spacing: -.3px; color: var(--text-2); }
 .brand-text b { color: var(--text); font-weight: 700; }
 .side-close { display: none; }
 
@@ -163,7 +173,7 @@ a { color: var(--accent); }
   background: var(--surface-2);
   border-radius: 20px; padding: 1px 7px;
 }
-.nav-item.active .nav-count { background: #58a6ff2b; color: var(--accent); }
+.nav-item.active .nav-count { background: var(--accent-soft); color: var(--accent); }
 .nav-tag {
   font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
   color: var(--green); background: var(--green-soft);
@@ -172,7 +182,7 @@ a { color: var(--accent); }
 .nav-dot {
   width: 7px; height: 7px; border-radius: 50%; flex: none;
   background: var(--accent);
-  box-shadow: 0 0 0 3px #58a6ff26;
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .nav-dot.live { background: var(--green); box-shadow: 0 0 0 3px #3fb95026; animation: pulse 1.8s infinite; }
 .nav-dot.warn { background: var(--yellow); box-shadow: 0 0 0 3px #d6a02a26; }
@@ -590,7 +600,7 @@ input[type="search"]::-webkit-search-cancel-button { filter: invert(.6); }
 .delta.down { color: var(--green); }
 .delta.level { color: var(--text-3); }
 
-.rival-row.is-you td { background: #58a6ff0f; }
+.rival-row.is-you td { background: #b57bff14; }
 .rival-row.is-you .rank { color: var(--accent); }
 .rival-row.is-you td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .rival-row.is-ahead td:first-child { box-shadow: inset 3px 0 0 var(--yellow); }
@@ -645,7 +655,7 @@ tr.empty td { text-align: center; color: var(--text-3); padding: 26px; }
   transition: background .14s var(--ease), color .14s var(--ease);
 }
 .scope-tab:hover { background: var(--surface-2); color: var(--text); }
-.scope-tab.active { background: var(--accent-soft); border-color: #58a6ff59; color: var(--accent); }
+.scope-tab.active { background: var(--accent-soft); border-color: #b57bff59; color: var(--accent); }
 
 .editor-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .badge {
@@ -879,3 +889,42 @@ tr.empty td { text-align: center; color: var(--text-3); padding: 26px; }
 .repmedia { display: inline-block; margin-top: 8px; font-size: 12.5px; color: var(--accent); }
 .repctx { margin: 6px 0 0; font-size: 11.5px; font-family: var(--mono); color: var(--text-3); }
 .repactions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+
+
+/* ── anti-dupe ──────────────────────────────────────────────────────────
+   Severity is the only thing that matters at a glance here, so it is a colour
+   and a left edge rather than a word to read. */
+
+.sev-row { border-left: 3px solid transparent; }
+.sev-CRITICAL { border-left-color: var(--red); }
+.sev-HIGH     { border-left-color: #ff8f4d; }
+.sev-MEDIUM   { border-left-color: var(--yellow); }
+.sev-LOW      { border-left-color: var(--text-3); }
+
+.check-code {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+.check-code.CRITICAL { background: var(--red-soft);    border-color: #ff5c7259; color: var(--red); }
+.check-code.HIGH     { background: #ff8f4d1f;          border-color: #ff8f4d59; color: #ff8f4d; }
+.check-code.MEDIUM   { background: var(--yellow-soft); border-color: #e0a63a59; color: var(--yellow); }
+.check-code.LOW      { background: var(--surface-3);   color: var(--text-2); }
+
+/* The economy a number belongs to, next to the number and never louder than it. */
+.eco-tag {
+  font-family: var(--mono); font-size: 11px; color: var(--accent);
+  background: var(--accent-soft); border-radius: 5px; padding: 1px 5px;
+}
+
+.dupe-detail { color: var(--text-2); font-size: 12.5px; }
+
+/* Delta reads as a direction: money that appeared, money that vanished. */
+.delta-up   { color: var(--red); font-weight: 600; }
+.delta-down { color: var(--yellow); font-weight: 600; }
+.delta-flat { color: var(--text-3); }

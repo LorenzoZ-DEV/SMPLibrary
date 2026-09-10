@@ -9,8 +9,11 @@ import dev.lorenzzz.smplibrary.modules.antipearl.AntiPearlGlitchModule;
 import dev.lorenzzz.smplibrary.modules.chatgames.ChatGamesModule;
 import dev.lorenzzz.smplibrary.modules.competitors.CompetitorsModule;
 import dev.lorenzzz.smplibrary.modules.debug.DebugModule;
+import dev.lorenzzz.smplibrary.modules.dupewatch.DupeWatchModule;
 import dev.lorenzzz.smplibrary.modules.firstjoin.FirstJoinModule;
+import dev.lorenzzz.smplibrary.modules.gui.GuiModule;
 import dev.lorenzzz.smplibrary.modules.keyall.KeyAllModule;
+import dev.lorenzzz.smplibrary.modules.lootguard.LootGuardModule;
 import dev.lorenzzz.smplibrary.modules.pay.PayModule;
 import dev.lorenzzz.smplibrary.modules.playerstats.PlayerStatsModule;
 import dev.lorenzzz.smplibrary.modules.playtime.PlaytimeModule;
@@ -66,6 +69,7 @@ public final class ModuleManager implements Manager {
         register(new AdaptiveToolModule(plugin));
         register(new TrivellaModule(plugin));
         register(new AntiPearlGlitchModule(plugin));
+        register(new LootGuardModule(plugin));
         register(new FirstJoinModule(plugin));
         register(new ShopModule(plugin));
         register(new PayModule(plugin));
@@ -73,8 +77,10 @@ public final class ModuleManager implements Manager {
         register(new PlayerStatsModule(plugin));
         register(new CompetitorsModule(plugin));
         register(new SettingsModule(plugin));
+        register(new GuiModule(plugin));
         register(new TpAutoModule(plugin));
         register(new DebugModule(plugin));
+        register(new DupeWatchModule(plugin));
         register(new WebModule(plugin));
 
         ensureConfig();
