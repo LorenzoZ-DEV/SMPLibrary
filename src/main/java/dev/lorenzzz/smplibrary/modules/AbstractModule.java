@@ -1,5 +1,6 @@
 package dev.lorenzzz.smplibrary.modules;
 
+import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.manager.CommandManager;
 import dev.lorenzzz.smplibrary.manager.DialogGuard;
@@ -13,8 +14,12 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 
+import java.util.ArrayDeque;
+import java.util.Collection;
 import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 
 /**
  * Base for every module: holds the injected managers, resolves the module's own config
@@ -26,6 +31,12 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * for their own cleanup and get the teardown for free.
  */
 public abstract class AbstractModule implements Module {
+
+    /**
+     * Time one {@link #batch} pass is allowed per tick — roughly a tenth of a tick. A batch may
+     * overshoot it by one item, never by a whole tick.
+     */
+    private static final long BATCH_BUDGET_NANOS = 5_000_000L;
 
     protected final Smp_library plugin;
 
@@ -99,6 +110,54 @@ public abstract class AbstractModule implements Module {
         }, delayTicks).getTaskId();
         taskIds.add(id[0]);
         return id[0];
+    }
+
+    /**
+     * Runs {@code action} over every item, spread across ticks instead of all at once.
+     *
+     * <p>A module that walks the online players and fires a console command for each of them does
+     * all of that work inside a single tick: at 30 players nobody notices, at 300 the tick that
+     * happens to be the scheduled one is several times longer than the others and the server
+     * stutters on a fixed schedule. The work itself is not the problem — doing all of it at the
+     * same instant is.
+     *
+     * <p>So the items go into a queue drained at {@code perTick} items per tick, and each tick
+     * also stops early once {@link #BATCH_BUDGET_NANOS} have gone by, which is the part that
+     * matters when the per-item work turns out to be dearer than expected. A batch that fits in
+     * one tick runs inline — no scheduler round-trip for the twelve players who are usually on.
+     *
+     * <p>The repeating task is registered like any other, so a reload or shutdown mid-drain
+     * cancels it rather than leaving it running against a disabled module. One consequence worth
+     * knowing: this returns as soon as the work is <em>queued</em>, not when it is done.
+     */
+    protected <T> void batch(Collection<T> items, Consumer<T> action, int perTick) {
+        if (items.isEmpty()) return;
+
+        int limit = Math.max(1, perTick);
+        if (items.size() <= limit) {
+            items.forEach(item -> apply(action, item));
+            return;
+        }
+
+        Queue<T> queue = new ArrayDeque<>(items);
+        int[] id = new int[1];
+        id[0] = repeat(() -> {
+            long deadline = System.nanoTime() + BATCH_BUDGET_NANOS;
+            for (int done = 0; done < limit && !queue.isEmpty(); done++) {
+                apply(action, queue.poll());
+                if (System.nanoTime() >= deadline) break;
+            }
+            if (queue.isEmpty()) cancelTask(id[0]);
+        }, 1L, 1L);
+    }
+
+    /** One item's failure is not the batch's: the remaining players still get served. */
+    private static <T> void apply(Consumer<T> action, T item) {
+        try {
+            action.accept(item);
+        } catch (Exception e) {
+            C.warning("Batched action failed for " + item + ": " + e.getMessage());
+        }
     }
 
     protected void cancelTask(int taskId) {

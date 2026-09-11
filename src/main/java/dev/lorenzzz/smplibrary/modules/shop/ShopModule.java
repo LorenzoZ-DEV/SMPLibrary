@@ -12,9 +12,13 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * Menu-driven shop. The inventories come from inventories/shop.yml via {@link ShopConfigLoader};
@@ -25,6 +29,22 @@ public final class ShopModule extends AbstractModule {
 
     /** Commands declared in plugin.yml that simply open the shop. */
     private static final List<String> OPEN_COMMANDS = List.of("pistacchi", "live");
+
+    /** How many spent purchase ids to remember. See {@link #claimPurchase}. */
+    private static final int PURCHASE_HISTORY = 4_096;
+
+    /**
+     * Purchase ids that have been spent. Bounded and insertion-ordered: an id is only useful for
+     * as long as a duplicate of its click could still be in flight, which is a matter of ticks,
+     * so the oldest entries are dropped rather than kept forever.
+     */
+    private final Set<UUID> spentPurchases = Collections.newSetFromMap(Collections.synchronizedMap(
+            new LinkedHashMap<UUID, Boolean>(256, 0.75f, false) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<UUID, Boolean> eldest) {
+                    return size() > PURCHASE_HISTORY;
+                }
+            }));
 
     private MenuHandler menuHandler;
     private ShopConfigLoader configLoader;
@@ -88,6 +108,25 @@ public final class ShopModule extends AbstractModule {
         String name = sound.sound();
         if (!name.contains(":")) name = name.toLowerCase(Locale.ROOT).replace('_', '.');
         player.playSound(player.getLocation(), name, sound.volume(), sound.pitch());
+    }
+
+    // -------------------------------------------------------------- purchases
+
+    /**
+     * Claims a purchase id. False means it was claimed already, and the caller must deliver
+     * nothing — the purchase it describes has been (or is being) handled.
+     *
+     * <p>This is the shop's half of the double-click guard. The confirm menu's own PROCESSING
+     * state catches the repeated click; this catches the case that state cannot see — the same
+     * purchase arriving through a second path.
+     */
+    public boolean claimPurchase(UUID purchaseId) {
+        return spentPurchases.add(purchaseId);
+    }
+
+    /** Hands back a claim whose purchase charged nothing, so the player can try again. */
+    public void releasePurchase(UUID purchaseId) {
+        spentPurchases.remove(purchaseId);
     }
 
     // ------------------------------------------------------------------- log
@@ -154,6 +193,7 @@ public final class ShopModule extends AbstractModule {
     protected void onShutdown() {
         managers.closeOpenMenus();
         OPEN_COMMANDS.forEach(name -> setExecutor(name, null));
+        spentPurchases.clear();
         menuHandler = null;
         configLoader = null;
     }

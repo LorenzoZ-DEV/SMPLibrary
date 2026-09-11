@@ -16,14 +16,38 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * The "are you sure" screen. One instance is one purchase: it carries a single
+ * {@link #purchaseId} and a {@link State} that only ever moves forward, which is what stops an
+ * autoclicker from buying the same thing four times.
+ *
+ * <p>The window between the click and the inventory actually closing is several ticks wide, and
+ * every click that lands inside it used to start its own purchase. The fix is not a cooldown: the
+ * click handler flips the state to {@link State#PROCESSING} as its very first statement, before
+ * it touches the economy, so any further click is dropped on the floor rather than raced.
+ */
 public class ShopConfirmMenu extends Menu {
+
+    /**
+     * {@link #READY} accepts a confirm; {@link #PROCESSING} is the purchase in flight;
+     * {@link #DONE} is a purchase that went through and must never run again from this menu.
+     * A failed purchase goes back to READY — the player did not get charged and may well want
+     * to try again once they have the money.
+     */
+    private enum State { READY, PROCESSING, DONE }
 
     private final ShopConfig config;
     private final ProductConfig product;
     private final CategoryConfig category;
     private final ShopModule module;
+
+    /** Identifies this purchase to {@link ShopModule#claimPurchase}; spent at most once. */
+    private final UUID purchaseId = UUID.randomUUID();
+
+    private State state = State.READY;
     private int quantity = 1;
 
     public ShopConfirmMenu(ShopConfig config, ProductConfig product, CategoryConfig category,
@@ -82,6 +106,9 @@ public class ShopConfirmMenu extends Menu {
         item.setItemMeta(meta);
 
         return new SimpleButton(item, click -> {
+            // Changing the quantity of a purchase that is already being charged would decide
+            // the price after the fact.
+            if (state != State.READY) return;
             quantity = amount;
             module.playSound(getPlayer(), config.navigatePageSound());
             updateProductDisplay();
@@ -152,7 +179,7 @@ public class ShopConfirmMenu extends Menu {
         }
         item.setItemMeta(meta);
 
-        return new SimpleButton(item, click -> purchase());
+        return new SimpleButton(item, click -> confirm());
     }
 
     private Button buildDeclineButton() {
@@ -177,6 +204,9 @@ public class ShopConfirmMenu extends Menu {
         item.setItemMeta(meta);
 
         return new SimpleButton(item, click -> {
+            // Cancelling mid-charge would take the player out of a purchase that is still
+            // running; the commands would deliver into a menu nobody is watching.
+            if (state != State.READY) return;
             module.playSound(getPlayer(), config.cancelPurchaseSound());
             if (config.keepOpenAfterPurchase()) {
                 module.openCategory(getPlayer(), category);
@@ -186,7 +216,35 @@ public class ShopConfirmMenu extends Menu {
         });
     }
 
-    private void purchase() {
+    /**
+     * The confirm button's entire click handler. The state flip is the first thing that happens —
+     * ahead of the balance read, the withdrawal and the reward commands — so the second, third
+     * and fourth click of an autoclicker find a menu that is no longer READY and return without
+     * doing anything. {@link ShopModule#claimPurchase} is the second lock behind it: even a click
+     * that somehow arrives on a fresh code path cannot spend the same purchase id twice.
+     */
+    private void confirm() {
+        if (state != State.READY) return;
+        state = State.PROCESSING;
+
+        if (!module.claimPurchase(purchaseId)) {
+            state = State.DONE;
+            return;
+        }
+
+        boolean bought = false;
+        try {
+            bought = purchase();
+        } finally {
+            state = bought ? State.DONE : State.READY;
+            // A purchase that charged nothing must be retryable, and the id is single-use — so
+            // the failed attempt hands its claim back.
+            if (!bought) module.releasePurchase(purchaseId);
+        }
+    }
+
+    /** @return true when the player was charged and the rewards were delivered. */
+    private boolean purchase() {
         Player player = getPlayer();
         double totalCost = product.price() * quantity;
 
@@ -195,12 +253,12 @@ public class ShopConfirmMenu extends Menu {
             if (balance < totalCost) {
                 C.sendChatAndAction(player, config.messages().insufficientFunds());
                 module.playSound(player, config.purchaseErrorSound());
-                return;
+                return false;
             }
             if (!module.takeMoney(player, totalCost)) {
                 C.sendChatAndAction(player, config.messages().transactionError());
                 module.playSound(player, config.purchaseErrorSound());
-                return;
+                return false;
             }
         }
 
@@ -225,5 +283,6 @@ public class ShopConfirmMenu extends Menu {
         } else {
             player.closeInventory();
         }
+        return true;
     }
 }

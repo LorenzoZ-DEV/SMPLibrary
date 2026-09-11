@@ -110,11 +110,47 @@ public final class MessagesManager implements Manager {
         actionBar(target, path + ACTION_BAR_SUFFIX, placeholders);
     }
 
-    /** {@link #sendWithActionBar} for every online player. */
+    /**
+     * {@link #sendWithActionBar} for every online player, rendered once when it can be.
+     *
+     * <p>Going through {@code sendWithActionBar} in a loop redid the whole pipeline per player:
+     * two YAML reads, two {@code %key%} substitution passes and two deserializations — chat and
+     * action bar — for a message that is usually identical for everyone. The cost is per player
+     * and the message is not, which is the wrong way round.
+     *
+     * <p>So the shared work is done once: read the key, substitute the caller's placeholders,
+     * and — unless what is left still holds a {@code %…%} that PlaceholderAPI would fill in
+     * per player — deserialize a single {@link Component} and hand the same one to everybody.
+     * A message that really is personal (a {@code %player_name%}, a balance) falls back to the
+     * per-player path, and only for the half that needs it: a personal chat line with a static
+     * action bar still renders the action bar once.
+     */
     public void broadcast(String path, Map<String, ?> placeholders) {
-        if (!has(path)) return;
+        String chat = C.replace(raw(path), placeholders);
+        String bar = C.replace(raw(path + ACTION_BAR_SUFFIX), placeholders);
+        if (chat.isEmpty() && bar.isEmpty()) return;
+
+        // Null means "this one has to be built per player".
+        Component sharedChat = personal(chat) ? null : C.component(chat);
+        Component sharedBar = personal(bar) ? null : C.mm(bar);
+
         for (Player player : Bukkit.getOnlinePlayers()) {
-            sendWithActionBar(player, path, placeholders);
+            if (!chat.isEmpty()) {
+                player.sendMessage(sharedChat != null ? sharedChat : C.parse(chat, player, null));
+            }
+            if (!bar.isEmpty()) {
+                player.sendActionBar(sharedBar != null ? sharedBar : C.mm(C.replace(bar, player, null)));
+            }
         }
+    }
+
+    /**
+     * Whether the text still needs a player to be resolved. A leftover {@code %} is the only
+     * signal PlaceholderAPI gives us, so this errs on the side of caution: a false positive costs
+     * one broadcast the shared-component path, a false negative would send everyone the first
+     * player's numbers.
+     */
+    private static boolean personal(String text) {
+        return !text.isEmpty() && C.papiEnabled() && text.indexOf('%') >= 0;
     }
 }

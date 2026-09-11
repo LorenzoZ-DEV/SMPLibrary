@@ -33,6 +33,14 @@ public final class EconomyManager implements Manager {
     private final Smp_library plugin;
     private final Set<String> warnedCurrencies = new HashSet<>();
 
+    /**
+     * Serializes the debit/credit pairs of {@link #transfer}. zEssentials exposes no
+     * transaction of its own, so this is the closest thing to one we can offer: while a
+     * transfer holds the lock no other transfer can read a balance it is about to change,
+     * which is what turns "check, withdraw, deposit" into a single step for our callers.
+     */
+    private final Object transferLock = new Object();
+
     private Object zEconomyManager;
     private Method getEconomy;
     private Method getDefaultEconomy;
@@ -173,7 +181,56 @@ public final class EconomyManager implements Manager {
         }
         // ponytail: no API — console /eco is fire-and-forget, so we can only assume success.
         return Bukkit.dispatchCommand(Bukkit.getConsoleSender(),
-                "eco " + ecoVerb + " " + currency + " " + player.getName() + " " + (long) amount);
+                "eco " + ecoVerb + " " + currency + " " + player.getName() + " " + plainAmount(amount));
+    }
+
+    /**
+     * The amount as {@code /eco} wants to read it. {@code (long) amount} used to be good enough
+     * while every currency was whole-numbered, but it silently ate the decimals of anything that
+     * is not — a 12.5 transfer took 12.5 off the sender and handed 12 to the receiver, and the
+     * missing half pistacchio was created or destroyed depending on which leg was truncated.
+     * {@link BigDecimal#toPlainString()} rather than {@code Double.toString}, which would hand
+     * the parser {@code 1.0E7} for large round amounts.
+     */
+    private static String plainAmount(double amount) {
+        return BigDecimal.valueOf(amount).stripTrailingZeros().toPlainString();
+    }
+
+    // ------------------------------------------------------------- transfers
+
+    /**
+     * Moves {@code amount} between two players as one step: the balance check, the debit and the
+     * credit all happen under {@link #transferLock}, so two transfers racing over the same wallet
+     * cannot both pass the check and overdraw it.
+     *
+     * <p>If the credit fails the debit is rolled back. A rollback that <em>also</em> fails is the
+     * one case where money really is gone, and it is logged at error level with everything needed
+     * to refund by hand — silently swallowing it is how a dupe report starts.
+     *
+     * @return true only when the receiver was credited.
+     */
+    public boolean transfer(Player from, Player to, double amount, String currency) {
+        if (amount <= 0) return false;
+
+        synchronized (transferLock) {
+            // Only meaningful on the typed API; the placeholder fallback reads a currency it was
+            // not asked about, so a check on it would reject perfectly valid transfers.
+            if (hooked() && balance(from, currency) < amount) return false;
+
+            if (!withdraw(from, amount, currency)) return false;
+            if (deposit(to, amount, currency)) return true;
+
+            if (!deposit(from, amount, currency)) {
+                C.error("TRANSFER LOST " + plainAmount(amount) + " " + currency + ": taken from "
+                        + from.getName() + " (" + from.getUniqueId() + "), never credited to "
+                        + to.getName() + " (" + to.getUniqueId() + "), and the refund failed too. "
+                        + "Refund this by hand.");
+                return false;
+            }
+            C.warning("Refunded " + plainAmount(amount) + " " + currency + " to " + from.getName()
+                    + " after a failed transfer to " + to.getName() + ".");
+            return false;
+        }
     }
 
     /** Resolves the named Economy, falling back to the server default (warned once per currency). */

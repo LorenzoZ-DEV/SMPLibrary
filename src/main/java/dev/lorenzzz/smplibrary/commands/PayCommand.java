@@ -11,16 +11,27 @@ import co.aikar.commands.annotation.Syntax;
 import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.pay.PayModule;
+import dev.lorenzzz.smplibrary.modules.pay.TransferResult;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.util.Map;
+import java.util.UUID;
 
 /**
- * {@code /pay <player> <amount>} — transfers "pistacchi" from the sender to another online
- * player. The money itself moves through {@link PayModule#transfer}, which refunds the sender
- * if the deposit fails; this class only validates the request and reports the outcome.
+ * {@code /pistacchipay <player> <amount>} — transfers "pistacchi" from the sender to another
+ * online player. Not to be confused with the server's own {@code /pay}, which belongs to
+ * zEssentials and moves {@code money}; this command is declared entirely by the
+ * {@link CommandAlias} above and adds nothing to plugin.yml.
+ *
+ * <p>The money itself moves through {@link PayModule#transfer}, which either completes the whole
+ * transfer or charges nothing at all; this class only validates the request, mints the transfer
+ * id and reports the outcome.
+ *
+ * <p>The checks below (minimum, maximum, balance) are there to give the player a useful message,
+ * not to make the transfer safe — by the time the money moves they are already stale. The real
+ * balance check happens inside the transfer, under the lock.
  */
 @CommandAlias("pistacchipay|pagapers")
 @CommandPermission("smplibrary.pay.use")
@@ -78,8 +89,10 @@ public final class PayCommand extends BaseCommand {
             return;
         }
 
-        if (!pay.transfer(player, target, total)) {
-            pay.send(sender, "error", Map.of());
+        UUID transferId = pay.newTransferId();
+        TransferResult result = pay.transfer(transferId, player, target, total);
+        if (!result.completed()) {
+            report(pay, sender, player, result, formatted);
             return;
         }
 
@@ -91,6 +104,25 @@ public final class PayCommand extends BaseCommand {
                 "%player%", player.getName(),
                 "%amount%", formatted,
                 "%balance%", pay.formatAmount(pay.getBalance(target))));
+    }
+
+    /**
+     * Turns a refused transfer into a message. Every branch here charged nothing, so all of them
+     * are safe to retry — the wording just tells the player whether waiting will help.
+     */
+    private static void report(PayModule pay, CommandSender sender, Player player,
+                               TransferResult result, String formatted) {
+        switch (result) {
+            case INSUFFICIENT_FUNDS -> pay.send(sender, "insufficient-funds", Map.of(
+                    "%balance%", pay.formatAmount(pay.getBalance(player)),
+                    "%amount%", formatted));
+            case COOLDOWN -> pay.send(sender, "cooldown", Map.of(
+                    "%seconds%", String.valueOf(Math.max(1, pay.cooldownRemaining(player) / 1000))));
+            // Both mean "the same payment is already being handled". Nothing to add: telling the
+            // player to slow down is exactly right, and it costs them nothing to send it again.
+            case IN_PROGRESS, DUPLICATE -> pay.send(sender, "already-processing", Map.of());
+            default -> pay.send(sender, "error", Map.of());
+        }
     }
 
     /** Accepts both {@code 12.5} and the Italian {@code 12,5}; 0 marks anything unparsable. */
