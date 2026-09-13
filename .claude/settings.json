@@ -1,0 +1,5 @@
+{
+  "enabledPlugins": {
+    "alloydb-omni@claude-plugins-official": true
+  }
+}

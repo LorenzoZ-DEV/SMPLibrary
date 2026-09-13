@@ -6,6 +6,9 @@
       crate-name: "common_crate"
       command: "crate key give %player% %crate-name% %amount%"
       placeholder: "%smplibrary_keyall_formatted%"
+      # Quanti player servire per tick. Le chiavi non vengono piu' consegnate tutte nello
+      # stesso tick: con 200 player online erano 200 comandi console in un colpo solo.
+      batch-size: 10
     chatgames:
       enabled: true
       task-every: 30m            # how often a new game starts
@@ -77,10 +80,18 @@
       maximum-amount: 1000000.0  # tetto per singolo trasferimento (0 = nessun limite)
       allow-self: false         # permetti /pay a te stesso (utile solo per test)
       currency-decimals: 0      # cifre decimali mostrate nei messaggi (0 = interi)
+      # Pausa fra due /pay dello stesso player. Non e' quello che rende sicuro il
+      # trasferimento — a quello pensano l'id univoco e il lock sul portafoglio — e'
+      # solo una protezione in piu' contro chi martella il comando. 0 la disattiva.
+      cooldown-seconds: 1.0
     playtime:
       enabled: true
       every: 5m
       amount: 100.0
+      # Quanti player servire per tick. Il pagamento non avviene piu' tutto nello stesso
+      # tick: la lista viene spalmata su piu' tick cosi' 300 player online non diventano
+      # 300 operazioni economiche in un colpo solo.
+      batch-size: 20
     playerstats:
       # Storico dei player online, mostrato come grafico nella web dashboard.
       enabled: true
@@ -205,6 +216,13 @@
       # Con true, scavare accovacciati rompe un blocco solo: e' l'unico modo di fare un
       # tunnel 1x1 con la trivella in mano. Metti false per l'area sempre attiva.
       disable-on-sneak: true
+      # COMPATIBILITY: ogni blocco del cubo passa per il suo BlockBreakEvent, quindi claim,
+      #   WorldGuard, CoreProtect e le quest lo vedono esattamente come una rottura a mano.
+      #   E' il default e nella quasi totalita' dei casi va lasciato cosi'.
+      # FAST: i blocchi secondari vengono rotti senza evento — una passata costa 1 evento
+      #   invece di 27, ma nessun plugin di protezione puo' piu' dire la sua. Mettilo solo
+      #   su un server che non ha protezioni ne' logging dei blocchi.
+      mode: COMPATIBILITY
       material: NETHERITE_PICKAXE
       name: '&d&lTrivella'
       lore:

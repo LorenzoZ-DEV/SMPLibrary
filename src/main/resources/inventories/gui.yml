@@ -1,0 +1,212 @@
+####################################################
+#   GUI HOME & WARP  (dati da HuskHomes)
+####################################################
+# Le due schermate che sostituiscono le liste in chat di HuskHomes:
+#
+#   /homegui   le tue home     (alias: homesgui, guihome, guihomes, casegui)
+#   /warpgui   i warp          (alias: warpsgui, guiwarp, guiwarps)
+#
+# Home e warp NON vivono qui: restano di HuskHomes, che resta l'unico a crearli,
+# spostarli e cancellarli. Questo file decide solo come vengono disegnati.
+#
+# ------------------------------------------------------------------ layout
+# 'layout' e' l'inventario riga per riga, un carattere per slot, 9 per riga.
+# Il numero di righe (max 6) e' quante righe scrivi.
+#
+#   O  slot dove finiscono le home / i warp, nell'ordine in cui li scrivi
+#   X  riempimento (l'oggetto 'filler' qui sotto)
+#   <  pulsante pagina precedente
+#   >  pulsante pagina successiva
+#   I  il pannello informativo (items.info)
+#   A  il pulsante azione (items.action: /sethome, /spawn...)
+#   spazio  slot lasciato vuoto
+#
+# ------------------------------------------------------------- segnaposto
+# Dentro name e lore di 'item' puoi usare:
+#
+#   %name%         nome della home / del warp
+#   %description%  descrizione, o il testo 'no-description' se non ce l'ha
+#   %world%        mondo
+#   %server%       server (utile solo in rete proxata)
+#   %x% %y% %z%    coordinate, arrotondate al blocco
+#   %owner%        proprietario della home (vuoto per i warp)
+#   %index%        numero progressivo, partendo da 1
+#   %visibility%   il testo 'public'/'private' qui sotto (solo home)
+#
+# In 'title' e nel pannello info puoi usare %page%, %pages%, %count%, %player%.
+#
+# --------------------------------------------------------------- il click
+# 'command' e' quello che viene eseguito come il player quando clicca. Passa da
+# HuskHomes, quindi warmup, cooldown, permessi e messaggi restano i suoi.
+
+# Comandi di HuskHomes da dirottare su queste GUI. Sono suoi, quindi non possono
+# essere registrati da noi: vengono intercettati e sostituiti. Solo quando il
+# player li scrive senza argomenti — /homes AltroPlayer resta di HuskHomes.
+intercept:
+  enabled: true
+  homes:
+    - homes
+    - home list
+  warps:
+    - warps
+
+sounds:
+  open:
+    enabled: true
+    type: block.chest.open
+    volume: 0.5
+    pitch: 1.4
+  page:
+    enabled: true
+    type: ui.button.click
+    volume: 0.6
+    pitch: 1.6
+  teleport:
+    enabled: true
+    type: entity.enderman.teleport
+    volume: 0.5
+    pitch: 1.6
+  empty:
+    enabled: true
+    type: block.note_block.bass
+    volume: 0.6
+    pitch: 0.8
+
+####################################################
+#   HOME
+####################################################
+homes:
+  enabled: true
+  title: "&#8b00ff&lLE TUE HOME &8» &7pagina %page%/%pages%"
+
+  layout:
+    - "XXXXXXXXX"
+    - "XOOOOOOOX"
+    - "XOOOOOOOX"
+    - "XOOOOOOOX"
+    - "X<XXAXX>X"
+
+  # Comando lanciato al click. %name% = nome della home.
+  command: "home %name%"
+
+  # Testo usato per %description% quando la home non ne ha una.
+  no-description: "&8nessuna descrizione"
+  # Testo usato per %visibility%.
+  public: "&a&lPUBBLICA"
+  private: "&7&lPRIVATA"
+
+  item:
+    material: LIME_BED
+    name: "&#8b00ff&l%name%"
+    lore:
+      - ""
+      - " &7%description%"
+      - ""
+      - " &8• &7Mondo: &f%world%"
+      - " &8• &7Posizione: &f%x%&8, &f%y%&8, &f%z%"
+      - " &8• &7Visibilita': %visibility%"
+      - ""
+      - " &8» &aClicca per teletrasportarti"
+    # true = l'oggetto luccica
+    glow: false
+
+####################################################
+#   WARP
+####################################################
+warps:
+  enabled: true
+  title: "&#00b3ff&lWARP &8» &7pagina %page%/%pages%"
+
+  layout:
+    - "XXXXXXXXX"
+    - "XOOOOOOOX"
+    - "XOOOOOOOX"
+    - "XOOOOOOOX"
+    - "X<XXIXX>X"
+
+  command: "warp %name%"
+
+  no-description: "&8nessuna descrizione"
+
+  # Con true vengono mostrati solo i warp per cui il player ha il permesso
+  # huskhomes.warp.<nome>. ATTENZIONE: accendilo solo se su questo server i warp
+  # sono davvero a permessi. HuskHomes, quando il permesso specifico non e'
+  # assegnato, ricade su huskhomes.warp.* — quindi su un server che non limita
+  # niente questa opzione nasconderebbe tutti i warp a tutti.
+  filter-by-permission: false
+
+  item:
+    material: ENDER_EYE
+    name: "&#00b3ff&l%name%"
+    lore:
+      - ""
+      - " &7%description%"
+      - ""
+      - " &8• &7Mondo: &f%world%"
+      - " &8• &7Posizione: &f%x%&8, &f%y%&8, &f%z%"
+      - ""
+      - " &8» &aClicca per teletrasportarti"
+    glow: false
+
+####################################################
+#   OGGETTI COMUNI ALLE DUE SCHERMATE
+####################################################
+items:
+
+  filler:
+    material: GRAY_STAINED_GLASS_PANE
+    name: " "
+    lore: []
+
+  previous-page:
+    material: ARROW
+    name: "&#8b00ff&lPAGINA PRECEDENTE"
+    lore:
+      - " &7Vai alla pagina &f%page%&7."
+
+  next-page:
+    material: ARROW
+    name: "&#8b00ff&lPAGINA SUCCESSIVA"
+    lore:
+      - " &7Vai alla pagina &f%page%&7."
+
+  # Disegnato al posto delle frecce quando non c'e' nessuna pagina in quel verso.
+  no-page:
+    material: GRAY_STAINED_GLASS_PANE
+    name: " "
+    lore: []
+
+  # Il pannello 'I' del layout.
+  info:
+    material: BOOK
+    name: "&#00b3ff&lRIEPILOGO"
+    lore:
+      - ""
+      - " &8• &7Trovati: &f%count%"
+      - " &8• &7Pagina: &f%page%&7/&f%pages%"
+      - ""
+
+  # Il pulsante 'A' del layout: un comando e basta, niente teletrasporti.
+  action:
+    material: NETHER_STAR
+    name: "&#2ecc71&lIMPOSTA UNA HOME"
+    lore:
+      - ""
+      - " &7Salva il punto in cui sei adesso."
+      - " &7HuskHomes ti chiedera' il nome."
+      - ""
+      - " &8» &aClicca per aprire /sethome"
+    # Comando eseguito come il player. Lascia vuoto per un pulsante che non fa niente.
+    command: "sethome"
+    # Chiude la GUI dopo il click.
+    close: true
+
+  # Mostrato al centro quando non c'e' niente da elencare.
+  empty:
+    material: BARRIER
+    name: "&c&lNIENTE DA MOSTRARE"
+    lore:
+      - ""
+      - " &7Qui non c'e' ancora nulla."
+      - " &7Usa &f/sethome &7per crearne una."
+      - ""
