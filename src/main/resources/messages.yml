@@ -117,3 +117,69 @@ tpauto:
   accepted: '&d» &fTPAuto: richiesta di &d%player% &faccettata automaticamente.'
   # Mostrato quando HuskHomes non e' disponibile: il toggle si salva lo stesso.
   unavailable: '&cTPAuto e'' salvato, ma HuskHomes non e'' attivo: nessuna richiesta da accettare.'
+# Funzioni portate da venrix-utils. Questi testi sono MiniMessage (non &codici):
+# <prefix> = prefisso qui sotto, <player>/<killer>/<victim>/<streak>/<time>/<target>
+# i nomi del player ucciso o colpito. I link di discord/vote/store restano cliccabili.
+venrix:
+  prefix: '&x&8&A&2&B&E&2&lV&x&9&E&2&4&E&8&lE&x&B&2&1&D&E&E&lN&x&C&6&1&6&F&4&lR&x&D&9&0&E&F&A&lI&x&E&D&0&7&F&F&lX&x&F&F&0&0&F&F&lM&x&F&F&0&0&F&F&lC &8➠ '
+spawn:
+  not-set: '<prefix><red>Lo spawn non è stato ancora impostato.'
+  not-set-actionbar: '<red>Spawn non impostato.'
+  world-missing: '<prefix><red>Il mondo dello spawn non è caricato in questo momento.'
+  world-missing-actionbar: '<red>Mondo dello spawn non caricato.'
+  already-teleporting: '<prefix><red>Sei già in attesa di teletrasporto.'
+  already-teleporting-actionbar: '<red>Teleport già in corso...'
+  delay-actionbar: '<gray>Teletrasporto allo spawn tra <yellow><time></yellow>s...'
+  teleport-canceled: '<prefix><red>Teletrasporto annullato perché ti sei mosso.'
+  teleport-canceled-actionbar: '<red>Teleport annullato!'
+  teleported: '<prefix><green>Teletrasportato allo spawn.'
+  teleported-actionbar: '<green>Teletrasportato!'
+  set: '<prefix><green>Spawn impostato.'
+  set-actionbar: '<green>Spawn impostato!'
+  set-failed: '<prefix><red>Errore nel salvataggio dello spawn.'
+  set-failed-actionbar: '<red>Errore salvataggio spawn.'
+combat:
+  enter: '<prefix><red>Sei entrato in combattimento!'
+  enter-actionbar: '<red>Sei in combattimento!'
+  exit: '<prefix><green>Sei uscito dal combattimento.'
+  exit-actionbar: '<green>Fuori dal combattimento.'
+  action-bar: '<light_purple>Combat: <white><time>s'
+  blocked: '<prefix><red>Non puoi farlo mentre sei in combattimento.'
+  blocked-actionbar: '<red>Bloccato in combat!'
+  quit-killer: '<prefix><yellow><player></yellow> è disconnesso durante il combattimento.'
+  quit-killer-actionbar: '<yellow><player> <gray>uscito in combat!'
+death:
+  default: '<gray><player> è morto.'
+  player: '<gray><player> è stato ucciso da <red><killer></red>.'
+  fall: '<gray><player> è caduto nel vuoto.'
+  drowning: '<gray><player> è annegato.'
+  void: '<gray><player> è caduto nel void.'
+  fire: '<gray><player> è bruciato vivo.'
+  mob: '<gray><player> è stato ucciso da una creatura.'
+  explosion: '<gray><player> è esploso.'
+  suffocation: '<gray><player> è soffocato.'
+  starvation: '<gray><player> è morto di fame.'
+night-vision:
+  enabled: '<prefix><green>Visione notturna attivata.'
+  enabled-actionbar: '<green>Night vision ON'
+  disabled: '<prefix><red>Visione notturna disattivata.'
+  disabled-actionbar: '<red>Night vision OFF'
+  enabled-other: '<prefix><green>Visione notturna attivata per <yellow><target></yellow>.'
+  enabled-other-actionbar: '<green>NV attivata: <yellow><target>'
+  disabled-other: '<prefix><red>Visione notturna disattivata per <yellow><target></yellow>.'
+  disabled-other-actionbar: '<red>NV disattivata: <yellow><target>'
+streak:
+  milestone: '<prefix><gold><player></gold> ha una <yellow>killstreak</yellow> di <red><streak></red>!'
+  milestone-actionbar: '<gold><player> <yellow><streak> kill di fila!'
+  milestones:
+    5: '<prefix><yellow><player></yellow> è in fiamme con <gold><streak></gold> kill di fila!'
+    5-actionbar: '<yellow><player> <gold>5 kill di fila!'
+    10: '<prefix><red><player></red> è imbattibile! <gold><streak></gold> kill di fila!'
+    10-actionbar: '<red><player> <gold>10 kill di fila!'
+    25: '<prefix><dark_red><player></dark_red> è una <red>LEGGENDA</red> con <gold><streak></gold> kill!'
+    25-actionbar: '<dark_red><player> <red>LEGGENDA <gold>25 kill!'
+  ended: '<prefix><yellow><killer></yellow> ha fermato la killstreak di <red><victim></red> (<gold><streak></gold> kill).'
+  ended-actionbar: '<yellow>Streak di <red><victim> <yellow>fermata!'
+discord: "<color:#DE43FF><bold>D</bold></color><color:#D246FC><bold>I</bold></color><color:#C649FA><bold>S</bold></color><color:#BA4DF7><bold>C</bold></color><color:#AE50F4><bold>O</bold></color><color:#A253F2><bold>R</bold></color><color:#9656EF><bold>D</bold></color> <dark_gray>»</dark_gray> <white>Unisciti al nostro server per rimanere aggiornato su <color:#E56AFF>eventi</color><white>, </white><color:#E56AFF>giveaway</color><white> e </white><color:#E56AFF>aggiornamenti!</color> <click:open_url:'https://discord.gg/WpYwqtDEHe'><hover:show_text:'<gray>Clicca per aprire'><color:#9656EF><u>https://discord.gg/WpYwqtDEHe</u></color></hover></click>"
+vote: "<color:#6BFF9E><bold>V</bold></color><color:#57F78E><bold>O</bold></color><color:#42F07F><bold>T</bold></color><color:#2EE86F><bold>E</bold></color> <dark_gray>»</dark_gray> <white>Vota il nostro server e ricevi <color:#43FF8E>ricompense</color><white> e </white><color:#43FF8E>vantaggi esclusivi</color><white> ogni giorno!</white> <click:open_url:'https://minecraft-italia.net/lista/server/venrixmc'><hover:show_text:'<gray>Clicca per aprire'><color:#2EE86F><u>https://minecraft-italia.net/lista/server/venrixmc</u></color></hover></click>"
+store: "<color:#FFD43E><bold>S</bold></color><color:#FFC23A><bold>T</bold></color><color:#FFB036><bold>O</bold></color><color:#FF9E32><bold>R</bold></color><color:#FF8C2E><bold>E</bold></color> <dark_gray>»</dark_gray> <white>Sostieni il progetto e sblocca <color:#FFC23A>premi</color><white>, </white><color:#FFC23A>kits</color><white> e </white><color:#FFC23A>vantaggi unici!</color> <click:open_url:'https://store.venrixmc.uk/'><hover:show_text:'<gray>Clicca per aprire'><color:#FF8C2E><u>https://store.venrixmc.uk/</u></color></hover></click>"

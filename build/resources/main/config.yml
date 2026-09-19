@@ -334,6 +334,110 @@
       staff-message: <#fa1b1b><bold>[APG]</bold> <gray>» <gray>Il player <white>{player}
         <gray>ha tentato un Pearl Glitch ed è stato bloccato.
 
+    spawn:
+      # /spawn e /setspawn (da venrix-utils): teleport ritardato con countdown
+      # in action bar, annullato se ti muovi, piu' teleport dei nuovi player allo spawn.
+      enabled: true
+      delay: 5                   # secondi di attesa prima del teleport (0 = istantaneo)
+      cancel-on-move: true       # muoversi annulla il teleport in corso
+      max-move-distance: 0.5     # blocchi di tolleranza prima che conti come movimento
+      teleport-new-players: true # i player al primo join vanno allo spawn (se impostato)
+      # Suoni stile chatgames (type accetta 'entity.enderman.teleport' o 'ENTITY_ENDERMAN_TELEPORT).
+      sounds:
+        teleport:
+          type: entity.enderman.teleport
+          volume: 1.0
+          pitch: 1.0
+          enabled: true
+        countdown-tick:
+          type: block.note_block.pling
+          volume: 1.0
+          pitch: 1.0
+          enabled: true
+        teleport-canceled:
+          type: entity.villager.no
+          volume: 1.0
+          pitch: 1.0
+          enabled: true
+
+    combat:
+      # Combat tag (da venrix-utils): chi mena o viene menato resta taggato per
+      # combat-time secondi (action bar col countdown). Da taggato: niente comandi
+      # fuori da allowed-commands, niente ender chest, e uscire dal server uccide.
+      enabled: true
+      combat-time: 15        # secondi di tag dopo l'ultimo danno
+      kill-on-quit: true     # uscire in combat uccide (come da combat log)
+      kill-on-rejoin: true   # chi esce in combat muore al rientro (persiste al restart)
+      block-ender-chest: true
+      # Quali danni taggano: attacchi diretti, end crystal e respawn anchor.
+      triggers:
+        player-attack: true
+        crystal: true
+        respawn-anchor: true
+      # Quanto vengono ricordati chi ha rotto il crystal / colpito / toccato l'anchor.
+      cache:
+        crystal-breaker-seconds: 60
+        last-hitter-seconds: 15
+        anchor-interaction-seconds: 60
+      # Comandi permessi in combat (minuscoli, con lo slash). Il permesso
+      # smplibrary.combat.bypass esclude dal tag e dai blocchi.
+      allowed-commands:
+        - /msg
+        - /r
+        - /reply
+
+    nightvision:
+      # /nv (da venrix-utils): visione notturna infinita che sopravvive a latte e respawn.
+      enabled: true
+      amplifier: 0        # 0 = livello I
+      duration-ticks: -1  # -1 = infinita
+      show-particles: false
+      show-icon: false
+      ambient: true
+
+    streak:
+      # Killstreak (da venrix-utils): uccisioni di fila annunciate alle milestone,
+      # con suoni e messaggio quando qualcuno ferma una streak.
+      enabled: true
+      reset-on-death: true
+      reset-on-quit: true
+      broadcast: true       # false = il traguardo lo vede solo il killer
+      announce-end: true    # annuncia quando una streak viene fermata
+      min-end-streak: 5     # sotto questa streak la fine non viene annunciata
+      milestones: [3, 5, 10, 15, 20, 25, 50, 100]
+      sounds:
+        milestone:
+          type: entity.ender_dragon.growl
+          volume: 0.8
+          pitch: 1.0
+          enabled: true
+          to-all: true      # true = a tutti gli online, false = solo al killer
+        ended:
+          type: entity.wither.death
+          volume: 0.7
+          pitch: 1.0
+          enabled: true
+          to-all: true
+        # Suoni diversi per singole milestone (chiave = numero di kill).
+        overrides:
+          5:
+            type: entity.blaze.shoot
+            volume: 1.0
+            pitch: 1.2
+          10:
+            type: entity.wither.spawn
+            volume: 1.0
+            pitch: 1.0
+          25:
+            type: ui.toast.challenge_complete
+            volume: 1.0
+            pitch: 1.0
+
+    info:
+      # /discord, /vote e /store (da venrix-utils): una riga MiniMessage ciascuno,
+      # scritta in messages.yml (discord/vote/store) cosi' i link restano cliccabili.
+      enabled: true
+
     debug:
       # Sezione "Debug" della dashboard: errori del plugin, segnalazioni dei player
       # e analisi AI della causa. Visibile solo a chi ha il token della dashboard
