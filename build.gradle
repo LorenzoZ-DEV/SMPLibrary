@@ -9,7 +9,7 @@ def getBuildVersion() {
     try {
         def hash = 'git rev-parse --short HEAD'.execute().text.trim()
         def count = 'git rev-list --count HEAD'.execute().text.trim()
-        if (hash && count) return "2.0.${count}-${hash}"
+        if (hash && count) return "1.3.${count}-${hash}"
     } catch (Exception ignored) {}
     return "1.0-" + new Date().format('yyyyMMdd-HHmmss')
 }
