@@ -12,6 +12,7 @@ import dev.lorenzzz.smplibrary.modules.competitors.CompetitorsModule;
 import dev.lorenzzz.smplibrary.modules.debug.DebugModule;
 import dev.lorenzzz.smplibrary.modules.dupewatch.DupeWatchModule;
 import dev.lorenzzz.smplibrary.modules.firstjoin.FirstJoinModule;
+import dev.lorenzzz.smplibrary.modules.ggwave.GgWaveModule;
 import dev.lorenzzz.smplibrary.modules.gui.GuiModule;
 import dev.lorenzzz.smplibrary.modules.info.InfoModule;
 import dev.lorenzzz.smplibrary.modules.keyall.KeyAllModule;
@@ -91,6 +92,7 @@ public final class ModuleManager implements Manager {
         register(new NightVisionModule(plugin));
         register(new StreakModule(plugin));
         register(new InfoModule(plugin));
+        register(new GgWaveModule(plugin));
         register(new WebModule(plugin));
 
         ensureConfig();

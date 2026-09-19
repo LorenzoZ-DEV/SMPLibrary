@@ -1,5 +1,5 @@
 name: smp-library
-version: '2.0.22-981e8bc'
+version: '2.0.23-77b1b49'
 main: dev.lorenzzz.smplibrary.Smp_library
 api-version: '1.21'
 softdepend:
@@ -7,6 +7,9 @@ softdepend:
   - zEssentials
   - HuskHomes
   - spark
+  # ZelChat formatta la chat: l'onda di GG si registra come suo modulo per non buttare via
+  # prefissi e gradi. Senza, il modulo ripiega su AsyncChatEvent e funziona lo stesso.
+  - ZelChat
 author:
   Lorenzzzzzz
 website:
@@ -21,6 +24,7 @@ permissions:
       smplibrary.tpauto.use: true
       smplibrary.gui.homes: true
       smplibrary.gui.warps: true
+      smplibrary.nightvision.use: true
   smplibrary.admin:
     description: Access to admin log chat broadcast and dashboard actions
     default: op
@@ -48,6 +52,27 @@ permissions:
   smplibrary.dialogguard.bypass:
     description: Never get a guarded dialog re-opened after a relog
     default: false
+  # Le funzioni portate da venrix-utils. Vanno dichiarate qui: un nodo che plugin.yml non
+  # conosce vale 'op' per default, quindi finche' mancavano ogni operatore saltava in
+  # automatico il combat tag e l'attesa dello /spawn, senza che nessuno glielo desse.
+  smplibrary.combat.bypass:
+    description: Never get combat tagged, and ignore the in-combat restrictions
+    default: false
+  smplibrary.spawn.bypass:
+    description: Teleport to spawn instantly, without the countdown or the move check
+    default: false
+  smplibrary.spawn.set:
+    description: Move the server spawn point with /setspawn
+    default: op
+  smplibrary.nightvision.use:
+    description: Toggle your own night vision with /nv
+    default: true
+  smplibrary.nightvision.others:
+    description: Toggle night vision on another player with /nv <player>
+    default: op
+  smplibrary.ggwave.admin:
+    description: Start or stop the GG wave by hand with /ggwave
+    default: op
   antipearlglitch.bypass:
     description: Ender pearls are never corrected for this player
     default: false

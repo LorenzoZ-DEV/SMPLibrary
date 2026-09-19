@@ -5,6 +5,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import me.clip.placeholderapi.PlaceholderAPI;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
@@ -35,6 +36,18 @@ public final class C {
 
     private static final Cache<String, String> COLOR_CACHE = Caffeine.newBuilder()
             .maximumSize(512)
+            .build();
+
+    /**
+     * {@link #mm} counterpart of {@link #COLOR_CACHE}. Every call used to redo a regex pass plus
+     * twenty-two {@link String#replace} passes before MiniMessage even saw the text, and the
+     * inputs are overwhelmingly the same handful of config lines — action bars in particular
+     * come back once a second, per player. Keyed on the input, so a reloaded config simply
+     * lands on a new key; Caffeine's admission policy keeps the repeat offenders and drops
+     * the one-shot PlaceholderAPI-resolved strings.
+     */
+    private static final Cache<String, String> MINI_CACHE = Caffeine.newBuilder()
+            .maximumSize(1024)
             .build();
 
     /** Legacy code -> MiniMessage tag, applied in one pass by {@link #legacyToMiniMessage}. */
@@ -108,7 +121,23 @@ public final class C {
     /** MiniMessage input (legacy + hex codes accepted too) -> Adventure Component. */
     public static Component mm(String text) {
         if (text == null) return Component.empty();
-        return MINI_MESSAGE.deserialize(legacyToMiniMessage(hexToMiniMessage(text)));
+        return MINI_MESSAGE.deserialize(toMiniMessage(text));
+    }
+
+    /**
+     * {@link #mm} with tag resolvers, so values can be handed to MiniMessage as
+     * <em>resolved tags</em> instead of being spliced into the text. Substituting a value into
+     * the string first means whatever it contains is parsed as markup — see {@code Mini}, which
+     * passes every placeholder through {@code Placeholder.unparsed} for exactly that reason.
+     */
+    public static Component mm(String text, TagResolver resolver) {
+        if (text == null) return Component.empty();
+        return MINI_MESSAGE.deserialize(toMiniMessage(text), resolver);
+    }
+
+    /** Cached {@code &} + {@code &#RRGGBB} -> MiniMessage normalisation, shared by both {@code mm}. */
+    private static String toMiniMessage(String text) {
+        return MINI_CACHE.get(text, t -> legacyToMiniMessage(hexToMiniMessage(t)));
     }
 
     // ---------------------------------------------------------- placeholders
