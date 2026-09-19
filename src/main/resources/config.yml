@@ -338,10 +338,19 @@
       # /spawn e /setspawn (da venrix-utils): teleport ritardato con countdown
       # in action bar, annullato se ti muovi, piu' teleport dei nuovi player allo spawn.
       enabled: true
+      # Permessi: smplibrary.spawn.set (default: op) per /setspawn, e
+      # smplibrary.spawn.bypass (default: nessuno) per saltare attesa e controllo movimento.
+      # Un teleport gia' partito viene annullato se il player entra in combat.
       delay: 5                   # secondi di attesa prima del teleport (0 = istantaneo)
       cancel-on-move: true       # muoversi annulla il teleport in corso
       max-move-distance: 0.5     # blocchi di tolleranza prima che conti come movimento
       teleport-new-players: true # i player al primo join vanno allo spawn (se impostato)
+      # Alla morte si rinasce allo spawn invece che alle coordinate di spawn vanilla del
+      # mondo. Letto e respawn anchor hanno comunque la precedenza: chi ha dormito rinasce
+      # al letto, e ci finisce solo chi non ne ha uno valido (mai dormito, letto rotto o
+      # ostruito). Se lo spawn non e' impostato, o il suo mondo non e' caricato, non si
+      # tocca niente. Vale anche per chi torna dall'End.
+      respawn-at-spawn: true
       # Suoni stile chatgames (type accetta 'entity.enderman.teleport' o 'ENTITY_ENDERMAN_TELEPORT).
       sounds:
         teleport:
@@ -367,7 +376,11 @@
       enabled: true
       combat-time: 15        # secondi di tag dopo l'ultimo danno
       kill-on-quit: true     # uscire in combat uccide (come da combat log)
-      kill-on-rejoin: true   # chi esce in combat muore al rientro (persiste al restart)
+      # Rete di sicurezza: vale quando kill-on-quit e' false, o quando la morte all'uscita
+      # non e' applicabile (player gia' morto). Persiste in combat-loggers.yml, quindi non
+      # si perde al riavvio. Un riavvio del server NON conta come combat log: chi era solo
+      # taggato quando il server si e' fermato non viene punito.
+      kill-on-rejoin: true   # chi sfugge alla morte all'uscita muore al rientro
       block-ender-chest: true
       # Quali danni taggano: attacchi diretti, end crystal e respawn anchor.
       triggers:
@@ -388,6 +401,8 @@
 
     nightvision:
       # /nv (da venrix-utils): visione notturna infinita che sopravvive a latte e respawn.
+      # Permessi: smplibrary.nightvision.use (default: tutti) per la propria, e
+      # smplibrary.nightvision.others (default: op) per usarla su un altro player.
       enabled: true
       amplifier: 0        # 0 = livello I
       duration-ticks: -1  # -1 = infinita
@@ -437,6 +452,103 @@
       # /discord, /vote e /store (da venrix-utils): una riga MiniMessage ciascuno,
       # scritta in messages.yml (discord/vote/store) cosi' i link restano cliccabili.
       enabled: true
+
+    ggwave:
+      # ONDA DI GG. Quando MineStore annuncia un acquisto parte un'onda: per
+      # <duration-seconds> ogni "gg" scritto in chat esce colorato, con un colore
+      # DIVERSO per ogni player, un suono che sale a ogni gg e un riepilogo alla fine.
+      #
+      # Niente da cambiare lato MineStore: il comando che lo store lancia gia' oggi
+      #   lbans broadcast &2&lSTORE &f&l» &a{username} &fha appena supportato il server.
+      # viene intercettato cosi' com'e'.
+      #
+      # La chat viene riscritta tramite ZelChat quando il plugin c'e' (l'onda si registra
+      # come modulo ZelChat, quindi prefissi e gradi restano quelli del server). Senza
+      # ZelChat viene usato AsyncChatEvent: stesso risultato, senza integrazione col format.
+      enabled: true
+      # Quanto dura un'onda. Un secondo acquisto mentre l'onda e' in corso la fa ripartire
+      # da capo invece di interromperla.
+      duration-seconds: 30
+      # Lo stesso acquisto puo' essere visto due volte (prima come comando, poi come
+      # broadcast): entro questi secondi un trigger con lo stesso nome viene ignorato.
+      trigger-cooldown-seconds: 5
+      # Titolo a schermo all'inizio dell'onda (testi in messages.yml: gg-wave.title /
+      # gg-wave.subtitle). Cancella quelle due chiavi per non mostrarlo.
+      title: true
+      # true  = un solo gg per player fa salire il contatore e il suono (anti-spam)
+      # false = ogni singolo gg conta. Il colore viene applicato sempre, in entrambi i casi.
+      count-once-per-player: true
+
+      # Cosa fa partire l'onda. Sono regex applicate alla riga SENZA codici colore:
+      # "&2&lSTORE &f&l» &aPippo" arriva qui come "STORE » Pippo", quindi le regex
+      # descrivono il testo e non i colori (che puoi cambiare quando vuoi nello store).
+      # Il gruppo (?<username>...) e' il nome di chi ha comprato; se manca, l'onda parte
+      # lo stesso ma <player> nei messaggi resta vuoto.
+      triggers:
+        # Regex sul comando, qualunque sia il modo in cui viene lanciato: console, RCON,
+        # in-game o — ed e' il caso di MineStore — da un altro plugin.
+        commands:
+          - '(?i)^/?l(?:ite)?bans\s+broadcast\b.*?\bSTORE\b\s*»\s*(?<username>\S+)'
+        # Quali comandi tenere d'occhio nella command map. Serve perche' un plugin che lancia
+        # un comando con Bukkit.dispatchCommand NON genera nessun evento: senza questa lista
+        # l'onda partirebbe solo quando il comando lo scrive un umano. Il comando vero non
+        # viene toccato, gli viene solo messo un osservatore davanti che viene tolto allo
+        # spegnimento. Lista vuota = nessun aggancio (restano gli eventi qui sopra).
+        watch-commands:
+          - lbans
+          - litebans
+        # Ultima rete: l'annuncio riconosciuto dal testo, se non passa da un comando.
+        broadcasts:
+          - '(?i)\bSTORE\b\s*»\s*(?<username>\S+)\s+ha appena supportato'
+
+      # Cosa conta come "gg". Le parole vengono cercate intere, quindi un nick tipo
+      # GG_Master non viene colorato per sbaglio.
+      words:
+        - "gg"
+        - "ggs"
+        - "ggwp"
+        - "gege"
+      match-repeated-g: true   # colora anche gggg, GGGGGG...
+      # Per chi mastica le regex: se valorizzato, sostituisce words + match-repeated-g.
+      pattern: ""
+
+      # Uno stile per player: la lista viene mescolata a ogni onda e distribuita a giro,
+      # cosi' i primi player che scrivono gg prendono colori tutti diversi e ognuno si
+      # tiene il suo fino alla fine dell'onda. <gg> = il testo scritto davvero.
+      styles:
+        - '<gradient:#ff4d4d:#ffb020><bold><gg></bold></gradient>'
+        - '<gradient:#38f9d7:#43e97b><bold><gg></bold></gradient>'
+        - '<gradient:#a18cd1:#fbc2eb><bold><gg></bold></gradient>'
+        - '<gradient:#f6d365:#fda085><bold><gg></bold></gradient>'
+        - '<gradient:#4facfe:#00f2fe><bold><gg></bold></gradient>'
+        - '<gradient:#ff6a88:#ff99ac><bold><gg></bold></gradient>'
+        - '<gradient:#30cfd0:#330867><bold><gg></bold></gradient>'
+        - '<rainbow><bold><gg></bold></rainbow>'
+        - '<rainbow:!><bold><gg></bold></rainbow>'
+        - '<gradient:#f7ff00:#db36a4><bold><gg></bold></gradient>'
+
+      sounds:
+        # Inizio onda.
+        start:
+          type: entity.ender_dragon.growl
+          volume: 0.9
+          pitch: 1.2
+          enabled: true
+        # Un colpo a ogni gg: il pitch parte da qui e sale di pitch-step a ogni gg,
+        # fermandosi a pitch-max. E' quello che fa "salire" l'onda.
+        gg:
+          type: entity.experience_orb.pickup
+          volume: 0.8
+          pitch: 1.0
+          enabled: true
+        # Fine onda, insieme al riepilogo.
+        end:
+          type: ui.toast.challenge_complete
+          volume: 0.8
+          pitch: 1.0
+          enabled: true
+        pitch-step: 0.05
+        pitch-max: 2.0
 
     debug:
       # Sezione "Debug" della dashboard: errori del plugin, segnalazioni dei player

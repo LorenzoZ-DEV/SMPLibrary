@@ -168,6 +168,9 @@ night-vision:
   enabled-other-actionbar: '<green>NV attivata: <yellow><target>'
   disabled-other: '<prefix><red>Visione notturna disattivata per <yellow><target></yellow>.'
   disabled-other-actionbar: '<red>NV disattivata: <yellow><target>'
+  # Serve il permesso smplibrary.nightvision.others per usare /nv su qualcun altro.
+  no-permission-other: '<prefix><red>Non puoi cambiare la visione notturna di altri player.'
+  no-permission-other-actionbar: '<red>Permesso mancante.'
 streak:
   milestone: '<prefix><gold><player></gold> ha una <yellow>killstreak</yellow> di <red><streak></red>!'
   milestone-actionbar: '<gold><player> <yellow><streak> kill di fila!'
@@ -180,6 +183,20 @@ streak:
     25-actionbar: '<dark_red><player> <red>LEGGENDA <gold>25 kill!'
   ended: '<prefix><yellow><killer></yellow> ha fermato la killstreak di <red><victim></red> (<gold><streak></gold> kill).'
   ended-actionbar: '<yellow>Streak di <red><victim> <yellow>fermata!'
+# Onda di GG: parte dall'annuncio di acquisto dello store (MODULES.ggwave).
+# <player> = chi ha comprato, <seconds> = durata, <count> = gg scritti,
+# <players> = quanti player hanno scritto gg. Il colore dei gg NON si configura qui:
+# gli stili stanno in config.yml, sotto MODULES.ggwave.styles.
+gg-wave:
+  start: |-
+    <newline><gradient:#ffd43e:#ff8c2e><bold>GG WAVE</bold></gradient><newline><white><yellow><player></yellow> ha appena supportato il server!<newline><gray>Scrivi <gradient:#38f9d7:#43e97b><bold>gg</bold></gradient><gray> in chat per i prossimi <white><seconds></white>s.<newline>
+  start-actionbar: '<gradient:#ffd43e:#ff8c2e><bold>GG WAVE</bold></gradient> <dark_gray>»</dark_gray> <white>scrivi <bold>gg</bold>!'
+  # Titolo a schermo. Cancella queste due chiavi per non mostrarlo.
+  title: '<gradient:#ffd43e:#ff8c2e><bold>GG WAVE</bold></gradient>'
+  subtitle: '<white>grazie <yellow><player></yellow><gray>, scrivi gg!'
+  end: '<prefix><white>Onda finita: <gradient:#38f9d7:#43e97b><bold><count> gg</bold></gradient> <white>da <yellow><players></yellow> player. Grazie <yellow><player></yellow>!'
+  end-actionbar: '<gradient:#38f9d7:#43e97b><bold><count> gg</bold></gradient> <gray>da <players> player'
+  end-empty: '<prefix><gray>Onda finita senza un gg. Duro.'
 discord: "<color:#DE43FF><bold>D</bold></color><color:#D246FC><bold>I</bold></color><color:#C649FA><bold>S</bold></color><color:#BA4DF7><bold>C</bold></color><color:#AE50F4><bold>O</bold></color><color:#A253F2><bold>R</bold></color><color:#9656EF><bold>D</bold></color> <dark_gray>»</dark_gray> <white>Unisciti al nostro server per rimanere aggiornato su <color:#E56AFF>eventi</color><white>, </white><color:#E56AFF>giveaway</color><white> e </white><color:#E56AFF>aggiornamenti!</color> <click:open_url:'https://discord.gg/WpYwqtDEHe'><hover:show_text:'<gray>Clicca per aprire'><color:#9656EF><u>https://discord.gg/WpYwqtDEHe</u></color></hover></click>"
 vote: "<color:#6BFF9E><bold>V</bold></color><color:#57F78E><bold>O</bold></color><color:#42F07F><bold>T</bold></color><color:#2EE86F><bold>E</bold></color> <dark_gray>»</dark_gray> <white>Vota il nostro server e ricevi <color:#43FF8E>ricompense</color><white> e </white><color:#43FF8E>vantaggi esclusivi</color><white> ogni giorno!</white> <click:open_url:'https://minecraft-italia.net/lista/server/venrixmc'><hover:show_text:'<gray>Clicca per aprire'><color:#2EE86F><u>https://minecraft-italia.net/lista/server/venrixmc</u></color></hover></click>"
 store: "<color:#FFD43E><bold>S</bold></color><color:#FFC23A><bold>T</bold></color><color:#FFB036><bold>O</bold></color><color:#FF9E32><bold>R</bold></color><color:#FF8C2E><bold>E</bold></color> <dark_gray>»</dark_gray> <white>Sostieni il progetto e sblocca <color:#FFC23A>premi</color><white>, </white><color:#FFC23A>kits</color><white> e </white><color:#FFC23A>vantaggi unici!</color> <click:open_url:'https://store.venrixmc.uk/'><hover:show_text:'<gray>Clicca per aprire'><color:#FF8C2E><u>https://store.venrixmc.uk/</u></color></hover></click>"

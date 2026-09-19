@@ -2,6 +2,7 @@ package dev.lorenzzz.smplibrary.manager;
 
 import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
+import dev.lorenzzz.smplibrary.util.Mini;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
@@ -57,6 +58,8 @@ public final class MessagesManager implements Manager {
             C.warning("Could not read the bundled messages.yml: " + e.getMessage());
         }
         yaml = disk;
+        // The MiniMessage side keeps prepared texts keyed by message path; they are stale now.
+        Mini.invalidate();
     }
 
     // ------------------------------------------------------------------ reads

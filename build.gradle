@@ -69,6 +69,10 @@ repositories {
         url 'https://jitpack.io'                                        // VaultAPI, published nowhere else
         content { includeGroupByRegex 'com[.]github[.]MilkBowl.*' }
     }
+    maven {
+        url 'https://repo.pinodev.it/releases'                          // ZelChat API
+        content { includeGroupByRegex 'it[.]pino[.]zelchat.*' }
+    }
 }
 
 dependencies {
@@ -97,6 +101,14 @@ dependencies {
     // spark, for the live performance panel. Soft dependency: every reference to these
     // classes is confined to SparkBridge, which only loads when the plugin is installed.
     compileOnly 'me.lucko:spark-api:0.1-SNAPSHOT'
+    /*
+     * ZelChat, which owns chat formatting on this server. The gg wave edits the message
+     * ZelChat is about to send rather than printing its own line, so ranks and prefixes
+     * survive. Soft dependency like the rest: ZelChatBridge and ZelChatGgModule are the only
+     * classes naming it.pino types, and neither is loaded before the plugin is confirmed
+     * present — a server without ZelChat (or on the 1.x API) falls back to AsyncChatEvent.
+     */
+    compileOnly 'it.pino.zelchat:zelchat-api:2.0.0-pre-29'
 
     // Lombok — compile-time only, never shaded:
     compileOnly 'org.projectlombok:lombok:1.18.34'
