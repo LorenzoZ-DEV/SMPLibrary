@@ -1,5 +1,5 @@
 name: smp-library
-version: '1.13.20-1c6914e'
+version: '2.0.22-981e8bc'
 main: dev.lorenzzz.smplibrary.Smp_library
 api-version: '1.21'
 softdepend:
