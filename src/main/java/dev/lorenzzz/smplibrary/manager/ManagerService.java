@@ -1,7 +1,8 @@
 package dev.lorenzzz.smplibrary.manager;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
+import dev.lorenzzz.smplibrary.text.Text;
+import dev.lorenzzz.smplibrary.util.Log;
 import net.j4c0b3y.api.menu.MenuHandler;
 import org.bukkit.Bukkit;
 
@@ -60,7 +61,7 @@ public final class ManagerService implements Manager {
             try {
                 manager.enable();
             } catch (Exception e) {
-                C.error("Failed enabling " + manager.name() + ": " + e);
+                Log.error("Failed enabling " + manager.name() + ": " + e);
                 plugin.getLogger().log(java.util.logging.Level.SEVERE, "Manager start-up failure", e);
             }
         }
@@ -70,7 +71,7 @@ public final class ManagerService implements Manager {
         if (menuHandler == null) {
             menuHandler = new MenuHandler(plugin);
             menuHandler.setInventoryCreator((player, slots, title) ->
-                    Bukkit.createInventory(player, slots, C.mm(title)));
+                    Bukkit.createInventory(player, slots, Text.mini(title)));
         }
         return menuHandler;
     }
@@ -97,7 +98,7 @@ public final class ManagerService implements Manager {
             try {
                 manager.disable();
             } catch (Exception e) {
-                C.warning("Error disabling " + manager.name() + ": " + e);
+                Log.warning("Error disabling " + manager.name() + ": " + e);
             }
         }
         managers.clear();

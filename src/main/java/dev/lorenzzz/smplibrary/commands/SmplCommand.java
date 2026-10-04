@@ -9,7 +9,6 @@ import co.aikar.commands.annotation.Default;
 import co.aikar.commands.annotation.HelpCommand;
 import co.aikar.commands.annotation.Optional;
 import co.aikar.commands.annotation.Subcommand;
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.manager.ManagerService;
 import dev.lorenzzz.smplibrary.manager.ModuleManager;
@@ -22,6 +21,7 @@ import dev.lorenzzz.smplibrary.modules.debug.DebugModule;
 import dev.lorenzzz.smplibrary.modules.debug.ErrorStore;
 import dev.lorenzzz.smplibrary.modules.trivella.TrivellaModule;
 import dev.lorenzzz.smplibrary.modules.web.WebModule;
+import dev.lorenzzz.smplibrary.text.Chat;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
@@ -96,7 +96,7 @@ public final class SmplCommand extends BaseCommand {
     public void onHelp(CommandSender sender, CommandHelp help) {
         String version = plugin().getPluginMeta().getVersion();
         for (String line : HELP) {
-            C.send(sender, line.replace("%version%", version));
+            Chat.send(sender, line.replace("%version%", version));
         }
     }
 
@@ -111,15 +111,15 @@ public final class SmplCommand extends BaseCommand {
         managers.economy().reload();
         managers.modules().reload();
 
-        C.send(sender, "&aSMP-Library reloaded (config + messages + modules).");
+        Chat.send(sender, "&aSMP-Library reloaded (config + messages + modules).");
     }
 
     @Subcommand("modules")
     public void onModules(CommandSender sender) {
-        C.send(sender, "&d&lModules:");
+        Chat.send(sender, "&d&lModules:");
         ModuleManager modules = modules();
         for (Module module : modules.active()) {
-            C.send(sender, "&7- &f" + module.id() + " " + status(modules, module.id()));
+            Chat.send(sender, "&7- &f" + module.id() + " " + status(modules, module.id()));
         }
     }
 
@@ -132,20 +132,20 @@ public final class SmplCommand extends BaseCommand {
     public void onWebedit(CommandSender sender) {
         WebModule web = modules().module("web", WebModule.class);
         if (web == null || web.boundPort() == -1) {
-            C.send(sender, "&cWeb dashboard is not running. Check MODULES.web.enabled in config.yml.");
+            Chat.send(sender, "&cWeb dashboard is not running. Check MODULES.web.enabled in config.yml.");
             return;
         }
 
         String token = web.generateTempToken();
         if (token == null) {
-            C.send(sender, "&cFailed to generate access token.");
+            Chat.send(sender, "&cFailed to generate access token.");
             return;
         }
 
         String url = "http://" + reachableHost(web.boundHost()) + ":" + web.boundPort() + "/?token=" + token;
-        C.send(sender, "&d&lWeb Editor &8&l» &7Click the link below to access the dashboard:");
-        C.send(sender, "&9&n" + url);
-        C.send(sender, "&7Token expires in 5 minutes.");
+        Chat.send(sender, "&d&lWeb Editor &8&l» &7Click the link below to access the dashboard:");
+        Chat.send(sender, "&9&n" + url);
+        Chat.send(sender, "&7Token expires in 5 minutes.");
 
         if (sender instanceof Player player) {
             player.sendMessage(Component.text("§d⬇  §fClick here to open the Web Dashboard  §d⬇")
@@ -171,19 +171,19 @@ public final class SmplCommand extends BaseCommand {
         DebugModule debug = debugModule(sender);
         if (debug == null) return;
 
-        C.send(sender, "&d&lDebug &8» &7errori catturati: &f" + debug.errors().size()
+        Chat.send(sender, "&d&lDebug &8» &7errori catturati: &f" + debug.errors().size()
                 + " &7(occorrenze totali: &f" + debug.errors().totalOccurrences() + "&7)");
-        C.send(sender, "&7Segnalazioni aperte: &f" + debug.reports().openCount()
+        Chat.send(sender, "&7Segnalazioni aperte: &f" + debug.reports().openCount()
                 + "&7/&f" + debug.reports().size());
-        C.send(sender, "&7AI: " + (debug.aiConfigured() ? "&aconfigurata" : "&cnon configurata")
+        Chat.send(sender, "&7AI: " + (debug.aiConfigured() ? "&aconfigurata" : "&cnon configurata")
                 + (debug.analysing() ? " &e(analisi in corso)" : ""));
 
         int shown = 0;
         for (ErrorStore.Entry entry : debug.errors().recent()) {
             if (shown++ >= 5) break;
-            C.send(sender, "&8» &c" + entry.headline() + " &8x" + entry.count());
+            Chat.send(sender, "&8» &c" + entry.headline() + " &8x" + entry.count());
         }
-        C.send(sender, "&7Usa &f/smpl debug analyze [domanda] &7per l'analisi AI, "
+        Chat.send(sender, "&7Usa &f/smpl debug analyze [domanda] &7per l'analisi AI, "
                 + "&f/smpl debug clear&7, &f/smpl debug notify&7.");
     }
 
@@ -194,15 +194,15 @@ public final class SmplCommand extends BaseCommand {
         if (debug == null) return;
 
         if (!debug.aiConfigured()) {
-            C.send(sender, "&cNessuna API key: imposta la variabile d'ambiente DEEPSEEK_API_KEY "
+            Chat.send(sender, "&cNessuna API key: imposta la variabile d'ambiente DEEPSEEK_API_KEY "
                     + "oppure MODULES.debug.ai.api-key in config.yml.");
             return;
         }
         if (!debug.analyze(question, sender.getName())) {
-            C.send(sender, "&eUn'analisi e' gia' in corso. Attendi che finisca.");
+            Chat.send(sender, "&eUn'analisi e' gia' in corso. Attendi che finisca.");
             return;
         }
-        C.send(sender, "&7Analisi avviata. Il risultato arriva nella sezione &fDebug &7della "
+        Chat.send(sender, "&7Analisi avviata. Il risultato arriva nella sezione &fDebug &7della "
                 + "dashboard, e ti avviso in chat quando e' pronta.");
     }
 
@@ -213,17 +213,17 @@ public final class SmplCommand extends BaseCommand {
 
         DebugModule.Analysis analysis = debug.lastAnalysis();
         if (analysis == null) {
-            C.send(sender, "&7Nessuna analisi ancora eseguita.");
+            Chat.send(sender, "&7Nessuna analisi ancora eseguita.");
             return;
         }
         if (!analysis.ok()) {
-            C.send(sender, "&cUltima analisi fallita: &7" + analysis.error());
+            Chat.send(sender, "&cUltima analisi fallita: &7" + analysis.error());
             return;
         }
-        C.send(sender, "&d&lAnalisi del &f" + analysis.formattedAt()
+        Chat.send(sender, "&d&lAnalisi del &f" + analysis.formattedAt()
                 + " &8(&7richiesta da " + analysis.requester() + "&8)");
         for (String line : analysis.text().split("\\R")) {
-            C.send(sender, line.startsWith("#") ? "&d&l" + line.replace("#", "").trim() : "&7" + line);
+            Chat.send(sender, line.startsWith("#") ? "&d&l" + line.replace("#", "").trim() : "&7" + line);
         }
     }
 
@@ -245,18 +245,18 @@ public final class SmplCommand extends BaseCommand {
             } else {
                 result = dev.lorenzzz.smplibrary.modules.debug.BugFixer.apply(plugin(), topic);
             }
-            C.send(sender, "&5&lSMPCORE BUG FIXXER &8» &7fix live: &f" + result.appliedLive()
+            Chat.send(sender, "&5&lSMPCORE BUG FIXXER &8» &7fix live: &f" + result.appliedLive()
                     + " &7file: &f" + result.appliedFile()
                     + (result.backups().isEmpty() ? "" : " &8(backup: " + String.join(", ", result.backups()) + "&8)"));
             if (result.restartScheduled()) {
-                C.send(sender, "&5&lSMPCORE BUG FIXXER: &fRiavvio per sistemare il bug su &d" + topic);
+                Chat.send(sender, "&5&lSMPCORE BUG FIXXER: &fRiavvio per sistemare il bug su &d" + topic);
             } else if (result.appliedLive() == 0 && result.appliedFile() == 0) {
-                C.send(sender, "&aNessun fix automatico da applicare. Vedi i passi manuali sotto.");
+                Chat.send(sender, "&aNessun fix automatico da applicare. Vedi i passi manuali sotto.");
             } else {
-                C.send(sender, "&aFix applicato live, nessun restart necessario.");
+                Chat.send(sender, "&aFix applicato live, nessun restart necessario.");
             }
             for (String manual : result.manualLeft()) {
-                C.send(sender, "&e" + manual);
+                Chat.send(sender, "&e" + manual);
             }
             return;
         }
@@ -264,11 +264,11 @@ public final class SmplCommand extends BaseCommand {
         // --- regen: forza un nuovo piano AI per l'ultima analisi ---
         if (arg != null && arg.equalsIgnoreCase("regen")) {
             if (debug.requestFixPlan(sender.getName())) {
-                C.send(sender, "&7Nuovo piano fix in generazione, riprova tra qualche secondo.");
+                Chat.send(sender, "&7Nuovo piano fix in generazione, riprova tra qualche secondo.");
             } else if (debug.planningFix()) {
-                C.send(sender, "&ePiano fix gia' in generazione, attendi.");
+                Chat.send(sender, "&ePiano fix gia' in generazione, attendi.");
             } else {
-                C.send(sender, "&cServe prima un'analisi valida: &f/smpl debug analyze [problema]");
+                Chat.send(sender, "&cServe prima un'analisi valida: &f/smpl debug analyze [problema]");
             }
             return;
         }
@@ -285,22 +285,22 @@ public final class SmplCommand extends BaseCommand {
         DebugModule.Analysis analysis = debug.lastAnalysis();
         if (analysis == null || !analysis.ok()) {
             showFixes(sender, local, "controlli locali");
-            C.send(sender, "&7Per un piano sul tuo problema: &f/smpl debug analyze [problema] &7poi &f/smpl debug fix&7.");
+            Chat.send(sender, "&7Per un piano sul tuo problema: &f/smpl debug analyze [problema] &7poi &f/smpl debug fix&7.");
             return;
         }
         if (debug.planningFix()) {
             showFixes(sender, local, "controlli locali");
-            C.send(sender, "&ePiano fix AI in generazione, riprova tra qualche secondo.");
+            Chat.send(sender, "&ePiano fix AI in generazione, riprova tra qualche secondo.");
             return;
         }
         if (!debug.fixPlanCurrent()) {
             if (debug.requestFixPlan(sender.getName())) {
                 showFixes(sender, local, "controlli locali");
-                C.send(sender, "&7Piano fix AI in generazione dall'ultima analisi, riprova tra qualche secondo.");
+                Chat.send(sender, "&7Piano fix AI in generazione dall'ultima analisi, riprova tra qualche secondo.");
             } else {
                 showFixes(sender, local, "controlli locali");
                 if (!debug.fixPlanError().isEmpty()) {
-                    C.send(sender, "&cPiano fix fallito: &7" + debug.fixPlanError());
+                    Chat.send(sender, "&cPiano fix fallito: &7" + debug.fixPlanError());
                 }
             }
             return;
@@ -316,20 +316,20 @@ public final class SmplCommand extends BaseCommand {
             java.util.List<dev.lorenzzz.smplibrary.modules.debug.BugFixer.Fix> fixes, String title) {
         long auto = fixes.stream().filter(f -> !f.manual()).count();
         if (auto == 0) {
-            C.send(sender, "&aNessun fix automatico (" + title + ").");
+            Chat.send(sender, "&aNessun fix automatico (" + title + ").");
         } else {
-            C.send(sender, "&5&lSMPCORE BUG FIXXER &8» &7anteprima " + title + " (" + auto + " auto + "
+            Chat.send(sender, "&5&lSMPCORE BUG FIXXER &8» &7anteprima " + title + " (" + auto + " auto + "
                     + (fixes.size() - auto) + " manuali):");
             for (dev.lorenzzz.smplibrary.modules.debug.BugFixer.Fix fix : fixes) {
                 if (!fix.manual()) {
-                    C.send(sender, "&d[auto] &f" + fix.description());
+                    Chat.send(sender, "&d[auto] &f" + fix.description());
                 }
             }
-            C.send(sender, "&7Applica con &f/smpl debug fix confirm &7— backup .bak, "
+            Chat.send(sender, "&7Applica con &f/smpl debug fix confirm &7— backup .bak, "
                     + "restart (10s + broadcast) solo se un file lo richiede.");
         }
         for (dev.lorenzzz.smplibrary.modules.debug.BugFixer.Fix fix : fixes) {
-            if (fix.manual()) C.send(sender, "&e" + fix.description());
+            if (fix.manual()) Chat.send(sender, "&e" + fix.description());
         }
     }
 
@@ -338,7 +338,7 @@ public final class SmplCommand extends BaseCommand {
         DebugModule debug = debugModule(sender);
         if (debug == null) return;
         debug.clearErrors();
-        C.send(sender, "&aErrori catturati azzerati.");
+        Chat.send(sender, "&aErrori catturati azzerati.");
     }
 
     @Subcommand("debug notify")
@@ -346,17 +346,17 @@ public final class SmplCommand extends BaseCommand {
         DebugModule debug = debugModule(sender);
         if (debug == null) return;
         if (!(sender instanceof Player player)) {
-            C.send(sender, "&cSolo un player puo' cambiare le proprie notifiche.");
+            Chat.send(sender, "&cSolo un player puo' cambiare le proprie notifiche.");
             return;
         }
         boolean on = debug.toggleNotifications(player.getUniqueId());
-        C.send(sender, on ? "&aNotifiche di debug attivate." : "&7Notifiche di debug silenziate.");
+        Chat.send(sender, on ? "&aNotifiche di debug attivate." : "&7Notifiche di debug silenziate.");
     }
 
     private DebugModule debugModule(CommandSender sender) {
         DebugModule debug = modules().module("debug", DebugModule.class);
         if (debug == null) {
-            C.send(sender, "&cIl modulo debug non e' in esecuzione (MODULES.debug.enabled).");
+            Chat.send(sender, "&cIl modulo debug non e' in esecuzione (MODULES.debug.enabled).");
         }
         return debug;
     }
@@ -365,15 +365,15 @@ public final class SmplCommand extends BaseCommand {
     public void onChatGamesStart(CommandSender sender) {
         ChatGamesModule chatGames = modules().module("chatgames", ChatGamesModule.class);
         if (chatGames == null) {
-            C.send(sender, "&cchatgames module is not running.");
+            Chat.send(sender, "&cchatgames module is not running.");
             return;
         }
         ChatGameType started = chatGames.startRound();
         if (started == null) {
-            C.send(sender, "&cNo game type has usable data — check words / trivia.questions in config.yml.");
+            Chat.send(sender, "&cNo game type has usable data — check words / trivia.questions in config.yml.");
             return;
         }
-        C.send(sender, "&aStarted a &f" + started.name() + " &around.");
+        Chat.send(sender, "&aStarted a &f" + started.name() + " &around.");
     }
 
     // ------------------------------------------------------------ tool giving
@@ -386,17 +386,17 @@ public final class SmplCommand extends BaseCommand {
 
         AmethystToolModule module = modules().module("amethyst-tool", AmethystToolModule.class);
         if (module == null) {
-            C.send(sender, "&camethyst-tool module is not running.");
+            Chat.send(sender, "&camethyst-tool module is not running.");
             return;
         }
 
         ItemStack item = module.buildAmethyst(tool);
         if (item == null) {
-            C.send(sender, messages("amethyst-tool.unknown", Map.of("%tool%", tool)));
+            Chat.send(sender, messages("amethyst-tool.unknown", Map.of("%tool%", tool)));
             return;
         }
         give(target, item);
-        C.send(sender, messages("amethyst-tool.given", Map.of("%tool%", tool, "%player%", target.getName())));
+        Chat.send(sender, messages("amethyst-tool.given", Map.of("%tool%", tool, "%player%", target.getName())));
     }
 
     @Subcommand("adaptive give")
@@ -420,28 +420,28 @@ public final class SmplCommand extends BaseCommand {
 
         T module = modules().module(moduleId, type);
         if (module == null) {
-            C.send(sender, "&c" + moduleId + " module is not running.");
+            Chat.send(sender, "&c" + moduleId + " module is not running.");
             return;
         }
 
         ItemStack item = builder.apply(module);
         if (item == null) {
-            C.send(sender, "&c" + label + " is not configured.");
+            Chat.send(sender, "&c" + label + " is not configured.");
             return;
         }
         give(target, item);
-        C.send(sender, "&dGave the &5" + label + " &dto &f" + target.getName() + "&d.");
+        Chat.send(sender, "&dGave the &5" + label + " &dto &f" + target.getName() + "&d.");
     }
 
     /** The named player, or the sender when no name was given. Reports the problem itself. */
     private static Player resolveTarget(CommandSender sender, String targetName) {
         if (targetName == null || targetName.isBlank()) {
             if (sender instanceof Player player) return player;
-            C.send(sender, "&cSpecify a player: ... give <tool> <player>");
+            Chat.send(sender, "&cSpecify a player: ... give <tool> <player>");
             return null;
         }
         Player target = Bukkit.getPlayerExact(targetName);
-        if (target == null) C.send(sender, "&cPlayer not found: " + targetName);
+        if (target == null) Chat.send(sender, "&cPlayer not found: " + targetName);
         return target;
     }
 

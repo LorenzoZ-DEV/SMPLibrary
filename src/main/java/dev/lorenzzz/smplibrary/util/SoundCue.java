@@ -1,6 +1,6 @@
 package dev.lorenzzz.smplibrary.util;
 
-import dev.lorenzzz.smplibrary.C;
+import dev.lorenzzz.smplibrary.util.Log;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
@@ -32,7 +32,7 @@ public record SoundCue(Sound sound, float volume, float pitch) {
         String configured = section.getString("type");
         Sound sound = configured == null || configured.isBlank() ? fallback.sound() : resolve(configured);
         if (sound == null) {
-            C.warning("Unknown sound '" + configured + "', keeping the default.");
+            Log.warning("Unknown sound '" + configured + "', keeping the default.");
             sound = fallback.sound();
         }
         return new SoundCue(sound,
@@ -45,7 +45,7 @@ public record SoundCue(Sound sound, float volume, float pitch) {
         Sound sound = resolve(key);
         if (sound == null) {
             // A built-in default that doesn't resolve would just be silent forever — say so.
-            C.warning("Built-in sound '" + key + "' is not in this server's registry; that cue will be silent.");
+            Log.warning("Built-in sound '" + key + "' is not in this server's registry; that cue will be silent.");
         }
         return new SoundCue(sound, volume, pitch);
     }

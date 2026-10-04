@@ -1,8 +1,10 @@
 package dev.lorenzzz.smplibrary.manager;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
-import dev.lorenzzz.smplibrary.util.Mini;
+import dev.lorenzzz.smplibrary.text.Chat;
+import dev.lorenzzz.smplibrary.text.Placeholders;
+import dev.lorenzzz.smplibrary.text.Text;
+import dev.lorenzzz.smplibrary.util.Log;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
@@ -16,7 +18,7 @@ import java.io.InputStreamReader;
 import java.util.Map;
 
 /**
- * Reads messages.yml and resolves paths through {@link C} (color + placeholders).
+ * Reads messages.yml and resolves paths through {@link Text} and {@link Placeholders}.
  * Keys missing from the user's file fall back to the bundled defaults, so a new
  * message never shows up blank after an update.
  */
@@ -55,11 +57,11 @@ public final class MessagesManager implements Manager {
                 }
             }
         } catch (IOException e) {
-            C.warning("Could not read the bundled messages.yml: " + e.getMessage());
+            Log.warning("Could not read the bundled messages.yml: " + e.getMessage());
         }
         yaml = disk;
-        // The MiniMessage side keeps prepared texts keyed by message path; they are stale now.
-        Mini.invalidate();
+        // Rendered lines of the previous file would otherwise sit in the cache until evicted.
+        Text.clearCache();
     }
 
     // ------------------------------------------------------------------ reads
@@ -74,12 +76,12 @@ public final class MessagesManager implements Manager {
 
     /** Static + colored, no PAPI. */
     public String get(String path, Map<String, ?> placeholders) {
-        return C.color(C.replace(raw(path), placeholders));
+        return Text.color(Placeholders.apply(raw(path), placeholders));
     }
 
     /** Static + player PAPI + colored. */
     public Component component(String path, Player player, Map<String, ?> placeholders) {
-        return C.parse(raw(path), player, placeholders);
+        return Text.legacy(Placeholders.apply(raw(path), player, placeholders));
     }
 
     // ------------------------------------------------------------------ sends
@@ -87,21 +89,21 @@ public final class MessagesManager implements Manager {
     public void send(CommandSender target, String path, Map<String, ?> placeholders) {
         String message = raw(path);
         if (message.isEmpty()) return;
-        target.sendMessage(C.parse(message, target instanceof Player p ? p : null, placeholders));
+        target.sendMessage(Text.legacy(Placeholders.apply(message, target instanceof Player p ? p : null, placeholders)));
     }
 
     /** Sends the same text to chat and to the action bar. */
     public void sendBoth(Player target, String path, Map<String, ?> placeholders) {
         String message = raw(path);
         if (message.isEmpty()) return;
-        C.sendChatAndAction(target, C.mm(C.replace(message, placeholders)));
+        Chat.sendBoth(target, Text.mini(Placeholders.apply(message, placeholders)));
     }
 
     /** Action bar only — silently skipped when the key is absent or blank. */
     public void actionBar(Player target, String path, Map<String, ?> placeholders) {
         String message = raw(path);
         if (message.isEmpty()) return;
-        target.sendActionBar(C.mm(C.replace(message, target, placeholders)));
+        target.sendActionBar(Text.mini(Placeholders.apply(message, target, placeholders)));
     }
 
     /**
@@ -129,31 +131,21 @@ public final class MessagesManager implements Manager {
      * action bar still renders the action bar once.
      */
     public void broadcast(String path, Map<String, ?> placeholders) {
-        String chat = C.replace(raw(path), placeholders);
-        String bar = C.replace(raw(path + ACTION_BAR_SUFFIX), placeholders);
+        String chat = Placeholders.apply(raw(path), placeholders);
+        String bar = Placeholders.apply(raw(path + ACTION_BAR_SUFFIX), placeholders);
         if (chat.isEmpty() && bar.isEmpty()) return;
 
         // Null means "this one has to be built per player".
-        Component sharedChat = personal(chat) ? null : C.component(chat);
-        Component sharedBar = personal(bar) ? null : C.mm(bar);
+        Component sharedChat = Placeholders.needsPlayer(chat) ? null : Text.legacy(chat);
+        Component sharedBar = Placeholders.needsPlayer(bar) ? null : Text.mini(bar);
 
         for (Player player : Bukkit.getOnlinePlayers()) {
             if (!chat.isEmpty()) {
-                player.sendMessage(sharedChat != null ? sharedChat : C.parse(chat, player, null));
+                player.sendMessage(sharedChat != null ? sharedChat : Text.legacy(Placeholders.apply(chat, player, null)));
             }
             if (!bar.isEmpty()) {
-                player.sendActionBar(sharedBar != null ? sharedBar : C.mm(C.replace(bar, player, null)));
+                player.sendActionBar(sharedBar != null ? sharedBar : Text.mini(Placeholders.apply(bar, player, null)));
             }
         }
-    }
-
-    /**
-     * Whether the text still needs a player to be resolved. A leftover {@code %} is the only
-     * signal PlaceholderAPI gives us, so this errs on the side of caution: a false positive costs
-     * one broadcast the shared-component path, a false negative would send everyone the first
-     * player's numbers.
-     */
-    private static boolean personal(String text) {
-        return !text.isEmpty() && C.papiEnabled() && text.indexOf('%') >= 0;
     }
 }

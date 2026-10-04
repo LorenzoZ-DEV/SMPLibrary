@@ -1,6 +1,6 @@
 package dev.lorenzzz.smplibrary.manager;
 
-import dev.lorenzzz.smplibrary.C;
+import dev.lorenzzz.smplibrary.util.Log;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -76,7 +76,7 @@ public final class ConfigUpdater {
         try (InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             bundled = YamlConfiguration.loadConfiguration(reader);
         } catch (IOException e) {
-            C.warning("config.yml: impossibile leggere quello del jar (" + e.getMessage() + ")");
+            Log.warning("config.yml: impossibile leggere quello del jar (" + e.getMessage() + ")");
             return;
         }
 
@@ -84,7 +84,7 @@ public final class ConfigUpdater {
         try {
             result = merge(file, bundled);
         } catch (IOException e) {
-            C.warning("config.yml: aggiornamento non riuscito (" + e.getMessage()
+            Log.warning("config.yml: aggiornamento non riuscito (" + e.getMessage()
                     + "). Le impostazioni nuove restano ai valori di default.");
             return;
         }
@@ -94,7 +94,7 @@ public final class ConfigUpdater {
         plugin.reloadConfig();
 
         if (result.migratedModel()) {
-            C.warning("config.yml: " + MODEL_PATH + " era \"" + result.migratedModelFrom()
+            Log.warning("config.yml: " + MODEL_PATH + " era \"" + result.migratedModelFrom()
                     + "\", un modello a consumo sul provider attuale. Impostato su \""
                     + result.migratedModelTo() + "\" (gratuito). Rimettilo a mano se volevi "
                     + "davvero quello a pagamento.");
@@ -102,7 +102,7 @@ public final class ConfigUpdater {
         List<String> added = result.added();
         if (!added.isEmpty()) {
             List<String> shown = added.size() > 6 ? added.subList(0, 6) : added;
-            C.info("config.yml aggiornato: " + added.size()
+            Log.info("config.yml aggiornato: " + added.size()
                     + (added.size() == 1 ? " impostazione nuova" : " impostazioni nuove")
                     + " (" + String.join(", ", shown) + (added.size() > 6 ? ", …" : "")
                     + "). Copia del precedente in " + BACKUP_NAME + ".");

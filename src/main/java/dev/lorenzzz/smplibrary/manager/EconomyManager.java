@@ -1,7 +1,8 @@
 package dev.lorenzzz.smplibrary.manager;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
+import dev.lorenzzz.smplibrary.text.Placeholders;
+import dev.lorenzzz.smplibrary.util.Log;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
@@ -73,7 +74,7 @@ public final class EconomyManager implements Manager {
         try {
             Object zEssentials = Bukkit.getPluginManager().getPlugin("zEssentials");
             if (zEssentials == null) {
-                C.info("zEssentials not present — economy falls back to console /eco commands.");
+                Log.info("zEssentials not present — economy falls back to console /eco commands.");
                 return;
             }
 
@@ -92,15 +93,15 @@ public final class EconomyManager implements Manager {
             // Without a way to resolve an Economy instance the typed methods are unusable.
             if (getEconomy == null && getDefaultEconomy == null) {
                 reset();
-                C.warning("zEssentials economy API changed — falling back to console /eco commands.");
+                Log.warning("zEssentials economy API changed — falling back to console /eco commands.");
                 return;
             }
 
             zEconomyManager = manager;
-            C.info("Economy hooked to zEssentials (currency: '" + defaultCurrency + "').");
+            Log.info("Economy hooked to zEssentials (currency: '" + defaultCurrency + "').");
         } catch (Exception e) {
             reset();
-            C.warning("Could not hook zEssentials economy (" + e.getClass().getSimpleName()
+            Log.warning("Could not hook zEssentials economy (" + e.getClass().getSimpleName()
                     + ") — falling back to console /eco commands.");
         }
     }
@@ -171,10 +172,10 @@ public final class EconomyManager implements Manager {
                 Object result = method.invoke(zEconomyManager, player.getUniqueId(),
                         economyOrWarn(currency), BigDecimal.valueOf(amount));
                 if (result instanceof Boolean ok && ok) return true;
-                C.warning("Economy refused to " + ecoVerb + " " + amount + " " + currency + " for " + player.getName());
+                Log.warning("Economy refused to " + ecoVerb + " " + amount + " " + currency + " for " + player.getName());
                 return false;
             } catch (Exception e) {
-                C.warning("Economy failed to " + ecoVerb + " " + amount + " " + currency
+                Log.warning("Economy failed to " + ecoVerb + " " + amount + " " + currency
                         + " for " + player.getName() + ": " + e.getMessage());
                 return false;
             }
@@ -221,13 +222,13 @@ public final class EconomyManager implements Manager {
             if (deposit(to, amount, currency)) return true;
 
             if (!deposit(from, amount, currency)) {
-                C.error("TRANSFER LOST " + plainAmount(amount) + " " + currency + ": taken from "
+                Log.error("TRANSFER LOST " + plainAmount(amount) + " " + currency + ": taken from "
                         + from.getName() + " (" + from.getUniqueId() + "), never credited to "
                         + to.getName() + " (" + to.getUniqueId() + "), and the refund failed too. "
                         + "Refund this by hand.");
                 return false;
             }
-            C.warning("Refunded " + plainAmount(amount) + " " + currency + " to " + from.getName()
+            Log.warning("Refunded " + plainAmount(amount) + " " + currency + " to " + from.getName()
                     + " after a failed transfer to " + to.getName() + ".");
             return false;
         }
@@ -244,7 +245,7 @@ public final class EconomyManager implements Manager {
             }
         }
         if (warnedCurrencies.add(currency)) {
-            C.warning("zEssentials economy '" + currency + "' not found — using the default economy. "
+            Log.warning("zEssentials economy '" + currency + "' not found — using the default economy. "
                     + "Check MODULES.shop.economy in config.yml.");
         }
         if (getDefaultEconomy != null) {
@@ -258,7 +259,7 @@ public final class EconomyManager implements Manager {
     }
 
     private double placeholderBalance(Player player) {
-        if (!C.papiEnabled()) return 0;
+        if (!Placeholders.papiEnabled()) return 0;
         String parsed = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, BALANCE_PLACEHOLDER);
         try {
             return Double.parseDouble(parsed);

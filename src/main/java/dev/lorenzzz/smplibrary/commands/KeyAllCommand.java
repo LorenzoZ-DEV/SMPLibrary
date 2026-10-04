@@ -5,9 +5,9 @@ import co.aikar.commands.annotation.CommandAlias;
 import co.aikar.commands.annotation.CommandPermission;
 import co.aikar.commands.annotation.Default;
 import co.aikar.commands.annotation.Description;
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.keyall.KeyAllModule;
+import dev.lorenzzz.smplibrary.text.Chat;
 import org.bukkit.command.CommandSender;
 
 import java.util.Map;
@@ -23,7 +23,7 @@ public final class KeyAllCommand extends BaseCommand {
         Smp_library plugin = Smp_library.getInstance();
         KeyAllModule module = plugin.getManagers().modules().module("keyall", KeyAllModule.class);
         if (module == null) {
-            C.send(sender, "&cKeyAll module is disabled.");
+            Chat.send(sender, "&cKeyAll module is disabled.");
             return;
         }
 

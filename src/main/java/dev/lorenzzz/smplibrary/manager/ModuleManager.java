@@ -1,6 +1,5 @@
 package dev.lorenzzz.smplibrary.manager;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.Module;
 import dev.lorenzzz.smplibrary.modules.combat.CombatModule;
@@ -28,6 +27,7 @@ import dev.lorenzzz.smplibrary.modules.streak.StreakModule;
 import dev.lorenzzz.smplibrary.modules.tpauto.TpAutoModule;
 import dev.lorenzzz.smplibrary.modules.trivella.TrivellaModule;
 import dev.lorenzzz.smplibrary.modules.web.WebModule;
+import dev.lorenzzz.smplibrary.util.Log;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 
@@ -161,10 +161,10 @@ public final class ModuleManager implements Manager {
             module.bind(managers);
             module.onEnable();
             running.add(id);
-            C.info("Module '" + id + "' enabled.");
+            Log.info("Module '" + id + "' enabled.");
             return true;
         } catch (Exception e) {
-            C.warning("Error loading module '" + id + "': " + e.getMessage());
+            Log.warning("Error loading module '" + id + "': " + e.getMessage());
             plugin.getLogger().log(Level.WARNING, "Module '" + id + "' failed to start", e);
             return false;
         }
@@ -176,9 +176,9 @@ public final class ModuleManager implements Manager {
         if (module == null || !running.remove(id)) return;
         try {
             module.onDisable();
-            C.info("Module '" + id + "' disabled.");
+            Log.info("Module '" + id + "' disabled.");
         } catch (Exception e) {
-            C.warning("Error disabling module '" + id + "': " + e.getMessage());
+            Log.warning("Error disabling module '" + id + "': " + e.getMessage());
         }
     }
 
@@ -203,12 +203,12 @@ public final class ModuleManager implements Manager {
             ConfigurationSection bundledSection = bundled == null ? null : bundled.getConfigurationSection(path);
             if (bundledSection != null) {
                 plugin.getConfig().set(path, bundledSection.getValues(true));
-                C.info("Auto-added config section for module '" + module.id() + "'");
+                Log.info("Auto-added config section for module '" + module.id() + "'");
             } else {
                 for (Map.Entry<String, Object> entry : module.defaults().entrySet()) {
                     plugin.getConfig().set(path + "." + entry.getKey(), entry.getValue());
                 }
-                C.info("Auto-added default config for module '" + module.id() + "'");
+                Log.info("Auto-added default config for module '" + module.id() + "'");
             }
             changed = true;
         }

@@ -1,7 +1,7 @@
 package dev.lorenzzz.smplibrary.manager;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
+import dev.lorenzzz.smplibrary.util.Log;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -89,7 +89,7 @@ public final class ToggleManager implements Manager, Listener {
         // On /reload the players are already online: no join event is coming for them.
         for (Player online : Bukkit.getOnlinePlayers()) whenLoaded(online.getUniqueId(), () -> {});
 
-        C.info("Player toggles stored on " + backend() + ".");
+        Log.info("Player toggles stored on " + backend() + ".");
     }
 
     @Override
@@ -153,7 +153,7 @@ public final class ToggleManager implements Manager, Listener {
                 while (rows.next()) states.put(rows.getString(1), rows.getInt(2) != 0);
             }
         } catch (SQLException | RuntimeException e) {
-            C.warning("toggles: could not read the toggles of " + playerId + ": " + describe(e));
+            Log.warning("toggles: could not read the toggles of " + playerId + ": " + describe(e));
         }
         return states;
     }
@@ -205,7 +205,7 @@ public final class ToggleManager implements Manager, Listener {
                     insert.executeUpdate();
                 }
             } catch (SQLException | RuntimeException e) {
-                C.warning("toggles: could not store '" + key + "' for " + playerId + ": " + describe(e));
+                Log.warning("toggles: could not store '" + key + "' for " + playerId + ": " + describe(e));
             }
         });
     }
@@ -264,7 +264,7 @@ public final class ToggleManager implements Manager, Listener {
             try {
                 yaml.save(file);
             } catch (IOException e) {
-                C.warning("toggles: could not write " + FILE_PATH + ": " + e.getMessage());
+                Log.warning("toggles: could not write " + FILE_PATH + ": " + e.getMessage());
             }
         }
     }
@@ -295,7 +295,7 @@ public final class ToggleManager implements Manager, Listener {
             statement.execute();
             return true;
         } catch (SQLException | RuntimeException e) {
-            C.warning("toggles: database unavailable (" + describe(e) + ") — storing the toggles in "
+            Log.warning("toggles: database unavailable (" + describe(e) + ") — storing the toggles in "
                     + FILE_PATH + " instead.");
             return false;
         }

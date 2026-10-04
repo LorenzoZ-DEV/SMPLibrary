@@ -8,10 +8,10 @@ import co.aikar.commands.annotation.Default;
 import co.aikar.commands.annotation.Description;
 import co.aikar.commands.annotation.Single;
 import co.aikar.commands.annotation.Syntax;
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.pay.PayModule;
 import dev.lorenzzz.smplibrary.modules.pay.TransferResult;
+import dev.lorenzzz.smplibrary.text.Chat;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -43,13 +43,13 @@ public final class PayCommand extends BaseCommand {
     @Syntax("<player> <amount>")
     public void onPay(CommandSender sender, @Single String targetName, @Single String amountRaw) {
         if (!(sender instanceof Player player)) {
-            C.send(sender, "&cOnly players.");
+            Chat.send(sender, "&cOnly players.");
             return;
         }
 
         PayModule pay = Smp_library.getInstance().getManagers().modules().module("pay", PayModule.class);
         if (pay == null) {
-            C.send(sender, "&cPay module is disabled.");
+            Chat.send(sender, "&cPay module is disabled.");
             return;
         }
 

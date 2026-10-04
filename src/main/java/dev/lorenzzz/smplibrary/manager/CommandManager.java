@@ -1,18 +1,18 @@
 package dev.lorenzzz.smplibrary.manager;
 
 import co.aikar.commands.PaperCommandManager;
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.commands.KeyAllCommand;
 import dev.lorenzzz.smplibrary.commands.PayCommand;
 import dev.lorenzzz.smplibrary.commands.SmplCommand;
 import dev.lorenzzz.smplibrary.placeholders.LibraryPlaceholders;
+import dev.lorenzzz.smplibrary.text.Placeholders;
 import org.bukkit.Bukkit;
 
 import java.util.Locale;
 
 /**
- * Owns Aikar Commands (ACF) and wires the PlaceholderAPI toggle into {@link C}.
+ * Owns Aikar Commands (ACF) and wires the PlaceholderAPI toggle into {@link Placeholders}.
  * Modules register their own command classes through {@link #acf()}.
  */
 public final class CommandManager implements Manager {
@@ -37,8 +37,8 @@ public final class CommandManager implements Manager {
 
         acf.getLocales().setDefaultLocale(Locale.ITALIAN);
 
-        C.papi(Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null);
-        if (!C.papiEnabled()) {
+        Placeholders.setPapiEnabled(Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null);
+        if (!Placeholders.papiEnabled()) {
             plugin.getLogger().info("PlaceholderAPI not present — placeholders skipped.");
         } else {
             new LibraryPlaceholders().register();

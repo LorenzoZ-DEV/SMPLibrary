@@ -3,6 +3,8 @@ package dev.lorenzzz.smplibrary;
 import dev.lorenzzz.smplibrary.manager.ConfigUpdater;
 import dev.lorenzzz.smplibrary.manager.ManagerService;
 import dev.lorenzzz.smplibrary.manager.ModuleManager;
+import dev.lorenzzz.smplibrary.util.Banner;
+import dev.lorenzzz.smplibrary.util.Log;
 import lombok.Getter;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -15,7 +17,8 @@ public final class Smp_library extends JavaPlugin {
 
     @Override
     public void onLoad() {
-        C.logload();
+        Log.init(getLogger());
+        Banner.loading();
     }
 
     @Override
@@ -30,13 +33,12 @@ public final class Smp_library extends JavaPlugin {
         // sees options added by a later build. Merge them in before any module reads settings.
         ConfigUpdater.update(this);
 
-        C.info("&aEnabling smp-library...");
+        Log.info("&aEnabling smp-library...");
 
         this.managers = new ManagerService(this);
         managers.enable();
 
-        C.line();
-        C.logstart();
+        Banner.enabled();
     }
 
     @Override
@@ -45,7 +47,7 @@ public final class Smp_library extends JavaPlugin {
             managers.disable();
             managers = null;
         }
-        C.logstop();
+        Banner.disabled();
         instance = null;
     }
 

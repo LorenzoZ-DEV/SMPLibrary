@@ -1,7 +1,7 @@
 package dev.lorenzzz.smplibrary.manager;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
+import dev.lorenzzz.smplibrary.util.Log;
 import io.papermc.paper.dialog.Dialog;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
@@ -178,7 +178,7 @@ public final class DialogGuard implements Manager, Listener {
         // out of the server over a dialog their client may simply refuse to render.
         if (armed.reopens >= maxReopens) {
             pending.remove(id);
-            C.warning("DialogGuard: giving up on '" + armed.id + "' for " + player.getName()
+            Log.warning("DialogGuard: giving up on '" + armed.id + "' for " + player.getName()
                     + " after " + armed.reopens + " re-opens");
             tell(player, "dialog-guard.gave-up", Map.of());
             return;
