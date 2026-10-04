@@ -117,7 +117,7 @@ dependencies {
     // Shaded into our jar:
     implementation 'co.aikar:acf-paper:0.5.1-SNAPSHOT'                 // Aikar Commands (ACF)
     implementation 'com.zaxxer:HikariCP:5.1.0'                         // connection pool
-    implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'     // C.java color cache
+    implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'     // text.Text component caches
     implementation 'net.j4c0b3y:MenuAPI-core:1.5.5'                    // MenuAPI
     /*
      * SQLite driver, shipped rather than borrowed. StorageManager has always assumed the server
