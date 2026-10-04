@@ -1,6 +1,5 @@
 package dev.lorenzzz.smplibrary.modules;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.manager.CommandManager;
 import dev.lorenzzz.smplibrary.manager.DialogGuard;
@@ -9,6 +8,7 @@ import dev.lorenzzz.smplibrary.manager.ManagerService;
 import dev.lorenzzz.smplibrary.manager.MessagesManager;
 import dev.lorenzzz.smplibrary.manager.StorageManager;
 import dev.lorenzzz.smplibrary.manager.ToggleManager;
+import dev.lorenzzz.smplibrary.util.Log;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.event.HandlerList;
@@ -156,7 +156,7 @@ public abstract class AbstractModule implements Module {
         try {
             action.accept(item);
         } catch (Exception e) {
-            C.warning("Batched action failed for " + item + ": " + e.getMessage());
+            Log.warning("Batched action failed for " + item + ": " + e.getMessage());
         }
     }
 

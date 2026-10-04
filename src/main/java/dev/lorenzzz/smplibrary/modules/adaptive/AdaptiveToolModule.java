@@ -1,10 +1,11 @@
 package dev.lorenzzz.smplibrary.modules.adaptive;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.AbstractModule;
 import dev.lorenzzz.smplibrary.modules.ToolMeta;
 import dev.lorenzzz.smplibrary.modules.UseBatcher;
+import dev.lorenzzz.smplibrary.text.Text;
+import dev.lorenzzz.smplibrary.util.Log;
 import dev.lorenzzz.smplibrary.util.SoundCue;
 import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
 import org.bukkit.Color;
@@ -148,7 +149,7 @@ public final class AdaptiveToolModule extends AbstractModule implements Listener
             if (form == null) continue;
             Material material = Material.matchMaterial(form.getString("material", ""));
             if (material == null || material.isAir()) {
-                C.warning("adaptive-tool: bad material for form '" + key + "', skipping.");
+                Log.warning("adaptive-tool: bad material for form '" + key + "', skipping.");
                 continue;
             }
             forms.put(key.toLowerCase(Locale.ROOT), new Form(material, form));
@@ -161,7 +162,7 @@ public final class AdaptiveToolModule extends AbstractModule implements Listener
         try {
             particle = Particle.valueOf(section.getString("type", particle.name()).toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            C.warning("adaptive-tool: unknown particle '" + section.getString("type") + "', keeping default.");
+            Log.warning("adaptive-tool: unknown particle '" + section.getString("type") + "', keeping default.");
         }
 
         // Resolve the extra data here, not at spawn time. A particle that needs data and does
@@ -171,7 +172,7 @@ public final class AdaptiveToolModule extends AbstractModule implements Listener
         try {
             data = particleData(particle, section);
         } catch (UnsupportedOperationException unsupported) {
-            C.warning("adaptive-tool: " + unsupported.getMessage()
+            Log.warning("adaptive-tool: " + unsupported.getMessage()
                     + " Falling back to " + fallback.particle().name() + ".");
             particle = fallback.particle();
             data = fallback.data();
@@ -250,7 +251,7 @@ public final class AdaptiveToolModule extends AbstractModule implements Listener
         try {
             return Color.fromRGB(Integer.parseInt(hex.startsWith("#") ? hex.substring(1) : hex, 16));
         } catch (IllegalArgumentException bad) {
-            C.warning("adaptive-tool: bad particle colour '" + hex + "', using the default.");
+            Log.warning("adaptive-tool: bad particle colour '" + hex + "', using the default.");
             return fallback;
         }
     }
@@ -261,7 +262,7 @@ public final class AdaptiveToolModule extends AbstractModule implements Listener
     public ItemStack buildAdaptive() {
         Form form = forms.get(defaultForm);
         if (!enabled || form == null) {
-            C.warning("adaptive-tool: no forms configured or disabled.");
+            Log.warning("adaptive-tool: no forms configured or disabled.");
             return null;
         }
 
@@ -279,7 +280,7 @@ public final class AdaptiveToolModule extends AbstractModule implements Listener
         ToolMeta.applyEnchantments(meta, form.section().getConfigurationSection("enchantments"));
         ToolMeta.seal(meta, ItemFlag.HIDE_ENCHANTS, ItemFlag.HIDE_UNBREAKABLE);
 
-        meta.displayName(C.component(nameFormat.replace("{form}", formName)));
+        meta.displayName(Text.legacy(nameFormat.replace("{form}", formName)));
         meta.lore(ToolMeta.lore(loreFormat, Map.of(
                 "{uses}", String.valueOf(uses),
                 "{max}", String.valueOf(max),
@@ -507,7 +508,7 @@ public final class AdaptiveToolModule extends AbstractModule implements Listener
             }
             return true;
         } catch (RuntimeException rejected) {
-            C.warning("adaptive-tool: the server rejected particle " + spec.particle().name()
+            Log.warning("adaptive-tool: the server rejected particle " + spec.particle().name()
                     + " (" + rejected.getMessage() + "). Not drawing it again until the next"
                     + " reload; check MODULES.adaptive-tool.particles in config.yml.");
             return false;

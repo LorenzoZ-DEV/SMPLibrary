@@ -1,7 +1,8 @@
 package dev.lorenzzz.smplibrary.modules.debug;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
+import dev.lorenzzz.smplibrary.text.Chat;
+import dev.lorenzzz.smplibrary.util.Log;
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
 import org.bukkit.Bukkit;
@@ -116,7 +117,7 @@ public final class BugFixer {
                             true, false));
                 }
             } catch (RuntimeException e) {
-                C.warning("BugFixer: bukkit.yml illeggibile (" + e.getMessage() + ")");
+                Log.warning("BugFixer: bukkit.yml illeggibile (" + e.getMessage() + ")");
             }
         }
 
@@ -182,10 +183,10 @@ public final class BugFixer {
                             if (!backup.isEmpty()) backups.add(backup);
                         }
                     }
-                    default -> C.warning("BugFixer: kind sconosciuto '" + action.kind() + "' ignorato");
+                    default -> Log.warning("BugFixer: kind sconosciuto '" + action.kind() + "' ignorato");
                 }
             } catch (Exception e) {
-                C.warning("BugFixer: fix '" + action.description() + "' fallito (" + e.getMessage() + ")");
+                Log.warning("BugFixer: fix '" + action.description() + "' fallito (" + e.getMessage() + ")");
             }
         }
 
@@ -212,12 +213,12 @@ public final class BugFixer {
     private static boolean applyGamerule(AiDiagnostics.PlannedAction action) {
         GameRule<?> rule = findGameRule(action.rule());
         if (rule == null) {
-            C.warning("BugFixer: gamerule sconosciuta '" + action.rule() + "', salto");
+            Log.warning("BugFixer: gamerule sconosciuta '" + action.rule() + "', salto");
             return false;
         }
         List<World> worlds = targetWorlds(action.world());
         if (worlds.isEmpty()) {
-            C.warning("BugFixer: mondo '" + action.world() + "' non trovato, salto");
+            Log.warning("BugFixer: mondo '" + action.world() + "' non trovato, salto");
             return false;
         }
         boolean any = false;
@@ -229,13 +230,13 @@ public final class BugFixer {
                 } else if (current instanceof Integer) {
                     world.setGameRule((GameRule<Integer>) rule, Integer.parseInt(action.value()));
                 } else {
-                    C.warning("BugFixer: gamerule '" + action.rule() + "' di tipo non supportato, salto");
+                    Log.warning("BugFixer: gamerule '" + action.rule() + "' di tipo non supportato, salto");
                     continue;
                 }
                 any = true;
-                C.info("BugFixer: gamerule " + action.rule() + "=" + action.value() + " in '" + world.getName() + "'");
+                Log.info("BugFixer: gamerule " + action.rule() + "=" + action.value() + " in '" + world.getName() + "'");
             } catch (RuntimeException e) {
-                C.warning("BugFixer: gamerule '" + action.rule() + "' valore '" + action.value()
+                Log.warning("BugFixer: gamerule '" + action.rule() + "' valore '" + action.value()
                         + "' non valido (" + e.getMessage() + ")");
             }
         }
@@ -247,17 +248,17 @@ public final class BugFixer {
         try {
             difficulty = Difficulty.valueOf(action.value().toUpperCase());
         } catch (IllegalArgumentException e) {
-            C.warning("BugFixer: difficulty '" + action.value() + "' non valida, salto");
+            Log.warning("BugFixer: difficulty '" + action.value() + "' non valida, salto");
             return false;
         }
         List<World> worlds = targetWorlds(action.world());
         if (worlds.isEmpty()) {
-            C.warning("BugFixer: mondo '" + action.world() + "' non trovato, salto");
+            Log.warning("BugFixer: mondo '" + action.world() + "' non trovato, salto");
             return false;
         }
         for (World world : worlds) {
             world.setDifficulty(difficulty);
-            C.info("BugFixer: difficulty=" + difficulty + " in '" + world.getName() + "'");
+            Log.info("BugFixer: difficulty=" + difficulty + " in '" + world.getName() + "'");
         }
         return true;
     }
@@ -268,18 +269,18 @@ public final class BugFixer {
      */
     private static String applyConfig(Smp_library plugin, AiDiagnostics.PlannedAction action) throws Exception {
         if (!allowedConfigFile(action.file())) {
-            C.warning("BugFixer: file '" + action.file() + "' fuori allowlist, salto");
+            Log.warning("BugFixer: file '" + action.file() + "' fuori allowlist, salto");
             return null;
         }
         String path = action.path() == null ? "" : action.path().trim();
         if (!path.matches("[A-Za-z0-9._\\-]{1,80}")) {
-            C.warning("BugFixer: path '" + path + "' non valido, salto");
+            Log.warning("BugFixer: path '" + path + "' non valido, salto");
             return null;
         }
         String lowered = path.toLowerCase();
         if (lowered.contains("password") || lowered.contains("secret") || lowered.contains("token")
                 || lowered.contains("api-key") || lowered.contains("apikey")) {
-            C.warning("BugFixer: path '" + path + "' sembra una credenziale, salto");
+            Log.warning("BugFixer: path '" + path + "' sembra una credenziale, salto");
             return null;
         }
 
@@ -289,15 +290,15 @@ public final class BugFixer {
             String rootPath = root.getCanonicalPath();
             String targetPath = target.getCanonicalPath();
             if (!targetPath.equals(rootPath) && !targetPath.startsWith(rootPath + File.separator)) {
-                C.warning("BugFixer: file '" + action.file() + "' fuori dalla root, salto");
+                Log.warning("BugFixer: file '" + action.file() + "' fuori dalla root, salto");
                 return null;
             }
         } catch (Exception e) {
-            C.warning("BugFixer: file '" + action.file() + "' non risolvibile, salto");
+            Log.warning("BugFixer: file '" + action.file() + "' non risolvibile, salto");
             return null;
         }
         if (!target.isFile()) {
-            C.warning("BugFixer: file '" + action.file() + "' assente, salto");
+            Log.warning("BugFixer: file '" + action.file() + "' assente, salto");
             return null;
         }
         File backup = new File(target.getParentFile(),
@@ -318,7 +319,7 @@ public final class BugFixer {
             yaml.set(path, coerce(action.value()));
             yaml.save(target);
         }
-        C.info("BugFixer: " + action.file() + " " + path + "=" + action.value() + " (backup " + backup.getName() + ")");
+        Log.info("BugFixer: " + action.file() + " " + path + "=" + action.value() + " (backup " + backup.getName() + ")");
         return backup.getName();
     }
 
@@ -359,7 +360,7 @@ public final class BugFixer {
                     if (world != null) {
                         world.setGameRule(GameRule.DO_MOB_SPAWNING, true);
                         live++;
-                        C.info("BugFixer: doMobSpawning=true in '" + worldName + "'");
+                        Log.info("BugFixer: doMobSpawning=true in '" + worldName + "'");
                     }
                 } else if (fix.id().startsWith("difficulty:")) {
                     String worldName = fix.id().substring("difficulty:".length());
@@ -367,7 +368,7 @@ public final class BugFixer {
                     if (world != null) {
                         world.setDifficulty(Difficulty.NORMAL);
                         live++;
-                        C.info("BugFixer: difficulty=NORMAL in '" + worldName + "'");
+                        Log.info("BugFixer: difficulty=NORMAL in '" + worldName + "'");
                     }
                 } else if (fix.id().equals("bukkit:spawn-limits.monsters")) {
                     File bukkitYml = new File(serverRoot(plugin), "bukkit.yml");
@@ -380,10 +381,10 @@ public final class BugFixer {
                     yaml.save(bukkitYml);
                     files++;
                     fileChanged = true;
-                    C.info("BugFixer: bukkit.yml spawn-limits.monsters=70 (backup " + backup.getName() + ")");
+                    Log.info("BugFixer: bukkit.yml spawn-limits.monsters=70 (backup " + backup.getName() + ")");
                 }
             } catch (Exception e) {
-                C.warning("BugFixer: fix '" + fix.id() + "' fallito (" + e.getMessage() + ")");
+                Log.warning("BugFixer: fix '" + fix.id() + "' fallito (" + e.getMessage() + ")");
             }
         }
 
@@ -398,12 +399,12 @@ public final class BugFixer {
             if (clean.length() > 80) clean = clean.substring(0, 80);
             String msg = "&5&lSMPCORE BUG FIXXER: &fRiavvio tra 10 secondi per sistemare il bug su &d" + clean;
             broadcastAll(msg);
-            C.info("BugFixer: restart schedulato tra 10s (" + clean + ")");
+            Log.info("BugFixer: restart schedulato tra 10s (" + clean + ")");
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 try {
                     Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "restart");
                 } catch (RuntimeException e) {
-                    C.warning("BugFixer: restart automatico fallito (" + e.getMessage() + ") — riavvia a mano.");
+                    Log.warning("BugFixer: restart automatico fallito (" + e.getMessage() + ") — riavvia a mano.");
                 }
             }, 200L);
             return true;
@@ -423,9 +424,9 @@ public final class BugFixer {
 
     static void broadcastAll(String legacyMessage) {
         for (Player player : Bukkit.getOnlinePlayers()) {
-            C.send(player, legacyMessage);
+            Chat.send(player, legacyMessage);
         }
-        C.send(Bukkit.getConsoleSender(), legacyMessage);
+        Chat.send(Bukkit.getConsoleSender(), legacyMessage);
     }
 
     private static File serverRoot(Smp_library plugin) {

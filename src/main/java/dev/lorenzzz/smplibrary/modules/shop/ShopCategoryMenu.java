@@ -1,6 +1,6 @@
 package dev.lorenzzz.smplibrary.modules.shop;
 
-import dev.lorenzzz.smplibrary.C;
+import dev.lorenzzz.smplibrary.text.Text;
 import net.j4c0b3y.api.menu.MenuHandler;
 import net.j4c0b3y.api.menu.MenuSize;
 import net.j4c0b3y.api.menu.button.Button;
@@ -119,10 +119,10 @@ public class ShopCategoryMenu extends Menu {
         }
 
         if (!lore.isEmpty()) {
-            meta.lore(lore.stream().map(C::mm).collect(Collectors.toList()));
+            meta.lore(lore.stream().map(Text::mini).collect(Collectors.toList()));
         }
 
-        meta.displayName(C.mm(name));
+        meta.displayName(Text.mini(name));
         item.setItemMeta(meta);
 
         return new SimpleButton(item, click -> {
@@ -138,9 +138,9 @@ public class ShopCategoryMenu extends Menu {
         if (mat == null) mat = Material.GRAY_STAINED_GLASS_PANE;
         ItemStack icon = new ItemStack(mat);
         ItemMeta meta = icon.getItemMeta();
-        if (meta != null && !filler.name().isEmpty()) meta.displayName(C.mm(filler.name()));
+        if (meta != null && !filler.name().isEmpty()) meta.displayName(Text.mini(filler.name()));
         if (meta != null && filler.lore() != null && !filler.lore().isEmpty())
-            meta.lore(filler.lore().stream().map(C::mm).collect(Collectors.toList()));
+            meta.lore(filler.lore().stream().map(Text::mini).collect(Collectors.toList()));
         if (meta != null) icon.setItemMeta(meta);
         return new SimpleButton(icon, click -> {});
     }
@@ -182,9 +182,9 @@ public class ShopCategoryMenu extends Menu {
         if (mat == null) mat = Material.GRAY_STAINED_GLASS_PANE;
         ItemStack icon = new ItemStack(mat);
         ItemMeta meta = icon.getItemMeta();
-        if (meta != null && !item.name().isEmpty()) meta.displayName(C.mm(item.name()));
+        if (meta != null && !item.name().isEmpty()) meta.displayName(Text.mini(item.name()));
         if (meta != null && item.lore() != null && !item.lore().isEmpty())
-            meta.lore(item.lore().stream().map(C::mm).collect(Collectors.toList()));
+            meta.lore(item.lore().stream().map(Text::mini).collect(Collectors.toList()));
         if (meta != null) icon.setItemMeta(meta);
         return icon;
     }

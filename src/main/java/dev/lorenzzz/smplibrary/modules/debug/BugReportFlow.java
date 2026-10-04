@@ -1,9 +1,9 @@
 package dev.lorenzzz.smplibrary.modules.debug;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.manager.DialogGuard;
 import dev.lorenzzz.smplibrary.manager.MessagesManager;
+import dev.lorenzzz.smplibrary.text.Text;
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import io.papermc.paper.registry.data.dialog.ActionButton;
@@ -134,7 +134,7 @@ public final class BugReportFlow implements Listener {
                     type, Component.text(type), i == 0));
         }
 
-        ActionButton confirm = ActionButton.builder(C.mm("<green><bold>Continua</bold></green>"))
+        ActionButton confirm = ActionButton.builder(Text.mini("<green><bold>Continua</bold></green>"))
                 .tooltip(Component.text("Apre il libro per la descrizione"))
                 .width(150)
                 .action(DialogAction.customClick(
@@ -143,7 +143,7 @@ public final class BugReportFlow implements Listener {
                         ClickCallback.Options.builder().uses(1).build()))
                 .build();
 
-        ActionButton abort = ActionButton.builder(C.mm("<red>Annulla</red>"))
+        ActionButton abort = ActionButton.builder(Text.mini("<red>Annulla</red>"))
                 .tooltip(Component.text("Chiude la segnalazione senza inviarla"))
                 .width(150)
                 .action(DialogAction.customClick(
@@ -152,7 +152,7 @@ public final class BugReportFlow implements Listener {
                 .build();
 
         return Dialog.create(factory -> factory.empty()
-                .base(DialogBase.builder(C.mm("<gradient:#ff6b6b:#ffa94d><bold>Segnala un bug</bold></gradient>"))
+                .base(DialogBase.builder(Text.mini("<gradient:#ff6b6b:#ffa94d><bold>Segnala un bug</bold></gradient>"))
                         .canCloseWithEscape(false)
                         .body(List.of(DialogBody.plainMessage(Component.text(
                                         "Dai un titolo al problema e scegli di che tipo e'. "
@@ -223,10 +223,10 @@ public final class BugReportFlow implements Listener {
     private ItemStack buildBook(String title) {
         ItemStack book = new ItemStack(Material.WRITABLE_BOOK);
         ItemMeta meta = book.getItemMeta();
-        meta.displayName(C.mm("<gold>Segnalazione: <white>" + title));
+        meta.displayName(Text.mini("<gold>Segnalazione: <white>" + title));
         meta.lore(List.of(
-                C.mm("<gray>Scrivi qui cosa succede, passo per passo."),
-                C.mm("<gray>Poi chiudi il libro con <white>Fatto<gray>.")));
+                Text.mini("<gray>Scrivi qui cosa succede, passo per passo."),
+                Text.mini("<gray>Poi chiudi il libro con <white>Fatto<gray>.")));
         meta.getPersistentDataContainer().set(bookKey, PersistentDataType.BYTE, (byte) 1);
         book.setItemMeta(meta);
         return book;

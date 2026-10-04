@@ -1,9 +1,9 @@
 package dev.lorenzzz.smplibrary.modules.competitors;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.AbstractModule;
 import dev.lorenzzz.smplibrary.modules.web.WebStats;
+import dev.lorenzzz.smplibrary.util.Log;
 import dev.lorenzzz.smplibrary.util.Ticks;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
@@ -96,7 +96,7 @@ public final class CompetitorsModule extends AbstractModule {
         // rivals are still settling, and a false "offline" on the first paint reads as a bug.
         pool.scheduleAtFixedRate(this::pingAll, 5_000L, periodMs, TimeUnit.MILLISECONDS);
 
-        C.info("Competitors enabled — watching " + rivals.size()
+        Log.info("Competitors enabled — watching " + rivals.size()
                 + " server(s) every " + (periodMs / 1000L) + "s.");
     }
 
@@ -116,7 +116,7 @@ public final class CompetitorsModule extends AbstractModule {
             Object name = row.get("name");
             Rival rival = parse(name == null ? null : String.valueOf(name), String.valueOf(ip));
             if (rival == null) {
-                C.warning("competitors: skipping unusable entry '" + ip + "'.");
+                Log.warning("competitors: skipping unusable entry '" + ip + "'.");
                 continue;
             }
             if (parsed.stream().noneMatch(existing -> existing.id().equals(rival.id()))) parsed.add(rival);

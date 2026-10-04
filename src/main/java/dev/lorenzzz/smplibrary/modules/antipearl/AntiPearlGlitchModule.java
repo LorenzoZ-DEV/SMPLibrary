@@ -1,9 +1,9 @@
 package dev.lorenzzz.smplibrary.modules.antipearl;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.AbstractModule;
 import dev.lorenzzz.smplibrary.modules.web.WebStats;
+import dev.lorenzzz.smplibrary.util.Log;
 import io.papermc.paper.event.entity.EntityInsideBlockEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -116,7 +116,7 @@ public final class AntiPearlGlitchModule extends AbstractModule implements Liste
         // this sweep an entry sits there until the same player pearls again.
         repeat(this::pruneStale, 1200L, 1200L);
 
-        C.info("Anti-pearl: finestra " + timeWindowMillis + "ms, ricerca " + searchDistance
+        Log.info("Anti-pearl: finestra " + timeWindowMillis + "ms, ricerca " + searchDistance
                 + " blocchi, bypass admin " + adminBypass);
     }
 
@@ -147,7 +147,7 @@ public final class AntiPearlGlitchModule extends AbstractModule implements Liste
         for (String key : legacy.getKeys(false)) {
             if (!cfg.contains(key)) cfg.set(key, legacy.get(key));
         }
-        C.info("Anti-pearl: letti i valori dal vecchio blocco 'anti-pearl-glitch' alla radice. "
+        Log.info("Anti-pearl: letti i valori dal vecchio blocco 'anti-pearl-glitch' alla radice. "
                 + "Spostali sotto MODULES.antipearlglitch quando puoi.");
         return cfg;
     }

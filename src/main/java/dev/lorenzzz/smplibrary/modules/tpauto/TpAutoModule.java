@@ -1,10 +1,11 @@
 package dev.lorenzzz.smplibrary.modules.tpauto;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.hook.HuskHomesHook;
 import dev.lorenzzz.smplibrary.manager.ToggleManager;
 import dev.lorenzzz.smplibrary.modules.AbstractModule;
+import dev.lorenzzz.smplibrary.text.Chat;
+import dev.lorenzzz.smplibrary.util.Log;
 import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
@@ -98,7 +99,7 @@ public final class TpAutoModule extends AbstractModule implements Listener {
         registerRequestListener();
         repeat(this::sweep, pollTicks, pollTicks);
 
-        C.info("TPAuto enabled — controllo ogni " + pollTicks + " tick, "
+        Log.info("TPAuto enabled — controllo ogni " + pollTicks + " tick, "
                 + (huskHomesPresent() ? "HuskHomes trovato." : "in attesa di HuskHomes."));
     }
 
@@ -116,7 +117,7 @@ public final class TpAutoModule extends AbstractModule implements Listener {
             requestListenerRegistered = true;
         } catch (Throwable failed) {
             this.lastHookError = describe(failed);
-            C.warning("TPAuto: non riesco ad ascoltare gli eventi di " + HuskHomesHook.PLUGIN_NAME
+            Log.warning("TPAuto: non riesco ad ascoltare gli eventi di " + HuskHomesHook.PLUGIN_NAME
                     + " (" + describe(failed) + ") — resta il controllo periodico.");
         }
     }
@@ -128,14 +129,14 @@ public final class TpAutoModule extends AbstractModule implements Listener {
     private void registerCommand() {
         PluginCommand command = plugin.getCommand(COMMAND);
         if (command == null) {
-            C.warning("Command '" + COMMAND + "' not found in plugin.yml — solo il pulsante in /settings.");
+            Log.warning("Command '" + COMMAND + "' not found in plugin.yml — solo il pulsante in /settings.");
             return;
         }
         command.setExecutor((sender, cmd, label, args) -> {
             if (sender instanceof Player player) {
                 handleCommand(player, args);
             } else {
-                C.send(sender, "&cOnly players.");
+                Chat.send(sender, "&cOnly players.");
             }
             return true;
         });
@@ -195,43 +196,43 @@ public final class TpAutoModule extends AbstractModule implements Listener {
         ToggleManager toggles = toggles();
         boolean loaded = toggles != null && toggles.isLoaded(player.getUniqueId());
 
-        C.send(player, "&d&lTPAUTO &8» &7diagnostica");
-        C.send(player, " &8• &7modulo: &aattivo&7, controllo ogni &f" + this.pollTicks + " &7tick");
-        C.send(player, " &8• &7il tuo interruttore: " + (isOn(player) ? "&aON" : "&cOFF")
+        Chat.send(player, "&d&lTPAUTO &8» &7diagnostica");
+        Chat.send(player, " &8• &7modulo: &aattivo&7, controllo ogni &f" + this.pollTicks + " &7tick");
+        Chat.send(player, " &8• &7il tuo interruttore: " + (isOn(player) ? "&aON" : "&cOFF")
                 + " &8(" + (toggles == null ? "store non disponibile"
                         : toggles.backend() + (loaded ? "" : ", non ancora caricato")) + "&8)");
 
         boolean present = huskHomesPresent();
         HuskHomesHook live = present ? hook() : null;
         if (!present) {
-            C.send(player, " &8• &7" + HuskHomesHook.PLUGIN_NAME + ": &cnon attivo &8(niente da accettare)");
+            Chat.send(player, " &8• &7" + HuskHomesHook.PLUGIN_NAME + ": &cnon attivo &8(niente da accettare)");
         } else if (live == null) {
-            C.send(player, " &8• &7" + HuskHomesHook.PLUGIN_NAME + ": &eattivo ma non agganciato &8("
+            Chat.send(player, " &8• &7" + HuskHomesHook.PLUGIN_NAME + ": &eattivo ma non agganciato &8("
                     + (this.lastHookError == null ? "riprovo tra poco" : this.lastHookError) + "&8)");
         } else {
-            C.send(player, " &8• &7" + HuskHomesHook.PLUGIN_NAME + ": &aagganciato &8(v" + live.version()
+            Chat.send(player, " &8• &7" + HuskHomesHook.PLUGIN_NAME + ": &aagganciato &8(v" + live.version()
                     + ", eventi " + (requestListenerRegistered ? "&aok" : "&cno") + "&8)");
             try {
                 HuskHomesHook.Diagnosis diagnosis = live.inspect(player);
                 if (diagnosis.ignoring()) {
-                    C.send(player, " &8• &7/tpignore: &cattivo &8— HuskHomes scarta le richieste"
+                    Chat.send(player, " &8• &7/tpignore: &cattivo &8— HuskHomes scarta le richieste"
                             + " prima ancora che TPAuto le veda. Spegnilo con &f/tpignore&8.");
                 }
                 if (diagnosis.requester() == null) {
-                    C.send(player, " &8• &7ultima richiesta: &fnessuna &8(fatti mandare un /tpa e rilancia)");
+                    Chat.send(player, " &8• &7ultima richiesta: &fnessuna &8(fatti mandare un /tpa e rilancia)");
                 } else {
-                    C.send(player, " &8• &7ultima richiesta: &f" + diagnosis.requester()
+                    Chat.send(player, " &8• &7ultima richiesta: &f" + diagnosis.requester()
                             + " &8(" + diagnosis.type() + ", " + diagnosis.status()
                             + (diagnosis.expired() ? ", scaduta" : "") + ")");
                 }
             } catch (Throwable failed) {
-                C.send(player, " &8• &7lettura richieste: &cfallita &8(" + describe(failed) + ")");
+                Chat.send(player, " &8• &7lettura richieste: &cfallita &8(" + describe(failed) + ")");
             }
         }
 
-        C.send(player, " &8• &7/tpahere: &cmai accettate &8(sposterebbero te, non loro)");
-        C.send(player, " &8• &7ultimo evento: &f" + this.lastEvent);
-        C.send(player, " &8• &7come funziona: chi ti manda &f/tpa &7viene teletrasportato &7da te,"
+        Chat.send(player, " &8• &7/tpahere: &cmai accettate &8(sposterebbero te, non loro)");
+        Chat.send(player, " &8• &7ultimo evento: &f" + this.lastEvent);
+        Chat.send(player, " &8• &7come funziona: chi ti manda &f/tpa &7viene teletrasportato &7da te,"
                 + " &7senza che tu accetti.");
     }
 
@@ -295,7 +296,7 @@ public final class TpAutoModule extends AbstractModule implements Listener {
         hook = null;
         nextHookAttempt = System.currentTimeMillis() + HOOK_RETRY_MS;
         this.lastHookError = describe(failed);
-        C.warning("TPAuto: chiamata a " + HuskHomesHook.PLUGIN_NAME + " fallita ("
+        Log.warning("TPAuto: chiamata a " + HuskHomesHook.PLUGIN_NAME + " fallita ("
                 + describe(failed) + ") — riprovo tra poco.");
     }
 
@@ -321,7 +322,7 @@ public final class TpAutoModule extends AbstractModule implements Listener {
         if (!huskHomesPresent()) {
             if (!missingLogged) {
                 missingLogged = true;
-                C.warning("TPAuto: " + HuskHomesHook.PLUGIN_NAME + " non è attivo — il toggle si salva,"
+                Log.warning("TPAuto: " + HuskHomesHook.PLUGIN_NAME + " non è attivo — il toggle si salva,"
                         + " ma non c'è nessuna richiesta di teleport da accettare.");
             }
             return null;
@@ -333,11 +334,11 @@ public final class TpAutoModule extends AbstractModule implements Listener {
             this.lastHookError = null;
             // HuskHomes may well have booted after us; the listener could not be registered then.
             registerRequestListener();
-            C.info("TPAuto agganciato a " + HuskHomesHook.PLUGIN_NAME + " v" + hook.version()
+            Log.info("TPAuto agganciato a " + HuskHomesHook.PLUGIN_NAME + " v" + hook.version()
                     + (requestListenerRegistered ? " — richieste accettate all'istante." : "."));
         } catch (Throwable failed) {
             this.lastHookError = describe(failed);
-            C.warning("TPAuto: aggancio a " + HuskHomesHook.PLUGIN_NAME + " fallito ("
+            Log.warning("TPAuto: aggancio a " + HuskHomesHook.PLUGIN_NAME + " fallito ("
                     + describe(failed) + ")."
                     + (failed instanceof NoClassDefFoundError
                             ? " Le classi di " + HuskHomesHook.PLUGIN_NAME + " non sono visibili da qui:"

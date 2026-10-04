@@ -1,8 +1,8 @@
 package dev.lorenzzz.smplibrary.modules.playtime;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.AbstractModule;
+import dev.lorenzzz.smplibrary.util.Log;
 import dev.lorenzzz.smplibrary.util.Ticks;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
@@ -51,7 +51,7 @@ public final class PlaytimeModule extends AbstractModule {
         long periodTicks = Ticks.parseAtLeast(every, DEFAULT_PERIOD, MINIMUM_PERIOD);
 
         repeat(this::reward, periodTicks, periodTicks);
-        C.info("Playtime module enabled — paying " + (long) amount + " " + currency + " every " + every + ".");
+        Log.info("Playtime module enabled — paying " + (long) amount + " " + currency + " every " + every + ".");
     }
 
     private void reward() {

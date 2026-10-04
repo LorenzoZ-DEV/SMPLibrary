@@ -2,7 +2,6 @@ package dev.lorenzzz.smplibrary.modules.web;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.chatgames.ChatGameType;
 import dev.lorenzzz.smplibrary.modules.chatgames.ChatGamesModule;
@@ -11,6 +10,7 @@ import dev.lorenzzz.smplibrary.modules.dupewatch.DupeWatchModule;
 import dev.lorenzzz.smplibrary.modules.competitors.CompetitorsModule;
 import dev.lorenzzz.smplibrary.modules.debug.BugReport;
 import dev.lorenzzz.smplibrary.modules.debug.DebugModule;
+import dev.lorenzzz.smplibrary.util.Log;
 import org.bukkit.Bukkit;
 
 import java.io.IOException;
@@ -108,7 +108,7 @@ public final class WebServer {
         server.setExecutor(executor);
         server.createContext("/", this::dispatch);
         server.start();
-        C.info("&7Web dashboard listening on &f" + host + ":" + port);
+        Log.info("&7Web dashboard listening on &f" + host + ":" + port);
     }
 
     public String boundHost() { return boundHost; }
@@ -592,7 +592,7 @@ public final class WebServer {
         if (clients.size() >= MAX_STREAMS) {
             // Nothing has been written yet, so this is still an ordinary response. Refusing is the
             // right failure: the alternative is growing threads again, which is what got us here.
-            C.warning("Web dashboard: refusing a new event stream, " + MAX_STREAMS + " already open."
+            Log.warning("Web dashboard: refusing a new event stream, " + MAX_STREAMS + " already open."
                     + " If this persists, clients are wedged mid-write and their threads have not"
                     + " been released yet.");
             sendJson(exchange, 503, "{\"error\":\"too many open streams\"}");
@@ -685,7 +685,7 @@ public final class WebServer {
         } catch (Exception e) {
             // scheduleAtFixedRate drops the task on the first throw, and the dashboard would go
             // quiet with no explanation. Log it and keep ticking.
-            C.warning("Web dashboard: stream broadcast failed: " + e);
+            Log.warning("Web dashboard: stream broadcast failed: " + e);
         }
     }
 

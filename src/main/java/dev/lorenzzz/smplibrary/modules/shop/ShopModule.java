@@ -1,11 +1,13 @@
 package dev.lorenzzz.smplibrary.modules.shop;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.manager.ModuleManager;
 import dev.lorenzzz.smplibrary.modules.AbstractModule;
 import dev.lorenzzz.smplibrary.modules.web.WebLog;
 import dev.lorenzzz.smplibrary.modules.web.WebModule;
+import dev.lorenzzz.smplibrary.text.Chat;
+import dev.lorenzzz.smplibrary.text.Text;
+import dev.lorenzzz.smplibrary.util.Log;
 import net.j4c0b3y.api.menu.MenuHandler;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.command.CommandExecutor;
@@ -65,19 +67,19 @@ public final class ShopModule extends AbstractModule {
             if (sender instanceof Player player) {
                 openMainMenu(player);
             } else {
-                C.send(sender, "&cOnly players.");
+                Chat.send(sender, "&cOnly players.");
             }
             return true;
         };
         OPEN_COMMANDS.forEach(name -> setExecutor(name, openShop));
 
-        C.info("Shop system enabled with " + configLoader.get().categories().size() + " categories.");
+        Log.info("Shop system enabled with " + configLoader.get().categories().size() + " categories.");
     }
 
     private void setExecutor(String name, CommandExecutor executor) {
         PluginCommand command = plugin.getCommand(name);
         if (command == null) {
-            C.warning("Command '" + name + "' is missing from plugin.yml — shop entry point skipped.");
+            Log.warning("Command '" + name + "' is missing from plugin.yml — shop entry point skipped.");
             return;
         }
         command.setExecutor(executor);
@@ -153,7 +155,7 @@ public final class ShopModule extends AbstractModule {
         } catch (Exception e) {
             // The money is already gone and the commands have run: an audit line that fails to
             // render must not blow up in the player's face.
-            C.warning("Shop: could not log the purchase of " + player.getName() + ": " + e.getMessage());
+            Log.warning("Shop: could not log the purchase of " + player.getName() + ": " + e.getMessage());
         }
     }
 
@@ -166,7 +168,7 @@ public final class ShopModule extends AbstractModule {
     /** Menu labels carry MiniMessage tags; a log line wants the words, not the markup. */
     private static String plain(String formatted) {
         if (formatted == null || formatted.isEmpty()) return "?";
-        return PlainTextComponentSerializer.plainText().serialize(C.mm(formatted));
+        return PlainTextComponentSerializer.plainText().serialize(Text.mini(formatted));
     }
 
     private static String formatAmount(double amount) {

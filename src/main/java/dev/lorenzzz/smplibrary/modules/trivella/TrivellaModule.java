@@ -1,9 +1,10 @@
 package dev.lorenzzz.smplibrary.modules.trivella;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.AbstractModule;
 import dev.lorenzzz.smplibrary.modules.ToolMeta;
+import dev.lorenzzz.smplibrary.text.Text;
+import dev.lorenzzz.smplibrary.util.Log;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -193,7 +194,7 @@ public final class TrivellaModule extends AbstractModule implements Listener {
         mode = parseMode(cfg == null ? null : cfg.getString("mode"));
 
         if (mode == Mode.FAST) {
-            C.warning("trivella: mode FAST — the neighbor blocks are broken without a "
+            Log.warning("trivella: mode FAST — the neighbor blocks are broken without a "
                     + "BlockBreakEvent. Claims, WorldGuard regions and CoreProtect will not see "
                     + "them. Use COMPATIBILITY unless this server has no protection plugin.");
         }
@@ -204,7 +205,7 @@ public final class TrivellaModule extends AbstractModule implements Listener {
         try {
             return Mode.valueOf(raw.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            C.warning("trivella: unknown mode '" + raw + "' — using COMPATIBILITY.");
+            Log.warning("trivella: unknown mode '" + raw + "' — using COMPATIBILITY.");
             return Mode.COMPATIBILITY;
         }
     }
@@ -216,13 +217,13 @@ public final class TrivellaModule extends AbstractModule implements Listener {
 
         Material material = Material.matchMaterial(cfg.getString("material", "NETHERITE_PICKAXE"));
         if (material == null || material.isAir()) {
-            C.warning("trivella: bad material.");
+            Log.warning("trivella: bad material.");
             return null;
         }
 
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(C.component(cfg.getString("name", "&d&lTrivella")));
+        meta.displayName(Text.legacy(cfg.getString("name", "&d&lTrivella")));
         meta.lore(ToolMeta.lore(cfg.getStringList("lore"), Map.of()));
         ToolMeta.applyEnchantments(meta, cfg.getConfigurationSection("enchantments"));
         ToolMeta.seal(meta, ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_ENCHANTS, ItemFlag.HIDE_UNBREAKABLE);

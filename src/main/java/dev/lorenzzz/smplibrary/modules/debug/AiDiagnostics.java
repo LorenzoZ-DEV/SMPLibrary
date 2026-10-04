@@ -1,10 +1,10 @@
 package dev.lorenzzz.smplibrary.modules.debug;
 
+import dev.lorenzzz.smplibrary.util.Log;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import dev.lorenzzz.smplibrary.C;
 
 import java.io.IOException;
 import java.net.URI;
@@ -485,7 +485,7 @@ public final class AiDiagnostics {
         try {
             open.close();
         } catch (Exception e) {
-            C.warning("debug: chiusura del client HTTP fallita: " + e.getMessage());
+            Log.warning("debug: chiusura del client HTTP fallita: " + e.getMessage());
         }
     }
 

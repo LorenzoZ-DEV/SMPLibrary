@@ -1,9 +1,9 @@
 package dev.lorenzzz.smplibrary.modules.web;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.gui.GuiModule;
 import dev.lorenzzz.smplibrary.modules.shop.ShopModule;
+import dev.lorenzzz.smplibrary.util.Log;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
 
@@ -61,7 +61,7 @@ public final class ConfigEditor {
         try {
             if (Files.exists(p)) Files.copy(p, bak, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
-            C.warning("web: backup failed for " + scope + ": " + e);
+            Log.warning("web: backup failed for " + scope + ": " + e);
         }
 
         try {

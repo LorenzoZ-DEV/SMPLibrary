@@ -1,8 +1,8 @@
 package dev.lorenzzz.smplibrary.modules.chatgames;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.AbstractModule;
+import dev.lorenzzz.smplibrary.util.Log;
 import dev.lorenzzz.smplibrary.util.SoundCue;
 import dev.lorenzzz.smplibrary.util.Ticks;
 import io.papermc.paper.event.player.AsyncChatEvent;
@@ -103,7 +103,7 @@ public final class ChatGamesModule extends AbstractModule implements Listener {
 
         long period = Ticks.parseAtLeast(cfg.getString("task-every"), DEFAULT_PERIOD, MINIMUM_PERIOD);
         repeat(this::startGame, period, period);
-        C.info("Chat games enabled — first round in " + (period / Ticks.MINUTE) + " min ("
+        Log.info("Chat games enabled — first round in " + (period / Ticks.MINUTE) + " min ("
                 + availableTypes.size() + " type(s) available).");
     }
 
@@ -113,7 +113,7 @@ public final class ChatGamesModule extends AbstractModule implements Listener {
             try {
                 availableTypes.add(ChatGameType.valueOf(name.toUpperCase(Locale.ROOT)));
             } catch (IllegalArgumentException e) {
-                C.warning("Unknown chat game type: " + name);
+                Log.warning("Unknown chat game type: " + name);
             }
         }
         if (availableTypes.isEmpty()) availableTypes.add(ChatGameType.WORD);
@@ -144,7 +144,7 @@ public final class ChatGamesModule extends AbstractModule implements Listener {
 
         Round round = buildAnyRound(cfg);
         if (round == null) {
-            C.warning("chatgames: none of the configured game types has usable data — check words/trivia in config.yml.");
+            Log.warning("chatgames: none of the configured game types has usable data — check words/trivia in config.yml.");
             return null;
         }
 

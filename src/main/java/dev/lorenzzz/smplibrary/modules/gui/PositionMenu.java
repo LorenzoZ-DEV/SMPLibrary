@@ -1,7 +1,7 @@
 package dev.lorenzzz.smplibrary.modules.gui;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.hook.SavedPoint;
+import dev.lorenzzz.smplibrary.text.Text;
 import net.j4c0b3y.api.menu.Menu;
 import net.j4c0b3y.api.menu.MenuHandler;
 import net.j4c0b3y.api.menu.MenuSize;
@@ -247,7 +247,7 @@ final class PositionMenu extends Menu {
      * only where the configured text did not ask for italics itself.
      */
     private static Component text(String raw) {
-        return C.mm(raw).decorationIfAbsent(TextDecoration.ITALIC, TextDecoration.State.FALSE);
+        return Text.mini(raw).decorationIfAbsent(TextDecoration.ITALIC, TextDecoration.State.FALSE);
     }
 
     private static Material material(String name, Material fallback) {

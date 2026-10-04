@@ -1,6 +1,7 @@
 package dev.lorenzzz.smplibrary.modules.shop;
 
-import dev.lorenzzz.smplibrary.C;
+import dev.lorenzzz.smplibrary.text.Chat;
+import dev.lorenzzz.smplibrary.text.Text;
 import net.j4c0b3y.api.menu.Menu;
 import net.j4c0b3y.api.menu.MenuHandler;
 import net.j4c0b3y.api.menu.MenuSize;
@@ -68,9 +69,9 @@ public class ShopConfirmMenu extends Menu {
             ItemStack item = new ItemStack(mat);
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
-                if (!filler.name().isEmpty()) meta.displayName(C.mm(filler.name()));
+                if (!filler.name().isEmpty()) meta.displayName(Text.mini(filler.name()));
                 if (filler.lore() != null && !filler.lore().isEmpty())
-                    meta.lore(filler.lore().stream().map(C::mm).collect(Collectors.toList()));
+                    meta.lore(filler.lore().stream().map(Text::mini).collect(Collectors.toList()));
                 item.setItemMeta(meta);
             }
             background.fill(new SimpleButton(item, click -> {}));
@@ -101,7 +102,7 @@ public class ShopConfirmMenu extends Menu {
         ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.displayName(C.mm(stackCfg.displayName().replace("<amount>", String.valueOf(amount))));
+            meta.displayName(Text.mini(stackCfg.displayName().replace("<amount>", String.valueOf(amount))));
         }
         item.setItemMeta(meta);
 
@@ -138,7 +139,7 @@ public class ShopConfirmMenu extends Menu {
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return item;
 
-        meta.displayName(C.mm(resolveItemName()));
+        meta.displayName(Text.mini(resolveItemName()));
 
         List<String> lore = new ArrayList<>();
         if (product.lore() != null) lore.addAll(product.lore());
@@ -153,7 +154,7 @@ public class ShopConfirmMenu extends Menu {
         if (qtyLine == null || qtyLine.isEmpty()) qtyLine = "<gray>Quantità: <white>x<amount>";
         lore.add(qtyLine.replace("<amount>", String.valueOf(quantity)));
 
-        meta.lore(lore.stream().map(C::mm).collect(Collectors.toList()));
+        meta.lore(lore.stream().map(Text::mini).collect(Collectors.toList()));
         item.setItemMeta(meta);
         return item;
     }
@@ -174,8 +175,8 @@ public class ShopConfirmMenu extends Menu {
         ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.displayName(C.mm(name));
-            if (!lore.isEmpty()) meta.lore(lore.stream().map(C::mm).collect(Collectors.toList()));
+            meta.displayName(Text.mini(name));
+            if (!lore.isEmpty()) meta.lore(lore.stream().map(Text::mini).collect(Collectors.toList()));
         }
         item.setItemMeta(meta);
 
@@ -198,8 +199,8 @@ public class ShopConfirmMenu extends Menu {
         ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.displayName(C.mm(name));
-            if (!lore.isEmpty()) meta.lore(lore.stream().map(C::mm).collect(Collectors.toList()));
+            meta.displayName(Text.mini(name));
+            if (!lore.isEmpty()) meta.lore(lore.stream().map(Text::mini).collect(Collectors.toList()));
         }
         item.setItemMeta(meta);
 
@@ -251,12 +252,12 @@ public class ShopConfirmMenu extends Menu {
         if (totalCost > 0) {
             double balance = module.getBalance(player);
             if (balance < totalCost) {
-                C.sendChatAndAction(player, config.messages().insufficientFunds());
+                Chat.sendBoth(player, config.messages().insufficientFunds());
                 module.playSound(player, config.purchaseErrorSound());
                 return false;
             }
             if (!module.takeMoney(player, totalCost)) {
-                C.sendChatAndAction(player, config.messages().transactionError());
+                Chat.sendBoth(player, config.messages().transactionError());
                 module.playSound(player, config.purchaseErrorSound());
                 return false;
             }
@@ -270,7 +271,7 @@ public class ShopConfirmMenu extends Menu {
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), processed);
         }
 
-        C.sendChatAndAction(player, config.messages().purchaseSuccess()
+        Chat.sendBoth(player, config.messages().purchaseSuccess()
                 .replace("<amount>", String.valueOf(quantity))
                 .replace("<item>", resolveItemName()));
         module.playSound(player, config.confirmPurchaseSound());

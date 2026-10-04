@@ -1,8 +1,8 @@
 package dev.lorenzzz.smplibrary.modules.pay;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.AbstractModule;
+import dev.lorenzzz.smplibrary.util.Log;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
@@ -40,7 +40,7 @@ public final class PayModule extends AbstractModule {
 
     @Override
     public void onEnable() {
-        C.info("Pay module enabled (currency: " + economy().defaultCurrency() + ").");
+        Log.info("Pay module enabled (currency: " + economy().defaultCurrency() + ").");
     }
 
     // ----------------------------------------------------------------- limits

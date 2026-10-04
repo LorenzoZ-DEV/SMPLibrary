@@ -1,6 +1,6 @@
 package dev.lorenzzz.smplibrary.modules.shop;
 
-import dev.lorenzzz.smplibrary.C;
+import dev.lorenzzz.smplibrary.text.Text;
 import net.j4c0b3y.api.menu.Menu;
 import net.j4c0b3y.api.menu.MenuHandler;
 import net.j4c0b3y.api.menu.MenuSize;
@@ -70,10 +70,10 @@ public class ShopMainMenu extends Menu {
         if (meta == null) return item;
 
         if (!icon.displayName().isEmpty()) {
-            meta.displayName(C.mm(icon.displayName()));
+            meta.displayName(Text.mini(icon.displayName()));
         }
         if (icon.lore() != null && !icon.lore().isEmpty()) {
-            meta.lore(icon.lore().stream().map(C::mm).collect(Collectors.toList()));
+            meta.lore(icon.lore().stream().map(Text::mini).collect(Collectors.toList()));
         }
         item.setItemMeta(meta);
         return item;
@@ -89,10 +89,10 @@ public class ShopMainMenu extends Menu {
         ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();
         if (meta != null && !filler.name().isEmpty()) {
-            meta.displayName(C.mm(filler.name()));
+            meta.displayName(Text.mini(filler.name()));
         }
         if (meta != null && filler.lore() != null && !filler.lore().isEmpty()) {
-            meta.lore(filler.lore().stream().map(C::mm).collect(Collectors.toList()));
+            meta.lore(filler.lore().stream().map(Text::mini).collect(Collectors.toList()));
         }
         if (meta != null) item.setItemMeta(meta);
         return new SimpleButton(item, click -> {});

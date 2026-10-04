@@ -1,6 +1,7 @@
 package dev.lorenzzz.smplibrary.modules.settings;
 
-import dev.lorenzzz.smplibrary.C;
+import dev.lorenzzz.smplibrary.text.Text;
+import dev.lorenzzz.smplibrary.util.Log;
 import net.j4c0b3y.api.menu.Menu;
 import net.j4c0b3y.api.menu.MenuHandler;
 import net.j4c0b3y.api.menu.MenuSize;
@@ -54,7 +55,7 @@ public final class SettingsMenu extends Menu {
             SettingsItemConfig item = entry.getValue();
 
             if (item.slot() >= slots) {
-                C.warning("settings: '" + key + "' sits on slot " + item.slot()
+                Log.warning("settings: '" + key + "' sits on slot " + item.slot()
                         + ", outside a " + config.rows() + "-row menu — entry skipped.");
                 continue;
             }
@@ -66,7 +67,7 @@ public final class SettingsMenu extends Menu {
             // hand-edited: say which pair collided instead of quietly dropping a button.
             String other = taken.putIfAbsent(item.slot(), key);
             if (other != null) {
-                C.warning("settings: '" + key + "' e '" + other + "' sono entrambi sullo slot "
+                Log.warning("settings: '" + key + "' e '" + other + "' sono entrambi sullo slot "
                         + item.slot() + " — '" + key + "' non viene mostrato.");
                 continue;
             }
@@ -126,7 +127,7 @@ public final class SettingsMenu extends Menu {
      * only where the configured text did not ask for italics itself.
      */
     private static Component text(String raw) {
-        return C.mm(raw).decorationIfAbsent(TextDecoration.ITALIC, TextDecoration.State.FALSE);
+        return Text.mini(raw).decorationIfAbsent(TextDecoration.ITALIC, TextDecoration.State.FALSE);
     }
 
     private static Material material(String name, Material fallback) {

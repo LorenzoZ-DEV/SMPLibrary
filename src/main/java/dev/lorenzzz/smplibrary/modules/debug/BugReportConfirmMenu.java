@@ -1,6 +1,6 @@
 package dev.lorenzzz.smplibrary.modules.debug;
 
-import dev.lorenzzz.smplibrary.C;
+import dev.lorenzzz.smplibrary.text.Text;
 import net.j4c0b3y.api.menu.Menu;
 import net.j4c0b3y.api.menu.MenuHandler;
 import net.j4c0b3y.api.menu.MenuSize;
@@ -61,14 +61,14 @@ public final class BugReportConfirmMenu extends Menu {
         ItemStack item = new ItemStack(Material.WRITTEN_BOOK);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.displayName(C.mm("<gold><bold>" + escape(title) + "</bold>"));
+            meta.displayName(Text.mini("<gold><bold>" + escape(title) + "</bold>"));
 
             List<Component> lore = new ArrayList<>();
-            lore.add(C.mm("<gray>Tipo: <white>" + escape(type)));
+            lore.add(Text.mini("<gray>Tipo: <white>" + escape(type)));
             lore.add(Component.empty());
-            for (String line : wrap(body)) lore.add(C.mm("<gray>" + escape(line)));
+            for (String line : wrap(body)) lore.add(Text.mini("<gray>" + escape(line)));
             lore.add(Component.empty());
-            lore.add(C.mm(media.isBlank()
+            lore.add(Text.mini(media.isBlank()
                     ? "<dark_gray>Nessun media allegato"
                     : "<aqua>" + escape(media)));
             meta.lore(lore);
@@ -81,8 +81,8 @@ public final class BugReportConfirmMenu extends Menu {
         ItemStack item = new ItemStack(Material.LIME_STAINED_GLASS_PANE);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.displayName(C.mm("<green><bold>Invia la segnalazione</bold>"));
-            meta.lore(List.of(C.mm("<gray>Verra' vista dallo staff sulla dashboard.")));
+            meta.displayName(Text.mini("<green><bold>Invia la segnalazione</bold>"));
+            meta.lore(List.of(Text.mini("<gray>Verra' vista dallo staff sulla dashboard.")));
             item.setItemMeta(meta);
         }
         return new SimpleButton(item, click -> {
@@ -97,8 +97,8 @@ public final class BugReportConfirmMenu extends Menu {
         ItemStack item = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.displayName(C.mm("<red><bold>Annulla</bold>"));
-            meta.lore(List.of(C.mm("<gray>Niente verra' salvato.")));
+            meta.displayName(Text.mini("<red><bold>Annulla</bold>"));
+            meta.lore(List.of(Text.mini("<gray>Niente verra' salvato.")));
             item.setItemMeta(meta);
         }
         return new SimpleButton(item, click -> {

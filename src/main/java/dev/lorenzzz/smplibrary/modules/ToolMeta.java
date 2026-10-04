@@ -1,6 +1,7 @@
 package dev.lorenzzz.smplibrary.modules;
 
-import dev.lorenzzz.smplibrary.C;
+import dev.lorenzzz.smplibrary.text.Text;
+import dev.lorenzzz.smplibrary.util.Log;
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
 import net.kyori.adventure.text.Component;
@@ -41,7 +42,7 @@ public final class ToolMeta {
                     .getRegistry(RegistryKey.ENCHANTMENT)
                     .get(NamespacedKey.minecraft(key.toLowerCase(Locale.ROOT)));
             if (enchantment == null) {
-                C.warning("Unknown enchantment, skipping: " + key);
+                Log.warning("Unknown enchantment, skipping: " + key);
                 continue;
             }
             meta.addEnchant(enchantment, level, true);
@@ -59,7 +60,7 @@ public final class ToolMeta {
             String name = key.toLowerCase(Locale.ROOT);
             Attribute attribute = Registry.ATTRIBUTE.get(NamespacedKey.minecraft(name));
             if (attribute == null) {
-                C.warning("Unknown attribute, skipping: " + key);
+                Log.warning("Unknown attribute, skipping: " + key);
                 continue;
             }
             meta.addAttributeModifier(attribute, new AttributeModifier(
@@ -98,7 +99,7 @@ public final class ToolMeta {
                     resolved = resolved.replace(entry.getKey(), entry.getValue());
                 }
             }
-            out.add(C.component(resolved));
+            out.add(Text.legacy(resolved));
         }
         return out;
     }

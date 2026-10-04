@@ -1,7 +1,7 @@
 package dev.lorenzzz.smplibrary.modules.shop;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
+import dev.lorenzzz.smplibrary.util.Log;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 
@@ -29,20 +29,20 @@ public class ShopConfigLoader {
             try (InputStream in = plugin.getResource("inventories/shop.yml")) {
                 if (in != null) {
                     Files.copy(in, file.toPath());
-                    C.info("Saved default shop.yml");
+                    Log.info("Saved default shop.yml");
                 } else {
-                    C.warning("shop.yml not found in jar!");
+                    Log.warning("shop.yml not found in jar!");
                     return;
                 }
             } catch (IOException e) {
-                C.warning("Could not save shop.yml: " + e.getMessage());
+                Log.warning("Could not save shop.yml: " + e.getMessage());
                 return;
             }
         }
 
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
         config = parse(yaml);
-        C.info("Shop config loaded with " + config.categories().size() + " categories.");
+        Log.info("Shop config loaded with " + config.categories().size() + " categories.");
     }
 
     public ShopConfig reload() {

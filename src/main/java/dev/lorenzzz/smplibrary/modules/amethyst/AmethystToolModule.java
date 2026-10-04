@@ -1,10 +1,11 @@
 package dev.lorenzzz.smplibrary.modules.amethyst;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.AbstractModule;
 import dev.lorenzzz.smplibrary.modules.ToolMeta;
 import dev.lorenzzz.smplibrary.modules.UseBatcher;
+import dev.lorenzzz.smplibrary.text.Text;
+import dev.lorenzzz.smplibrary.util.Log;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -72,14 +73,14 @@ public final class AmethystToolModule extends AbstractModule implements Listener
 
         Material material = Material.matchMaterial(tool.getString("material", ""));
         if (material == null || material.isAir()) {
-            C.warning("amethyst-tool: bad material for " + toolId);
+            Log.warning("amethyst-tool: bad material for " + toolId);
             return null;
         }
         int max = maxUses();
 
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(C.component(tool.getString("name", "")));
+        meta.displayName(Text.legacy(tool.getString("name", "")));
         meta.lore(ToolMeta.lore(tool.getStringList("lore"), Map.of("%uses%", String.valueOf(max))));
         ToolMeta.applyEnchantments(meta, tool.getConfigurationSection("enchantments"));
         ToolMeta.applyAttributes(meta, tool.getConfigurationSection("attributes"), plugin, "amethyst");

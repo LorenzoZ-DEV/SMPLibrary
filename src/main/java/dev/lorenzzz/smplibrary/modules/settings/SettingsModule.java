@@ -1,10 +1,11 @@
 package dev.lorenzzz.smplibrary.modules.settings;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.manager.ModuleManager;
 import dev.lorenzzz.smplibrary.manager.ToggleManager;
 import dev.lorenzzz.smplibrary.modules.AbstractModule;
+import dev.lorenzzz.smplibrary.text.Chat;
+import dev.lorenzzz.smplibrary.util.Log;
 import dev.lorenzzz.smplibrary.util.SoundCue;
 import net.j4c0b3y.api.menu.MenuHandler;
 import org.bukkit.Bukkit;
@@ -49,21 +50,21 @@ public final class SettingsModule extends AbstractModule {
         registerCommand();
 
         SettingsConfig cfg = configLoader.get();
-        C.info("Settings module enabled (GUI) — " + (cfg == null ? 0 : cfg.items().size())
+        Log.info("Settings module enabled (GUI) — " + (cfg == null ? 0 : cfg.items().size())
                 + " voci, toggle salvati su " + (toggles() == null ? "?" : toggles().backend()) + ".");
     }
 
     private void registerCommand() {
         PluginCommand command = plugin.getCommand(COMMAND);
         if (command == null) {
-            C.warning("Command '" + COMMAND + "' not found in plugin.yml");
+            Log.warning("Command '" + COMMAND + "' not found in plugin.yml");
             return;
         }
         command.setExecutor((sender, cmd, label, args) -> {
             if (sender instanceof Player player) {
                 open(player);
             } else {
-                C.send(sender, "&cOnly players.");
+                Chat.send(sender, "&cOnly players.");
             }
             return true;
         });
@@ -74,7 +75,7 @@ public final class SettingsModule extends AbstractModule {
         SettingsConfig cfg = configLoader == null ? null : configLoader.get();
         ToggleManager toggles = toggles();
         if (cfg == null || toggles == null) {
-            C.send(player, "&cLe impostazioni non sono disponibili in questo momento.");
+            Chat.send(player, "&cLe impostazioni non sono disponibili in questo momento.");
             return;
         }
         toggles.whenLoaded(player.getUniqueId(), () -> {
@@ -118,7 +119,7 @@ public final class SettingsModule extends AbstractModule {
             try {
                 Bukkit.dispatchCommand(player, command.replace("%player%", name));
             } catch (Exception e) {
-                C.warning("settings: '" + key + "' — comando '" + command + "' fallito: " + e.getMessage());
+                Log.warning("settings: '" + key + "' — comando '" + command + "' fallito: " + e.getMessage());
             }
         }
     }

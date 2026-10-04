@@ -1,6 +1,5 @@
 package dev.lorenzzz.smplibrary.modules.dupewatch;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.AbstractModule;
 import dev.lorenzzz.smplibrary.modules.web.WebLog;
@@ -14,6 +13,7 @@ import dev.lorenzzz.smplibrary.security.dupe.EconomyDupeWatcher;
 import dev.lorenzzz.smplibrary.security.dupe.VaultBalanceSource;
 import dev.lorenzzz.smplibrary.security.dupe.ZEssentialsBalanceSource;
 import dev.lorenzzz.smplibrary.security.dupe.ZEssentialsStorage;
+import dev.lorenzzz.smplibrary.util.Log;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 
@@ -84,7 +84,7 @@ public final class DupeWatchModule extends AbstractModule {
         this.settings = buildSettings(cfg);
         BalanceSource source = resolveSource(cfg);
         if (source == null) {
-            C.warning("Anti-dupe: nessuna sorgente per i saldi (zEssentials assente e Vault non registrato)"
+            Log.warning("Anti-dupe: nessuna sorgente per i saldi (zEssentials assente e Vault non registrato)"
                     + " — modulo non avviato.");
             return;
         }
@@ -95,7 +95,7 @@ public final class DupeWatchModule extends AbstractModule {
         listen(this.watcher);
         this.watcher.start();
 
-        C.info("Anti-dupe attivo (" + this.balanceSourceName + ") su "
+        Log.info("Anti-dupe attivo (" + this.balanceSourceName + ") su "
                 + String.join(", ", this.settings.economies()) + ".");
     }
 
@@ -169,7 +169,7 @@ public final class DupeWatchModule extends AbstractModule {
             var source = VaultBalanceSource.fromServices(vaultEconomy);
             if (source.isPresent()) {
                 this.balanceSourceName = "Vault (" + vaultEconomy + ")";
-                C.warning("Anti-dupe: uso Vault, che parla solo per '" + vaultEconomy
+                Log.warning("Anti-dupe: uso Vault, che parla solo per '" + vaultEconomy
                         + "'. Le altre economie non verranno controllate.");
                 return source.get();
             }
@@ -223,7 +223,7 @@ public final class DupeWatchModule extends AbstractModule {
                     + ", effettivo " + DupeAlert.format(alert.actual()));
         } catch (Exception e) {
             // An audit line that fails to render must never take down the check that produced it.
-            C.warning("Anti-dupe: impossibile scrivere sull'action log: " + e.getMessage());
+            Log.warning("Anti-dupe: impossibile scrivere sull'action log: " + e.getMessage());
         }
     }
 

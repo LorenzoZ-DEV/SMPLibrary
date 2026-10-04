@@ -1,7 +1,7 @@
 package dev.lorenzzz.smplibrary.modules.web;
 
+import dev.lorenzzz.smplibrary.util.Log;
 import com.sun.net.httpserver.HttpExchange;
-import dev.lorenzzz.smplibrary.C;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -37,8 +37,8 @@ public final class WebAuth {
         boolean generated = configuredToken == null || configuredToken.isBlank();
         this.mainToken = generated ? randomId(32) : configuredToken.trim();
         if (generated) {
-            C.info("&7Web dashboard token: &f" + mainToken);
-            C.info("&7Set &fMODULES.web.token &7in config.yml to keep it across restarts.");
+            Log.info("&7Web dashboard token: &f" + mainToken);
+            Log.info("&7Set &fMODULES.web.token &7in config.yml to keep it across restarts.");
         }
     }
 

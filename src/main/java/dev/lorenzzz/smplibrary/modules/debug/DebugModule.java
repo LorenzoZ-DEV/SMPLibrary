@@ -1,10 +1,11 @@
 package dev.lorenzzz.smplibrary.modules.debug;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.commands.BugReportCommand;
 import dev.lorenzzz.smplibrary.modules.AbstractModule;
 import dev.lorenzzz.smplibrary.modules.web.WebStats;
+import dev.lorenzzz.smplibrary.text.Chat;
+import dev.lorenzzz.smplibrary.util.Log;
 import net.j4c0b3y.api.menu.MenuHandler;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
@@ -154,7 +155,7 @@ public final class DebugModule extends AbstractModule {
         // Sweep abandoned wizards; a minute of granularity is plenty for a five-minute timeout.
         repeat(() -> flow.expireStale(sessionTimeoutMillis), 1200L, 1200L);
 
-        C.info("Debug: cattura errori attiva, AI " + (ai.configured()
+        Log.info("Debug: cattura errori attiva, AI " + (ai.configured()
                 ? "pronta (" + ai.model() + ", key da " + ai.keySource() + ")"
                 : "non configurata"));
     }
@@ -248,7 +249,7 @@ public final class DebugModule extends AbstractModule {
     void openConfirmMenu(Player player, String type, String title, String body, String media) {
         if (menuHandler == null) {
             // Without the menu there is nothing to confirm with; file it rather than lose it.
-            C.warning("debug: MenuHandler non disponibile, la segnalazione viene inviata direttamente.");
+            Log.warning("debug: MenuHandler non disponibile, la segnalazione viene inviata direttamente.");
             submitReport(player);
             return;
         }
@@ -473,7 +474,7 @@ public final class DebugModule extends AbstractModule {
             for (Player player : Bukkit.getOnlinePlayers()) {
                 if (!player.hasPermission("smplibrary.admin")) continue;
                 if (mutedAdmins.contains(player.getUniqueId())) continue;
-                C.send(player, legacyMessage);
+                Chat.send(player, legacyMessage);
             }
         };
         if (Bukkit.isPrimaryThread()) send.run();

@@ -1,8 +1,8 @@
 package dev.lorenzzz.smplibrary.modules.playerstats;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.AbstractModule;
+import dev.lorenzzz.smplibrary.util.Log;
 import dev.lorenzzz.smplibrary.util.Ticks;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
@@ -105,7 +105,7 @@ public final class PlayerStatsModule extends AbstractModule implements Listener 
 
         // Sample immediately so a fresh restart shows a point straight away.
         repeat(this::sample, 0L, period);
-        C.info("Player stats enabled — sampling every " + (sampleIntervalMs / 1000L) + "s"
+        Log.info("Player stats enabled — sampling every " + (sampleIntervalMs / 1000L) + "s"
                 + (persistent ? " (persisted)" : " (memory only)") + ".");
     }
 
@@ -149,7 +149,7 @@ public final class PlayerStatsModule extends AbstractModule implements Listener 
     private void noteOnline(int online) {
         boolean raised = raiseRecord(new Peak(online, System.currentTimeMillis()),
                 recordPersistent && recordReady);
-        if (raised && recordReady) C.info("New player record: " + online + " players online!");
+        if (raised && recordReady) Log.info("New player record: " + online + " players online!");
     }
 
     /**
@@ -239,7 +239,7 @@ public final class PlayerStatsModule extends AbstractModule implements Listener 
             return true;
         } catch (SQLException | RuntimeException e) {
             // No database is not fatal — the module still works for the current session.
-            C.warning("playerstats: no database available (" + e.getMessage()
+            Log.warning("playerstats: no database available (" + e.getMessage()
                     + "); history will not survive a restart.");
             return false;
         }
@@ -256,7 +256,7 @@ public final class PlayerStatsModule extends AbstractModule implements Listener 
             statement.execute();
             return true;
         } catch (SQLException | RuntimeException e) {
-            C.warning("playerstats: could not prepare the record table (" + e.getMessage() + ").");
+            Log.warning("playerstats: could not prepare the record table (" + e.getMessage() + ").");
             return false;
         }
     }
@@ -272,14 +272,14 @@ public final class PlayerStatsModule extends AbstractModule implements Listener 
                     if (rows.next()) stored = new Peak(rows.getInt(1), rows.getLong(2));
                 }
             } catch (SQLException e) {
-                C.warning("playerstats: could not read the player record: " + e.getMessage());
+                Log.warning("playerstats: could not read the player record: " + e.getMessage());
             }
 
             raiseRecord(stored, false);
             // A record reached before this module existed can be declared in config. It is a
             // floor, not an override: a real reading that beats it always wins.
             if (raiseRecord(new Peak(declared, 0L), false)) {
-                C.info("Player stats: record raised to " + declared + " from config.");
+                Log.info("Player stats: record raised to " + declared + " from config.");
             }
             recordReady = true;
 
@@ -288,7 +288,7 @@ public final class PlayerStatsModule extends AbstractModule implements Listener 
             Peak current = record;
             if (current.online() > stored.online()) persistRecordAsync(current);
             if (current.online() > 0) {
-                C.info("Player stats: all-time record is " + current.online() + " players.");
+                Log.info("Player stats: all-time record is " + current.online() + " players.");
             }
         });
     }
@@ -317,7 +317,7 @@ public final class PlayerStatsModule extends AbstractModule implements Listener 
                     insert.executeUpdate();
                 }
             } catch (SQLException e) {
-                C.warning("playerstats: could not store the player record: " + e.getMessage());
+                Log.warning("playerstats: could not store the player record: " + e.getMessage());
             }
         });
     }
@@ -331,7 +331,7 @@ public final class PlayerStatsModule extends AbstractModule implements Listener 
                 statement.setInt(2, sample.online());
                 statement.executeUpdate();
             } catch (SQLException e) {
-                C.warning("playerstats: could not store a sample: " + e.getMessage());
+                Log.warning("playerstats: could not store a sample: " + e.getMessage());
             }
         });
     }
@@ -349,7 +349,7 @@ public final class PlayerStatsModule extends AbstractModule implements Listener 
                     while (rows.next()) loaded.add(new Sample(rows.getLong(1), rows.getInt(2)));
                 }
             } catch (SQLException e) {
-                C.warning("playerstats: could not read history: " + e.getMessage());
+                Log.warning("playerstats: could not read history: " + e.getMessage());
                 return;
             }
 
@@ -362,7 +362,7 @@ public final class PlayerStatsModule extends AbstractModule implements Listener 
                 }
                 trimLocked(System.currentTimeMillis());
             }
-            C.info("Player stats: restored " + loaded.size() + " samples from the database.");
+            Log.info("Player stats: restored " + loaded.size() + " samples from the database.");
         });
     }
 
@@ -376,7 +376,7 @@ public final class PlayerStatsModule extends AbstractModule implements Listener 
                 statement.setLong(1, cutoff);
                 statement.executeUpdate();
             } catch (SQLException e) {
-                C.warning("playerstats: could not prune old samples: " + e.getMessage());
+                Log.warning("playerstats: could not prune old samples: " + e.getMessage());
             }
         });
     }

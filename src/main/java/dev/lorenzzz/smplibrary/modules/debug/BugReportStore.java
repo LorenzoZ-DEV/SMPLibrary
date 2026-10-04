@@ -1,7 +1,7 @@
 package dev.lorenzzz.smplibrary.modules.debug;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
+import dev.lorenzzz.smplibrary.util.Log;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -201,12 +201,12 @@ public final class BugReportStore {
         try {
             File parent = file.getParentFile();
             if (parent != null && !parent.exists() && !parent.mkdirs()) {
-                C.warning("bugreport: non riesco a creare " + parent);
+                Log.warning("bugreport: non riesco a creare " + parent);
                 return;
             }
             yaml.save(file);
         } catch (IOException e) {
-            C.warning("bugreport: salvataggio di " + FILE + " fallito: " + e.getMessage());
+            Log.warning("bugreport: salvataggio di " + FILE + " fallito: " + e.getMessage());
         }
     }
 }

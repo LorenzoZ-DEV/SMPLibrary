@@ -1,10 +1,11 @@
 package dev.lorenzzz.smplibrary.modules.gui;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.hook.HuskHomesHook;
 import dev.lorenzzz.smplibrary.hook.SavedPoint;
 import dev.lorenzzz.smplibrary.modules.AbstractModule;
+import dev.lorenzzz.smplibrary.text.Chat;
+import dev.lorenzzz.smplibrary.util.Log;
 import net.j4c0b3y.api.menu.Menu;
 import net.j4c0b3y.api.menu.MenuHandler;
 import org.bukkit.Bukkit;
@@ -70,7 +71,7 @@ public final class GuiModule extends AbstractModule implements Listener {
         registerCommand(WARPS_COMMAND, this::openWarps);
         listen(this);
 
-        C.info("GUI module enabled — /" + HOMES_COMMAND + " e /" + WARPS_COMMAND + ", "
+        Log.info("GUI module enabled — /" + HOMES_COMMAND + " e /" + WARPS_COMMAND + ", "
                 + (huskHomesPresent() ? "HuskHomes trovato." : "in attesa di HuskHomes."));
     }
 
@@ -85,14 +86,14 @@ public final class GuiModule extends AbstractModule implements Listener {
     private void registerCommand(String name, java.util.function.Consumer<Player> action) {
         PluginCommand command = plugin.getCommand(name);
         if (command == null) {
-            C.warning("Command '" + name + "' not found in plugin.yml");
+            Log.warning("Command '" + name + "' not found in plugin.yml");
             return;
         }
         command.setExecutor((sender, cmd, label, args) -> {
             if (sender instanceof Player player) {
                 action.accept(player);
             } else {
-                C.send(sender, "&cOnly players.");
+                Chat.send(sender, "&cOnly players.");
             }
             return true;
         });
@@ -123,13 +124,13 @@ public final class GuiModule extends AbstractModule implements Listener {
     private void open(Player player, GuiConfig config, ScreenConfig screen,
                       Function<HuskHomesHook, CompletableFuture<List<SavedPoint>>> source, String what) {
         if (!screen.enabled()) {
-            C.send(player, "&cQuesta schermata è disattivata.");
+            Chat.send(player, "&cQuesta schermata è disattivata.");
             return;
         }
 
         HuskHomesHook live = hook();
         if (live == null) {
-            C.send(player, "&cLe " + what + " non sono disponibili: "
+            Chat.send(player, "&cLe " + what + " non sono disponibili: "
                     + HuskHomesHook.PLUGIN_NAME + " non è attivo.");
             return;
         }
@@ -139,15 +140,15 @@ public final class GuiModule extends AbstractModule implements Listener {
             entries = source.apply(live);
         } catch (Throwable failed) {
             dropHook(failed);
-            C.send(player, "&cNon riesco a leggere le " + what + " in questo momento.");
+            Chat.send(player, "&cNon riesco a leggere le " + what + " in questo momento.");
             return;
         }
 
         entries.whenComplete((points, error) -> Bukkit.getScheduler().runTask(plugin, () -> {
             if (!player.isOnline()) return;
             if (error != null) {
-                C.warning("GUI: lettura " + what + " fallita: " + describe(error));
-                C.send(player, "&cNon riesco a leggere le " + what + " in questo momento.");
+                Log.warning("GUI: lettura " + what + " fallita: " + describe(error));
+                Chat.send(player, "&cNon riesco a leggere le " + what + " in questo momento.");
                 return;
             }
             show(player, config, screen, points == null ? List.of() : points);
@@ -187,7 +188,7 @@ public final class GuiModule extends AbstractModule implements Listener {
         try {
             Bukkit.dispatchCommand(player, command.replace("%player%", player.getName()));
         } catch (Exception e) {
-            C.warning("gui: comando '" + command + "' fallito: " + e.getMessage());
+            Log.warning("gui: comando '" + command + "' fallito: " + e.getMessage());
         }
     }
 
@@ -239,7 +240,7 @@ public final class GuiModule extends AbstractModule implements Listener {
 
     private GuiConfig gui() {
         GuiConfig config = configLoader == null ? null : configLoader.get();
-        if (config == null) C.warning("gui.yml non è stato caricato — la GUI non si apre.");
+        if (config == null) Log.warning("gui.yml non è stato caricato — la GUI non si apre.");
         return config;
     }
 
@@ -261,7 +262,7 @@ public final class GuiModule extends AbstractModule implements Listener {
         if (!huskHomesPresent()) {
             if (!missingLogged) {
                 missingLogged = true;
-                C.warning("GUI: " + HuskHomesHook.PLUGIN_NAME + " non è attivo — le schermate"
+                Log.warning("GUI: " + HuskHomesHook.PLUGIN_NAME + " non è attivo — le schermate"
                         + " home/warp non hanno dati da mostrare.");
             }
             return null;
@@ -270,9 +271,9 @@ public final class GuiModule extends AbstractModule implements Listener {
         try {
             hook = new HuskHomesHook();
             missingLogged = false;
-            C.info("GUI agganciata a " + HuskHomesHook.PLUGIN_NAME + " v" + hook.version() + ".");
+            Log.info("GUI agganciata a " + HuskHomesHook.PLUGIN_NAME + " v" + hook.version() + ".");
         } catch (Throwable failed) {
-            C.warning("GUI: aggancio a " + HuskHomesHook.PLUGIN_NAME + " fallito ("
+            Log.warning("GUI: aggancio a " + HuskHomesHook.PLUGIN_NAME + " fallito ("
                     + describe(failed) + ").");
         }
         return hook;
@@ -281,7 +282,7 @@ public final class GuiModule extends AbstractModule implements Listener {
     private void dropHook(Throwable failed) {
         hook = null;
         nextHookAttempt = System.currentTimeMillis() + HOOK_RETRY_MS;
-        C.warning("GUI: chiamata a " + HuskHomesHook.PLUGIN_NAME + " fallita ("
+        Log.warning("GUI: chiamata a " + HuskHomesHook.PLUGIN_NAME + " fallita ("
                 + describe(failed) + ") — riprovo tra poco.");
     }
 

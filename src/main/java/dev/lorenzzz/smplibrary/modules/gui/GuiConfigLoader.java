@@ -1,7 +1,7 @@
 package dev.lorenzzz.smplibrary.modules.gui;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
+import dev.lorenzzz.smplibrary.util.Log;
 import dev.lorenzzz.smplibrary.util.SoundCue;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -58,13 +58,13 @@ final class GuiConfigLoader {
         if (!file.exists()) {
             try (InputStream in = plugin.getResource(RESOURCE)) {
                 if (in == null) {
-                    C.warning("gui.yml not found in jar!");
+                    Log.warning("gui.yml not found in jar!");
                     return;
                 }
                 Files.copy(in, file.toPath());
-                C.info("Saved default gui.yml");
+                Log.info("Saved default gui.yml");
             } catch (IOException e) {
-                C.warning("Could not save gui.yml: " + e.getMessage());
+                Log.warning("Could not save gui.yml: " + e.getMessage());
                 return;
             }
         }
@@ -94,9 +94,9 @@ final class GuiConfigLoader {
 
             if (added == 0) return;
             yaml.save(file);
-            C.info("gui.yml aggiornato: " + added + " chiavi nuove aggiunte dai default.");
+            Log.info("gui.yml aggiornato: " + added + " chiavi nuove aggiunte dai default.");
         } catch (IOException e) {
-            C.warning("Could not merge the bundled gui.yml: " + e.getMessage());
+            Log.warning("Could not merge the bundled gui.yml: " + e.getMessage());
         }
     }
 
@@ -143,12 +143,12 @@ final class GuiConfigLoader {
         List<String> rows = new ArrayList<>();
         for (String row : configured) {
             if (rows.size() == MAX_ROWS) {
-                C.warning("gui.yml: il layout ha più di " + MAX_ROWS + " righe — le altre sono ignorate.");
+                Log.warning("gui.yml: il layout ha più di " + MAX_ROWS + " righe — le altre sono ignorate.");
                 break;
             }
             String line = row == null ? "" : row;
             if (line.length() != COLUMNS) {
-                C.warning("gui.yml: la riga '" + line + "' è lunga " + line.length()
+                Log.warning("gui.yml: la riga '" + line + "' è lunga " + line.length()
                         + " caratteri invece di " + COLUMNS + " — la adatto.");
                 line = line.length() > COLUMNS
                         ? line.substring(0, COLUMNS)

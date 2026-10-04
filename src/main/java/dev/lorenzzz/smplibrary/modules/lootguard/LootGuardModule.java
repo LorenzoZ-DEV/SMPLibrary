@@ -1,8 +1,8 @@
 package dev.lorenzzz.smplibrary.modules.lootguard;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.AbstractModule;
+import dev.lorenzzz.smplibrary.util.Log;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.configuration.ConfigurationSection;
@@ -92,7 +92,7 @@ public final class LootGuardModule extends AbstractModule implements Listener {
         }
 
         listen(this);
-        C.info("LootGuard enabled — il loot sopravvive a: " + String.join(", ", sources)
+        Log.info("LootGuard enabled — il loot sopravvive a: " + String.join(", ", sources)
                 + (protectExperience ? " (anche le sfere di esperienza)." : "."));
     }
 

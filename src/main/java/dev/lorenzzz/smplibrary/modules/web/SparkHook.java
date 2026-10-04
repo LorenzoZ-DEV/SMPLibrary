@@ -1,6 +1,6 @@
 package dev.lorenzzz.smplibrary.modules.web;
 
-import dev.lorenzzz.smplibrary.C;
+import dev.lorenzzz.smplibrary.util.Log;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 
@@ -92,7 +92,7 @@ public final class SparkHook {
         lastError = null;
         if (!announced) {
             announced = true;
-            C.info("&7Hooked into &fspark&7 via " + current.source()
+            Log.info("&7Hooked into &fspark&7 via " + current.source()
                     + " — live performance metrics are on the dashboard.");
         }
         return current;

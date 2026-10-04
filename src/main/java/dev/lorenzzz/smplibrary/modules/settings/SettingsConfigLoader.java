@@ -1,7 +1,7 @@
 package dev.lorenzzz.smplibrary.modules.settings;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
+import dev.lorenzzz.smplibrary.util.Log;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 
@@ -35,13 +35,13 @@ public class SettingsConfigLoader {
             try (InputStream in = plugin.getResource("inventories/settings.yml")) {
                 if (in != null) {
                     Files.copy(in, file.toPath());
-                    C.info("Saved default settings.yml");
+                    Log.info("Saved default settings.yml");
                 } else {
-                    C.warning("settings.yml not found in jar!");
+                    Log.warning("settings.yml not found in jar!");
                     return;
                 }
             } catch (IOException e) {
-                C.warning("Could not save settings.yml: " + e.getMessage());
+                Log.warning("Could not save settings.yml: " + e.getMessage());
                 return;
             }
         }
@@ -76,9 +76,9 @@ public class SettingsConfigLoader {
 
             if (added == 0) return;
             yaml.save(file);
-            C.info("settings.yml aggiornato: " + added + " chiavi nuove aggiunte dai default.");
+            Log.info("settings.yml aggiornato: " + added + " chiavi nuove aggiunte dai default.");
         } catch (IOException e) {
-            C.warning("Could not merge the bundled settings.yml: " + e.getMessage());
+            Log.warning("Could not merge the bundled settings.yml: " + e.getMessage());
         }
     }
 

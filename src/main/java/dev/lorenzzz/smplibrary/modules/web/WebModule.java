@@ -1,8 +1,8 @@
 package dev.lorenzzz.smplibrary.modules.web;
 
-import dev.lorenzzz.smplibrary.C;
 import dev.lorenzzz.smplibrary.Smp_library;
 import dev.lorenzzz.smplibrary.modules.AbstractModule;
+import dev.lorenzzz.smplibrary.util.Log;
 import org.bukkit.configuration.ConfigurationSection;
 
 import java.io.IOException;
@@ -34,7 +34,7 @@ public final class WebModule extends AbstractModule {
     public void onEnable() {
         ConfigurationSection cfg = resolveConfig();
         if (cfg == null) {
-            C.info("Web dashboard: no config section found, skipping.");
+            Log.info("Web dashboard: no config section found, skipping.");
             return;
         }
 
@@ -42,7 +42,7 @@ public final class WebModule extends AbstractModule {
         int preferred = cfg.getInt("port", 8080);
         int port = findAvailablePort(preferred, preferred + PORT_SCAN_RANGE);
         if (port == -1) {
-            C.warning("Web dashboard: no available port in range " + preferred + "-" + (preferred + PORT_SCAN_RANGE));
+            Log.warning("Web dashboard: no available port in range " + preferred + "-" + (preferred + PORT_SCAN_RANGE));
             return;
         }
 
@@ -57,7 +57,7 @@ public final class WebModule extends AbstractModule {
             server.start(host, port);
             this.boundHost = host;
             this.boundPort = port;
-            C.info("Web dashboard started on " + host + ":" + port);
+            Log.info("Web dashboard started on " + host + ":" + port);
             log.log("Web dashboard started on " + host + ":" + port);
 
             // Probe spark once the server has settled, purely so the console reports the
@@ -66,7 +66,7 @@ public final class WebModule extends AbstractModule {
             // keeps retrying on its own, and the Performance tab explains the current state.
             later(() -> spark.attached(), SPARK_PROBE_DELAY_TICKS);
         } catch (Exception e) {
-            C.warning("Failed to start web dashboard: " + e.getMessage());
+            Log.warning("Failed to start web dashboard: " + e.getMessage());
             server = null;
             log = null;
             boundPort = -1;
@@ -92,7 +92,7 @@ public final class WebModule extends AbstractModule {
         if (legacy == null || !hasConnectionSettings(legacy)) return cfg;
         if (cfg != null && hasConnectionSettings(cfg)) return cfg;
 
-        C.warning("Web dashboard: 'host'/'port' trovati fuori da MODULES.web. "
+        Log.warning("Web dashboard: 'host'/'port' trovati fuori da MODULES.web. "
                 + "Sposta la sezione 'web' dentro MODULES per evitare ambiguita'. "
                 + "Uso temporaneamente i valori dalla radice.");
         if (cfg == null) return legacy;
