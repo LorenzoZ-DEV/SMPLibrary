@@ -159,6 +159,70 @@ death:
   explosion: '<gray><player> è esploso.'
   suffocation: '<gray><player> è soffocato.'
   starvation: '<gray><player> è morto di fame.'
+halloween:
+  # <event> = evento di oggi, <description> = cosa fa, <days> = giorni rimasti,
+  # <candies>/<today> = caramelle stagione/oggi, <player> = chi legge,
+  # <next> = caramelle al prossimo premio, <trick> = stato dolcetto/scherzetto.
+  status: '<prefix><gold><bold>🎃 Halloween</bold></gold> <gray>— mancano <yellow><days></yellow> giorni.
+    <gray>Oggi: <yellow><event></yellow> <gray>(<description><gray>)
+    <gray>Le tue caramelle: <yellow><candies></yellow> <gray>(oggi <yellow><today></yellow>, prossimo premio tra <yellow><next></yellow>)
+    <gray>Dolcetto: <trick>'
+  status-off: '<prefix><gray>La stagione di Halloween non e'' attiva in questo momento.'
+  top-empty: '<prefix><gray>Nessuno ha ancora raccolto caramelle.'
+  top-entry: '<gray><rank>. <yellow><player></yellow> <gray>— <yellow><candies></yellow> 🍬'
+  stats-header: '<prefix><gold>🎃 Le tue caramelle: <yellow><candies></yellow> <gray>(oggi <yellow><today></yellow>)'
+  stats-entry: '<gray><when> — <green>+<amount> 🍬'
+  stats-empty: '<gray>Nessuna transazione registrata.'
+  unknown-event: '<prefix><red>Evento sconosciuto: <yellow><event></yellow>. <gray>Eventi: <white><events>'
+  pinned: '<prefix><green>Evento di oggi impostato: <yellow><event></yellow>.'
+  no-event: 'nessuno'
+  no-event: 'nessuno'
+  day-start: '<prefix><gold><bold>🎃 Evento di oggi: <yellow><event></yellow></bold></gold> <gray>(<description><gray>)'
+  day-title: '<gold><bold>🎃 <event></bold>'
+  day-subtitle: '<gray><description>'
+  night-start: '<prefix><dark_red><bold>☠ È LA NOTTE DI HALLOWEEN ☠</bold></dark_red> <gray>(<yellow><event></yellow><gray>)'
+  join: '<prefix><gray>Oggi e'' <yellow><event></yellow><gray>: <description> <gray>Hai <yellow><today></yellow> caramelle oggi. <trick>'
+  candy-found: '<prefix><green>+<amount> 🍬 <gray>(totale <yellow><candies></yellow>, oggi <yellow><today></yellow>)'
+  candy-found-actionbar: '<green>+<amount> 🍬'
+  cap-reached: '<prefix><yellow>Hai raggiunto il limite giornaliero (<yellow><candies></yellow>). Torna domani!'
+  exchange: '<prefix><gold>🎃 <player> ha raggiunto <yellow><candies></yellow> caramelle!'
+  candy-item-name: '<gold><bold>Caramella di Halloween'
+  candy-item-lore: '<gray>Dolcetto della stagione di Halloween.'
+  candy-eaten: '<prefix><gray>Gnam! Effetto per <yellow><seconds></yellow>s.'
+  trick-or-treat-off: '<prefix><red>Dolcetto o scherzetto disattivato.'
+  off-season: '<prefix><gray>La stagione di Halloween non e'' attiva.'
+  already-claimed: '<prefix><gray>Hai gia'' avuto il tuo dolcetto oggi. Torna tra <yellow><time></yellow>.'
+  treat: '<prefix><green>Dolcetto! <yellow>+<amount> 🍬</yellow> <gray>(totale <yellow><candies></yellow>)'
+  tricks:
+    nausea: '<prefix><gray>Brividi... la vista ti gira per <yellow><seconds></yellow>s.'
+    blindness: '<prefix><gray>Buio pesto per <yellow><seconds></yellow>s...'
+    scare: '<prefix><gray>BOO! 👻'
+  trick-title: '<dark_red><bold>👻 SCHERZETTO!'
+  trick-subtitle: '<gray>Ti e'' andata male...'
+  trick-ready: '<green>disponibile (usa /dolcetto)'
+  trick-used: '<gray>gia'' usato oggi'
+  daily-top: '<prefix><gold>🎃 Miglior raccoglitore di ieri: <yellow><player></yellow> <gray>con <yellow><candies></yellow> caramelle!'
+  events:
+    candy-rain:
+      name: 'Pioggia di caramelle'
+      description: 'le caramelle cadono molto piu'' spesso'
+    soul-harvest:
+      name: 'Raccolta anime'
+      description: 'i mob lasciano scie di anime e doppie caramelle'
+    spooky-night:
+      name: 'Notte spettrale'
+      description: 'i mob notturni indossano zucche intagliate'
+    blood-moon:
+      name: 'Luna di sangue'
+      description: 'i mob notturni brillano e le caramelle sono doppie'
+    lucky-pumpkins:
+      name: 'Zucche fortunate'
+      description: 'rompere le zucche paga davvero'
+  whispers:
+    - '<gray><italic>hai sentito anche tu quel rumore...?'
+    - '<gray><italic>non voltarti.'
+    - '<gray><italic>qualcosa ti osserva dal buio...'
+    - '<dark_gray><italic>buuu... 👻'
 night-vision:
   enabled: '<prefix><green>Visione notturna attivata.'
   enabled-actionbar: '<green>Night vision ON'
