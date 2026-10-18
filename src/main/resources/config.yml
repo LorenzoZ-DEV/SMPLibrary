@@ -261,6 +261,106 @@
       # perdita, i livelli di chi muore altrimenti evaporano insieme al loot.
       protect-experience: true
 
+    halloween:
+      # Evento di Halloween: un evento diverso ogni giorno + caccia alle caramelle.
+      # Si accende e spegne da solo per data (season), quindi puo' restare enabled tutto l'anno.
+      enabled: true
+      # Finestra della stagione (MM-DD, estremi inclusi). Fuori da qui il modulo dorme.
+      # Per forzarlo sempre acceso (test, server a tema): force: true.
+      season:
+        start: "10-01"
+        end: "11-02"
+        force: false
+      # Mondi dove l'evento gira (nomi minuscoli). Altrove non succede niente.
+      worlds:
+        - world
+      # Rotazione degli eventi giornalieri. Nomi: candy-rain, soul-harvest, spooky-night,
+      # blood-moon, lucky-pumpkins. Lista vuota = tutti.
+      daily-events: []
+      # Evento fisso per la notte del 31 ottobre. Vuoto = segue la rotazione.
+      halloween-night: blood-moon
+      # Annunci a ogni cambio giorno.
+      announce:
+        title: true
+        on-join: true
+        join-delay-seconds: 3
+      candy:
+        # Probabilita' che un mob ostile ucciso lasci una caramella (x moltiplicatore del giorno).
+        mob-chance: 0.08
+        # Probabilita' che una zucca rotta dia caramelle (fuori dai giorni fortunati).
+        pumpkin-chance: 0.10
+        # Probabilita' nei giorni lucky-pumpkins.
+        lucky-chance: 0.55
+        # Tetto giornaliero per player (anti-farm). 0 = nessun tetto.
+        daily-cap: 150
+        # true = la caramella cade anche come oggetto raccoglibile.
+        drop-item: true
+        material: COOKIE
+        # Effetto mangiando una caramella (contatore invariato: lo snack non tocca il punteggio).
+        snack:
+          effect: speed
+          seconds: 20
+          amplifier: 0
+      mobs:
+        # Quanti dei mob notturni vengono addobbati (zucca in testa / glow) nei giorni previsti.
+        decor-chance: 0.35
+      exchange:
+        # Ogni quante caramelle totali scatta la ricompensa (0 = mai).
+        every: 25
+        commands: []
+        broadcast: true
+      trick-or-treat:
+        enabled: true
+        # Probabilita' di dolcetto (caramelle) contro scherzetto (effetto innocuo).
+        treat-chance: 0.65
+        treat:
+          candies: 3
+          commands: []
+        trick:
+          seconds: 8
+      daily-top:
+        # Il miglior raccoglitore del giorno viene annunciato e premiato al cambio giorno.
+        announce: true
+        reward-commands: []
+        minimum-candies: 5
+      ambience:
+        # Suoni e sussurri d'atmosfera (disattivabili per player da /settings).
+        enabled: true
+        chance: 0.35
+        whisper-chance: 0.25
+        only-at-night: true
+        every: 45s
+        sounds:
+          - entity.wolf.howl
+          - entity.bat.ambient
+          - entity.witch.ambient
+      sounds:
+        candy:
+          type: entity.item.pickup
+          volume: 0.7
+          pitch: 1.6
+          enabled: true
+        day-start:
+          type: entity.wither.ambient
+          volume: 0.7
+          pitch: 0.8
+          enabled: true
+        treat:
+          type: entity.player.levelup
+          volume: 0.7
+          pitch: 1.4
+          enabled: true
+        trick:
+          type: entity.ghast.scream
+          volume: 0.8
+          pitch: 0.7
+          enabled: true
+        exchange:
+          type: ui.toast.challenge_complete
+          volume: 0.8
+          pitch: 1.0
+          enabled: true
+
     antipearlglitch:
       # Impedisce che una perla ti faccia atterrare dentro un blocco. Due controlli:
       # sul teletrasporto (se il punto d'arrivo e' occupato ti sposta, e se non c'e'

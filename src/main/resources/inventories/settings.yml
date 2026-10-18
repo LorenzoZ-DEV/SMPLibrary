@@ -134,6 +134,23 @@ items:
     commands:
       - "togglementions"
 
+  # Sussurri e suoni d'atmosfera dell'evento di Halloween. Sparisce da solo se il modulo e' spento.
+  halloween_ambience:
+    slot: 17
+    # Nessun comando: l'interruttore E' lo stato che legge il modulo halloween.
+    item:
+      material: JACK_O_LANTERN
+      name: "&#ff6b35&lATMOSFERA HALLOWEEN"
+      lore:
+        - ""
+        - " &7Sussurri e suoni spettrali"
+        - " &7mentre giochi."
+        - ""
+        - " &8» &aClicca per attivare/disattivare"
+    commands: []
+    default: true
+    requires-module: halloween
+
   ah_options:
     slot: 22
     toggle: false

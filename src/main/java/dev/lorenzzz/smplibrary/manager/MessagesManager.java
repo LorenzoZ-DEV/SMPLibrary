@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -72,6 +73,11 @@ public final class MessagesManager implements Manager {
 
     public String raw(String path) {
         return yaml == null ? "" : yaml.getString(path, "");
+    }
+
+    /** String list as-is, for whisper pools and similar multi-line config. */
+    public List<String> rawList(String path) {
+        return yaml == null ? List.of() : yaml.getStringList(path);
     }
 
     /** Static + colored, no PAPI. */

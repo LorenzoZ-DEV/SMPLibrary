@@ -76,6 +76,12 @@ public record SoundCue(Sound sound, float volume, float pitch) {
         player.playSound(player.getLocation(), sound, volume, pitch);
     }
 
+    /** Plays at a given spot for one player only — positioned ambience, not a broadcast. */
+    public void playTo(Player player, Location location) {
+        if (silent() || location.getWorld() == null) return;
+        player.playSound(location, sound, volume, pitch);
+    }
+
     /** Plays in the world, audible to whoever is nearby. */
     public void playAt(Location location) {
         if (silent() || location.getWorld() == null) return;

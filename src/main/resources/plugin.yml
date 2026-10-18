@@ -52,6 +52,12 @@ permissions:
   smplibrary.dialogguard.bypass:
     description: Never get a guarded dialog re-opened after a relog
     default: false
+  smplibrary.halloween.use:
+    description: Take part in the Halloween event
+    default: true
+  smplibrary.halloween.admin:
+    description: Pin the Halloween daily event
+    default: op
   # Le funzioni portate da venrix-utils. Vanno dichiarate qui: un nodo che plugin.yml non
   # conosce vale 'op' per default, quindi finche' mancavano ogni operatore saltava in
   # automatico il combat tag e l'attesa dello /spawn, senza che nessuno glielo desse.
