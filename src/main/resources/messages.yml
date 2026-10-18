@@ -191,6 +191,7 @@ halloween:
   candy-eaten: '<prefix><gray>Gnam! Effetto per <yellow><seconds></yellow>s.'
   trick-or-treat-off: '<prefix><red>Dolcetto o scherzetto disattivato.'
   off-season: '<prefix><gray>La stagione di Halloween non e'' attiva.'
+  save-failed: '<prefix><red>Salvataggio non riuscito, il dolcetto non e'' stato usato. Riprova tra poco.'
   already-claimed: '<prefix><gray>Hai gia'' avuto il tuo dolcetto oggi. Torna tra <yellow><time></yellow>.'
   treat: '<prefix><green>Dolcetto! <yellow>+<amount> 🍬</yellow> <gray>(totale <yellow><candies></yellow>)'
   tricks:

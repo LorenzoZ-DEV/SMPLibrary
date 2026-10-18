@@ -608,6 +608,9 @@ public final class HalloweenModule extends AbstractModule implements Listener {
      * an item they were not credited for.
      */
     public boolean capReached(Player player) {
+        // The clock ticks once a minute: without this, candies found just after midnight landed
+        // on yesterday's counter and were wiped by the rollover, outside both days' cap.
+        if (!LocalDate.now().equals(ledger.day())) clock();
         return dailyCap > 0 && ledger.today(player.getUniqueId()) >= dailyCap;
     }
 
@@ -753,6 +756,8 @@ public final class HalloweenModule extends AbstractModule implements Listener {
 
     /** {@code /dolcetto}: one treat or trick per player per day. */
     public void trickOrTreat(Player player) {
+        // Same rollover as the listeners: a dolcetto just after midnight belongs to the new day.
+        if (!LocalDate.now().equals(ledger.day())) clock();
         if (!trickOrTreatEnabled) {
             tell(player, "halloween.trick-or-treat-off", Map.of());
             return;
@@ -763,27 +768,43 @@ public final class HalloweenModule extends AbstractModule implements Listener {
         }
 
         LocalDate today = LocalDate.now();
-        if (!ledger.claim(player.getUniqueId(), player.getName(), today)) {
+        if (!ledger.canClaim(player.getUniqueId(), today)) {
             tell(player, "halloween.already-claimed",
                     Map.of("time", Ticks.countdown(untilMidnight())));
             return;
         }
 
+        // The dolcetto is spent inside treat()/trick(), by a claim() that has to reach the disk.
         if (ThreadLocalRandom.current().nextDouble() < treatChance) {
-            treat(player);
+            treat(player, today);
         } else {
-            trick(player);
+            trick(player, today);
         }
     }
 
-    private void treat(Player player) {
-        int total = treatCandies > 0
-                ? ledger.add(player.getUniqueId(), player.getName(), treatCandies)
-                : ledger.candies(player.getUniqueId());
+    private void treat(Player player, LocalDate today) {
+        // The daily cap counts here too, trimmed the way creditCandy() trims a lucky handful.
+        boolean capped = capReached(player);
+        int amount = capped ? 0
+                : dailyCap > 0 ? Math.min(treatCandies, dailyCap - ledger.today(player.getUniqueId()))
+                : treatCandies;
+        if (amount > 0) ledger.add(player.getUniqueId(), player.getName(), amount);
 
-        tell(player, "halloween.treat", Map.of(
-                "amount", String.valueOf(treatCandies),
-                "candies", String.valueOf(total)));
+        // claim() writes the candies and the spent dolcetto in one go: on disk, both or neither.
+        if (!ledger.claim(player.getUniqueId(), player.getName(), today)) {
+            if (amount > 0) ledger.undoAdd(player.getUniqueId(), amount);
+            tell(player, "halloween.save-failed", Map.of());
+            return;
+        }
+        int total = ledger.candies(player.getUniqueId());
+
+        if (capped) {
+            tell(player, "halloween.cap-reached", Map.of("candies", String.valueOf(dailyCap)));
+        } else {
+            tell(player, "halloween.treat", Map.of(
+                    "amount", String.valueOf(amount),
+                    "candies", String.valueOf(total)));
+        }
         treatSound.play(player);
         sparkle(player, player.getLocation(), Particle.TOTEM_OF_UNDYING, 30);
         runCommands(treatCommands, player.getName());
@@ -791,7 +812,11 @@ public final class HalloweenModule extends AbstractModule implements Listener {
     }
 
     /** The tricks are all cosmetic and short — a scare, not a punishment. */
-    private void trick(Player player) {
+    private void trick(Player player, LocalDate today) {
+        if (!ledger.claim(player.getUniqueId(), player.getName(), today)) {
+            tell(player, "halloween.save-failed", Map.of());
+            return;
+        }
         String[] kinds = {"nausea", "blindness", "scare"};
         String kind = kinds[ThreadLocalRandom.current().nextInt(kinds.length)];
         int ticks = trickSeconds * (int) Ticks.SECOND;
