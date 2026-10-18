@@ -7,6 +7,7 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.Directional;
+import org.bukkit.entity.Enderman;
 import org.bukkit.entity.Enemy;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -20,6 +21,7 @@ import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
+import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.inventory.ItemStack;
@@ -138,6 +140,32 @@ public final class HalloweenListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onGrow(BlockGrowEvent event) {
         if (PUMPKINS.contains(event.getNewState().getType())) setPlaced(event.getBlock(), false);
+    }
+
+    /**
+     * An enderman carrying a player-placed pumpkin carries its mark too, kept on the enderman
+     * itself so it survives an unload; without it the pumpkin landed on an unmarked square and
+     * paid. Any other entity taking a marked pumpkin away (a wither, say) just clears the square.
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onEntityChange(EntityChangeBlockEvent event) {
+        Block block = event.getBlock();
+        boolean pumpkinBefore = PUMPKINS.contains(block.getType());
+        boolean pumpkinAfter = PUMPKINS.contains(event.getTo());
+        if (pumpkinBefore == pumpkinAfter) return;
+
+        if (pumpkinBefore) {
+            boolean marked = forgetPlaced(block);
+            if (!(event.getEntity() instanceof Enderman enderman)) return;
+            PersistentDataContainer carried = enderman.getPersistentDataContainer();
+            if (marked) carried.set(placedKey, PersistentDataType.BYTE, (byte) 1);
+            else carried.remove(placedKey);
+        } else if (event.getEntity() instanceof Enderman enderman) {
+            PersistentDataContainer carried = enderman.getPersistentDataContainer();
+            if (!carried.has(placedKey, PersistentDataType.BYTE)) return;
+            carried.remove(placedKey);
+            setPlaced(block, true);
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
