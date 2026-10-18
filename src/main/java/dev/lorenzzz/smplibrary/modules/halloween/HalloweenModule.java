@@ -651,7 +651,8 @@ public final class HalloweenModule extends AbstractModule implements Listener {
 
         CandyLedger.Season season = ledger.of(player.getUniqueId(), player.getName());
         if (season.paidMilestone() >= milestone) return;
-        ledger.paidMilestone(player.getUniqueId(), player.getName(), milestone);
+        // Not saved, not paid: the next find retries, where paying now could pay twice after a crash.
+        if (!ledger.paidMilestone(player.getUniqueId(), player.getName(), milestone)) return;
 
         runCommands(exchangeCommands, player.getName());
         Map<String, String> values = Map.of(

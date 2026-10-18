@@ -133,16 +133,18 @@ public final class CandyLedger {
      * off the main thread, and if it has already taken the dirty flag but is still serialising,
      * flushIfDirty() sees a clean ledger and returns — so disable would walk away from a
      * half-written file.
+     *
+     * @return false when the file could not be written; the ledger stays dirty and is retried
      */
-    public void flush() {
+    public boolean flush() {
         dirty.set(false);
-        write();
+        return write();
     }
 
     // synchronized: the periodic save writes from an async task and shutdown writes from the
     // main thread. Two threads inside this method at once interleave their lines in the same
     // file, which is how a season of candy turns into an unparsable yaml.
-    private synchronized void write() {
+    private synchronized boolean write() {
         YamlConfiguration yaml = new YamlConfiguration();
         yaml.set("day", day == null ? null : day.toString());
         yaml.set("season-year", seasonYear == 0 ? null : seasonYear);
@@ -162,10 +164,12 @@ public final class CandyLedger {
         if (parent != null) parent.mkdirs();
         try {
             yaml.save(file);
+            return true;
         } catch (IOException e) {
             // Dirty again on purpose: the next pass (or the shutdown flush) retries the write.
             dirty.set(true);
             Log.warning("halloween: impossibile scrivere " + FILE_PATH + " (" + e.getMessage() + ")");
+            return false;
         }
     }
 
@@ -205,16 +209,44 @@ public final class CandyLedger {
         return season.candies;
     }
 
+    /**
+     * Takes back an {@link #add} whose save failed: both counters and its history line.
+     *
+     * <p>shortcut: a credit that pushed the oldest of the five history lines out does not bring
+     * it back; restoring it would mean keeping a sixth line around for this rare case.
+     */
+    public void undoAdd(UUID playerId, int amount) {
+        Season season = seasons.get(playerId);
+        if (season == null) return;
+        season.candies = Math.max(0, season.candies - amount);
+        season.today = Math.max(0, season.today - amount);
+        season.recent.pollFirst();
+        dirty.set(true);
+    }
+
     /** The player's last credits, newest first. */
     public List<Credit> recent(UUID playerId) {
         Season season = seasons.get(playerId);
         return season == null ? List.of() : new ArrayList<>(season.recent);
     }
 
-    /** Records the milestone already paid for, so a reward is never handed out twice. */
-    public void paidMilestone(UUID playerId, String name, int milestone) {
-        of(playerId, name).paidMilestone = milestone;
-        dirty.set(true);
+    /**
+     * Records the milestone already paid for, so a reward is never handed out twice.
+     *
+     * <p>Written to disk straight away, before the caller runs the reward commands: left to the
+     * periodic save, a crash inside that five-minute window rolled the mark back and the same
+     * milestone paid again after the restart.
+     *
+     * @return false when the save failed: the mark is taken back and the caller must not pay,
+     *         so the milestone pays on a later find instead of twice after a crash
+     */
+    public boolean paidMilestone(UUID playerId, String name, int milestone) {
+        Season season = of(playerId, name);
+        int previous = season.paidMilestone;
+        season.paidMilestone = milestone;
+        if (flush()) return true;
+        season.paidMilestone = previous;
+        return false;
     }
 
     // --------------------------------------------------------- trick or treat
@@ -225,13 +257,18 @@ public final class CandyLedger {
         return season == null || !today.toString().equals(season.claimedDay);
     }
 
-    /** Burns today's trick-or-treat; false when it was already spent. */
+    /**
+     * Burns today's trick-or-treat, saved at once like {@link #paidMilestone}. False when it was
+     * already spent, or when the save failed — then it is left unspent, as it still is on disk.
+     */
     public boolean claim(UUID playerId, String name, LocalDate today) {
         Season season = of(playerId, name);
         if (today.toString().equals(season.claimedDay)) return false;
+        String previous = season.claimedDay;
         season.claimedDay = today.toString();
-        dirty.set(true);
-        return true;
+        if (flush()) return true;
+        season.claimedDay = previous;
+        return false;
     }
 
     // ----------------------------------------------------------- the calendar
